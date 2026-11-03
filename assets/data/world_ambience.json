@@ -1,0 +1,43 @@
+{
+	"player": {
+		"move_speed": 120,
+		"anim_fps": { "idle": 6, "walk": 10 },
+		"staff_light_energy": 0.9,
+		"staff_light_scale": 1.4,
+		"staff_light_color": [1.0, 0.62, 0.28]
+	},
+	"wind": {
+		"tree_sway_px": 1.5,
+		"tree_sway_speed": 1.1,
+		"bush_sway_px": 0.8,
+		"grass_sway_px": 1.2,
+		"grass_bend_px": 5.0,
+		"grass_bend_radius": 20.0
+	},
+	"light": {
+		"canvas_tint": [1.0, 0.95, 0.86],
+		"canopy_shadow_strength": 0.5,
+		"canopy_shadow_drift": 0.12,
+		"canopy_fade_alpha": 0.45,
+		"god_rays": 7,
+		"god_ray_intensity": 0.13,
+		"vignette": 0.5,
+		"glow_intensity": 0.45,
+		"saturation": 1.08,
+		"contrast": 1.05
+	},
+	"particles": {
+		"leaves": 14,
+		"pollen": 40,
+		"fireflies": 10
+	},
+	"critters": {
+		"butterfly_flee_px": 34,
+		"rabbit_flee_px": 72,
+		"rabbit_hop_speed": 38,
+		"rabbit_flee_speed": 115,
+		"squirrel_flee_px": 64,
+		"squirrel_run_speed": 90,
+		"squirrel_hide_seconds": [4.0, 7.0]
+	}
+}

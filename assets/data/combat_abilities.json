@@ -1,0 +1,56 @@
+{
+	"abilities": {
+		"fire_spark": {
+			"name": "Fagulha", "slot": 1, "type": "projectile", "aim": "point", "element": "fire",
+			"cast_time": 0, "cooldown": 0, "gcd": 0.55, "cost": 0, "range": 260, "power_stat": "spell_power", "school": "magic",
+			"base": 6, "scaling": 0.3, "projectile": { "speed": 420, "size": "small", "hit_radius": 10 },
+			"burn_stacks": 1, "tier": "light", "poise": 8
+		},
+		"fireball": {
+			"name": "Bola de Fogo", "slot": 2, "type": "projectile", "aim": "point", "element": "fire",
+			"cast_time": 0.9, "cooldown": 0, "cost": 16, "range": 260, "power_stat": "spell_power", "school": "magic",
+			"base": 20, "scaling": 0.8, "projectile": { "speed": 320, "size": "big", "hit_radius": 12, "explode_at_end": true },
+			"aoe": { "radius": 56 }, "burn_stacks": 2, "tier": "medium", "ignites": true, "poise": 18, "movement_cancel": true
+		},
+		"flame_pillar": {
+			"name": "Pilar de Chamas", "slot": 3, "type": "ground", "aim": "point", "element": "fire",
+			"cast_time": 0, "cooldown": 8, "cost": 22, "range": 220, "power_stat": "spell_power", "school": "magic",
+			"base": 30, "scaling": 1.2, "ground": { "telegraph": 0.7 }, "aoe": { "radius": 64 }, "knockback": 48, "tier": "heavy",
+			"poise": 45, "renews_burn": true
+		},
+		"fire_nova": {
+			"name": "Anel de Fogo", "slot": 4, "type": "self_aoe", "aim": "self", "element": "fire",
+			"cast_time": 0, "cooldown": 10, "cost": 18, "range": 0, "power_stat": "spell_power", "school": "magic",
+			"base": 14, "scaling": 0.4, "aoe": { "radius": 80 }, "knockback": 72, "tier": "medium", "poise": 25,
+			"stagger_resist": 0.35
+		},
+		"heavy_strike": {
+			"name": "Golpe Pesado", "slot": 1, "type": "melee_combo", "aim": "point", "element": "physical",
+			"cast_time": 0, "cooldown": 0, "cost": 0, "range": 46, "arc_deg": 100, "power_stat": "attack_power", "school": "physical",
+			"base": 14, "scaling": 0.9, "rage_gain": 10, "knockback": 0, "tier": "light", "poise": 12,
+			"steps": [
+				{ "name": "Corte", "base": 12, "scaling": 0.8, "damage_mult": 0.9, "range": 46, "arc_deg": 100, "rage_gain": 10, "poise": 12, "recovery": 0.18, "lunge_px": 6, "tier": "light" },
+				{ "name": "Retorno", "base": 14, "scaling": 0.9, "damage_mult": 1.0, "range": 48, "arc_deg": 125, "rage_gain": 10, "poise": 14, "recovery": 0.20, "lunge_px": 0, "tier": "medium" },
+				{ "name": "Quebra", "base": 18, "scaling": 1.2, "damage_mult": 1.35, "range": 44, "arc_deg": 85, "rage_gain": 16, "poise": 25, "knockback": 16, "recovery": 0.34, "tier": "heavy" }
+			]
+		},
+		"charge": {
+			"name": "Investida", "slot": 2, "type": "dash", "aim": "point", "element": "physical",
+			"cast_time": 0, "cooldown": 7, "cost": 0, "range": 170, "dash_seconds": 0.22, "power_stat": "attack_power", "school": "physical",
+			"base": 8, "scaling": 0.4, "aoe": { "radius": 38 }, "knockback": 20, "rage_gain": 12, "poise": 20, "off_balance_seconds": 1.2, "tier": "medium"
+		},
+		"war_cry": {
+			"name": "Grito de Guerra", "slot": 3, "type": "self_aoe", "aim": "self", "element": "none",
+			"cast_time": 0, "cooldown": 14, "cost": 0, "range": 0, "power_stat": "attack_power", "school": "physical",
+			"base": 0, "scaling": 0, "aoe": { "radius": 110 }, "taunt_seconds": 4.0,
+			"buff": { "damage_reduction": 0.3, "seconds": 4.0 }, "rage_gain": 10, "resolve_window": 0.45, "tier": "light", "no_damage": true
+		},
+		"whirlwind": {
+			"name": "Redemoinho", "slot": 4, "type": "spin", "aim": "self", "element": "physical",
+			"cast_time": 0, "cooldown": 5, "cost": 35, "range": 0, "power_stat": "attack_power", "school": "physical",
+			"base": 8, "scaling": 0.45, "aoe": { "radius": 58 }, "ticks": 3, "tick_seconds": 0.3, "final_poise": 20, "final_knockback": 14, "move_speed_mult": 0.55, "tier": "medium"
+		}
+	},
+	"passives": { "ignite": { "threshold": 3, "max_consume": 5, "per_stack": 8, "scaling": 0.25, "tier": "heavy" } },
+	"status": { "burn": { "tick_damage": 3, "tick_interval": 1.0, "duration": 6, "max_stacks": 5 } }
+}

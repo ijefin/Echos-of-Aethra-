@@ -1,0 +1,74 @@
+{
+	"anims": {
+		"idle": {
+			"dirs": {
+				"s": [
+					"chars/mage/frames/robe/mage_robe_idle_s_00.png",
+					"chars/mage/frames/robe/mage_robe_idle_s_01.png",
+					"chars/mage/frames/robe/mage_robe_idle_s_02.png",
+					"chars/mage/frames/robe/mage_robe_idle_s_03.png"
+				],
+				"e": [
+					"chars/mage/frames/robe/mage_robe_idle_e_00.png",
+					"chars/mage/frames/robe/mage_robe_idle_e_01.png",
+					"chars/mage/frames/robe/mage_robe_idle_e_02.png",
+					"chars/mage/frames/robe/mage_robe_idle_e_03.png"
+				],
+				"n": [
+					"chars/mage/frames/robe/mage_robe_idle_n_00.png",
+					"chars/mage/frames/robe/mage_robe_idle_n_01.png",
+					"chars/mage/frames/robe/mage_robe_idle_n_02.png",
+					"chars/mage/frames/robe/mage_robe_idle_n_03.png"
+				]
+			},
+			"mirror": {
+				"w": "e"
+			},
+			"fps": 5.0
+		},
+		"walk": {
+			"dirs": {
+				"s": [
+					"chars/mage/frames/robe/mage_robe_walk_s_00.png",
+					"chars/mage/frames/robe/mage_robe_walk_s_01.png",
+					"chars/mage/frames/robe/mage_robe_walk_s_02.png",
+					"chars/mage/frames/robe/mage_robe_walk_s_03.png",
+					"chars/mage/frames/robe/mage_robe_walk_s_04.png",
+					"chars/mage/frames/robe/mage_robe_walk_s_05.png"
+				],
+				"e": [
+					"chars/mage/frames/robe/mage_robe_walk_e_00.png",
+					"chars/mage/frames/robe/mage_robe_walk_e_01.png",
+					"chars/mage/frames/robe/mage_robe_walk_e_02.png",
+					"chars/mage/frames/robe/mage_robe_walk_e_03.png",
+					"chars/mage/frames/robe/mage_robe_walk_e_04.png",
+					"chars/mage/frames/robe/mage_robe_walk_e_05.png"
+				],
+				"n": [
+					"chars/mage/frames/robe/mage_robe_walk_n_00.png",
+					"chars/mage/frames/robe/mage_robe_walk_n_01.png",
+					"chars/mage/frames/robe/mage_robe_walk_n_02.png",
+					"chars/mage/frames/robe/mage_robe_walk_n_03.png",
+					"chars/mage/frames/robe/mage_robe_walk_n_04.png",
+					"chars/mage/frames/robe/mage_robe_walk_n_05.png"
+				]
+			},
+			"mirror": {
+				"w": "e"
+			},
+			"fps": 9.09
+		}
+	},
+	"dirs": {
+		"s": "chars/mage/frames/robe/mage_robe_idle_s_00.png",
+		"e": "chars/mage/frames/robe/mage_robe_idle_e_00.png",
+		"n": "chars/mage/frames/robe/mage_robe_idle_n_00.png"
+	},
+	"mirror": {
+		"w": "e"
+	},
+	"pivot": [
+		24.0,
+		45
+	]
+}

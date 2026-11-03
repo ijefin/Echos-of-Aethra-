@@ -1,0 +1,143 @@
+{
+  "xp_first": 10,
+  "xp_step": 8,
+  "max_level": 20,
+  "player_hp": 60,
+  "hp_per_level": 8,
+  "basic_damage": 8,
+  "regen_delay": 5.0,
+  "regen_per_second": 4.0,
+  "blink_level": 2,
+  "blink_cooldown": 3.0,
+  "ring_level": 3,
+  "ring_cooldown": 6.0,
+  "ring_damage": 18,
+  "ring_radius": 3.2,
+  "torch_order": [
+    0,
+    2,
+    1
+  ],
+  "cave_guardians": 8,
+  "reward_item": "ember_amulet",
+  "enemy": {
+    "frog": {
+      "name": "Sapo Bravio",
+      "hp": 16,
+      "damage": 6,
+      "speed": 1.5,
+      "xp": 3,
+      "windup": 0.65
+    },
+    "spider": {
+      "name": "Aranha das Raízes",
+      "hp": 24,
+      "damage": 8,
+      "speed": 1.9,
+      "xp": 3,
+      "windup": 0.55
+    }
+  },
+  "field_enemies": [
+    {
+      "kind": "frog",
+      "x": -20,
+      "z": -27
+    },
+    {
+      "kind": "frog",
+      "x": -23,
+      "z": -29
+    },
+    {
+      "kind": "spider",
+      "x": -25,
+      "z": -28
+    },
+    {
+      "kind": "frog",
+      "x": -28,
+      "z": -30
+    },
+    {
+      "kind": "spider",
+      "x": -31,
+      "z": -27
+    },
+    {
+      "kind": "frog",
+      "x": -35,
+      "z": -29
+    },
+    {
+      "kind": "frog",
+      "x": -14,
+      "z": -15.6
+    },
+    {
+      "kind": "frog",
+      "x": -11,
+      "z": -15.3
+    },
+    {
+      "kind": "spider",
+      "x": -7,
+      "z": -14.4
+    },
+    {
+      "kind": "frog",
+      "x": -3,
+      "z": -12.9
+    },
+    {
+      "kind": "frog",
+      "x": 1,
+      "z": -11.2
+    },
+    {
+      "kind": "spider",
+      "x": 6,
+      "z": -9.1
+    },
+    {
+      "kind": "spider",
+      "x": -41,
+      "z": -24
+    },
+    {
+      "kind": "frog",
+      "x": -35,
+      "z": -23
+    },
+    {
+      "kind": "spider",
+      "x": 33,
+      "z": 34
+    },
+    {
+      "kind": "spider",
+      "x": 39,
+      "z": 35
+    },
+    {
+      "kind": "frog",
+      "x": 36,
+      "z": 36
+    }
+  ],
+  "mana_base": 40,
+  "mana_per_level": 6,
+  "mana_regen_per_second": 2.5,
+  "mana_cost": {
+    "fire": 3,
+    "blink": 10,
+    "ring": 15
+  },
+  "potion": {
+    "hp_heal": 45,
+    "mana_restore": 35,
+    "start_hp": 3,
+    "start_mana": 3,
+    "cooldown": 1.0
+  }
+}

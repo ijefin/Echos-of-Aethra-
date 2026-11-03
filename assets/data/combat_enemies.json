@@ -1,0 +1,46 @@
+{
+	"enemies": {
+		"training_dummy": {
+			"name": "Boneco de Treino", "texture": "enemies/enemy_training_dummy.png", "frames": 4, "radius": 9,
+			"primary": { "VIT": 20 }, "base": { "max_hp": 240, "resist": 20, "armor": 20 }, "coeff": { "max_hp": { "VIT": 8 } },
+			"max_poise": 80, "poise_regen": 20, "stagger_seconds": 0.8, "stagger_immunity": 2.0,
+			"respawn_seconds": 3.0, "returns_home": true
+		},
+		"slime_awakened": {
+			"name": "Slime Saltador", "texture": "enemies/enemy_slime_awakened.png", "frames": 4, "radius": 8,
+			"primary": { "VIT": 8 }, "base": { "max_hp": 60, "resist": 10, "armor": 5, "move_speed": 52 }, "coeff": { "max_hp": { "VIT": 6 } },
+			"max_poise": 35, "poise_regen": 12, "stagger_seconds": 0.8, "stagger_immunity": 3.0,
+			"chase": true, "aggro_px": 220, "leash_px": 360, "contact_damage": 4, "preferred_range": 45,
+			"actions": [
+				{ "name": "Salto", "type": "leap", "range": 85, "min_range": 15, "windup": 0.55, "active": 0.22, "recovery": 0.65, "speed": 220, "radius": 18, "damage": 10, "poise": 15, "cooldown": 2.2 }
+			]
+		},
+		"moss_guardian": {
+			"name": "Guardião de Musgo", "texture": "enemies/enemy_training_dummy.png", "frames": 4, "radius": 14,
+			"primary": { "VIT": 16 }, "base": { "max_hp": 180, "resist": 15, "armor": 25, "move_speed": 42 }, "coeff": { "max_hp": { "VIT": 8 } },
+			"max_poise": 90, "poise_regen": 15, "stagger_seconds": 1.0, "stagger_immunity": 4.0,
+			"chase": true, "aggro_px": 200, "leash_px": 320, "preferred_range": 36, "tint": [0.45, 0.85, 0.55],
+			"actions": [
+				{ "name": "Pisão", "type": "circle", "range": 36, "windup": 0.85, "active": 0.2, "recovery": 0.8, "radius": 48, "damage": 14, "poise": 25, "cooldown": 6.0 },
+				{ "name": "Clava", "type": "cone", "range": 46, "arc": 90, "windup": 0.65, "active": 0.18, "recovery": 0.70, "radius": 46, "damage": 18, "poise": 30, "cooldown": 3.0 },
+				{ "name": "Guarda Firme", "type": "guard", "range": 999, "damage_mult": 0.4, "windup": 0.2, "active": 1.2, "recovery": 0.4, "cooldown": 7.0 }
+			]
+		},
+		"ember_oracle": {
+			"name": "Oráculo de Brasa", "texture": "enemies/enemy_slime_awakened.png", "frames": 4, "radius": 10,
+			"primary": { "VIT": 10 }, "base": { "max_hp": 110, "resist": 25, "armor": 10, "move_speed": 38 }, "coeff": { "max_hp": { "VIT": 6 } },
+			"max_poise": 50, "poise_regen": 10, "stagger_seconds": 1.2, "stagger_immunity": 3.0,
+			"chase": true, "aggro_px": 240, "leash_px": 360, "retreat": true, "preferred_range": 150, "tint": [1.3, 0.7, 0.3],
+			"actions": [
+				{ "name": "Disparo Triplo", "type": "barrage", "range": 190, "min_range": 50, "windup": 0.75, "active": 0.6, "recovery": 0.8, "travel": 240, "radius": 12, "damage": 7, "poise": 10, "cooldown": 4.0 },
+				{ "name": "Círculo de Brasa", "type": "ground", "range": 160, "windup": 0.90, "active": 0.25, "recovery": 0.7, "radius": 50, "damage": 16, "poise": 20, "cooldown": 6.0 }
+			]
+		}
+	},
+	"spawns": {
+		"training_dummy": [[770, 520], [800, 505], [830, 520], [785, 548], [815, 548]],
+		"moss_guardian": [[660, 520], [940, 520]],
+		"ember_oracle": [[800, 420]]
+	},
+	"slime_pack": { "count": 5, "distance_px": 170, "max_alive": 15 }
+}

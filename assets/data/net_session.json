@@ -1,0 +1,9 @@
+{
+	"default_port": 7777,
+	"max_players": 8,
+	"snapshot_hz": 20,
+	"avatar_send_hz": 30,
+	"stats_send_hz": 10,
+	"player_spawn": [800, 660],
+	"spawn_spread_px": 24
+}

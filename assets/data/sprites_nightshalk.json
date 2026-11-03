@@ -1,0 +1,138 @@
+{
+	"anims": {
+		"attack": {
+			"dirs": {
+				"e": [
+					"chars/nightshalk/nightshalk_attack_e_00.png",
+					"chars/nightshalk/nightshalk_attack_e_01.png",
+					"chars/nightshalk/nightshalk_attack_e_02.png",
+					"chars/nightshalk/nightshalk_attack_e_03.png",
+					"chars/nightshalk/nightshalk_attack_e_04.png",
+					"chars/nightshalk/nightshalk_attack_e_05.png",
+					"chars/nightshalk/nightshalk_attack_e_06.png",
+					"chars/nightshalk/nightshalk_attack_e_07.png",
+					"chars/nightshalk/nightshalk_attack_e_08.png",
+					"chars/nightshalk/nightshalk_attack_e_09.png"
+				]
+			},
+			"fps": 18.0,
+			"mirror": {
+				"w": "e"
+			}
+		},
+		"death": {
+			"dirs": {
+				"e": [
+					"chars/nightshalk/nightshalk_death_e_00.png",
+					"chars/nightshalk/nightshalk_death_e_01.png",
+					"chars/nightshalk/nightshalk_death_e_02.png",
+					"chars/nightshalk/nightshalk_death_e_03.png",
+					"chars/nightshalk/nightshalk_death_e_04.png",
+					"chars/nightshalk/nightshalk_death_e_05.png",
+					"chars/nightshalk/nightshalk_death_e_06.png",
+					"chars/nightshalk/nightshalk_death_e_07.png"
+				]
+			},
+			"fps": 10.0,
+			"mirror": {
+				"w": "e"
+			}
+		},
+		"hurt": {
+			"dirs": {
+				"e": [
+					"chars/nightshalk/nightshalk_hurt_e_00.png",
+					"chars/nightshalk/nightshalk_hurt_e_01.png",
+					"chars/nightshalk/nightshalk_hurt_e_02.png",
+					"chars/nightshalk/nightshalk_hurt_e_03.png"
+				]
+			},
+			"fps": 12.0,
+			"mirror": {
+				"w": "e"
+			}
+		},
+		"idle": {
+			"dirs": {
+				"e": [
+					"chars/nightshalk/nightshalk_idle_e_00.png",
+					"chars/nightshalk/nightshalk_idle_e_01.png",
+					"chars/nightshalk/nightshalk_idle_e_02.png",
+					"chars/nightshalk/nightshalk_idle_e_03.png",
+					"chars/nightshalk/nightshalk_idle_e_04.png",
+					"chars/nightshalk/nightshalk_idle_e_05.png"
+				],
+				"n": [
+					"chars/nightshalk/nightshalk_idle_n_00.png",
+					"chars/nightshalk/nightshalk_idle_n_01.png",
+					"chars/nightshalk/nightshalk_idle_n_02.png",
+					"chars/nightshalk/nightshalk_idle_n_03.png",
+					"chars/nightshalk/nightshalk_idle_n_04.png",
+					"chars/nightshalk/nightshalk_idle_n_05.png"
+				],
+				"s": [
+					"chars/nightshalk/nightshalk_idle_s_00.png",
+					"chars/nightshalk/nightshalk_idle_s_01.png",
+					"chars/nightshalk/nightshalk_idle_s_02.png",
+					"chars/nightshalk/nightshalk_idle_s_03.png",
+					"chars/nightshalk/nightshalk_idle_s_04.png",
+					"chars/nightshalk/nightshalk_idle_s_05.png"
+				]
+			},
+			"fps": 6.0,
+			"mirror": {
+				"w": "e"
+			}
+		},
+		"walk": {
+			"dirs": {
+				"e": [
+					"chars/nightshalk/nightshalk_walk_e_00.png",
+					"chars/nightshalk/nightshalk_walk_e_01.png",
+					"chars/nightshalk/nightshalk_walk_e_02.png",
+					"chars/nightshalk/nightshalk_walk_e_03.png",
+					"chars/nightshalk/nightshalk_walk_e_04.png",
+					"chars/nightshalk/nightshalk_walk_e_05.png",
+					"chars/nightshalk/nightshalk_walk_e_06.png",
+					"chars/nightshalk/nightshalk_walk_e_07.png"
+				],
+				"n": [
+					"chars/nightshalk/nightshalk_walk_n_00.png",
+					"chars/nightshalk/nightshalk_walk_n_01.png",
+					"chars/nightshalk/nightshalk_walk_n_02.png",
+					"chars/nightshalk/nightshalk_walk_n_03.png",
+					"chars/nightshalk/nightshalk_walk_n_04.png",
+					"chars/nightshalk/nightshalk_walk_n_05.png",
+					"chars/nightshalk/nightshalk_walk_n_06.png",
+					"chars/nightshalk/nightshalk_walk_n_07.png"
+				],
+				"s": [
+					"chars/nightshalk/nightshalk_walk_s_00.png",
+					"chars/nightshalk/nightshalk_walk_s_01.png",
+					"chars/nightshalk/nightshalk_walk_s_02.png",
+					"chars/nightshalk/nightshalk_walk_s_03.png",
+					"chars/nightshalk/nightshalk_walk_s_04.png",
+					"chars/nightshalk/nightshalk_walk_s_05.png",
+					"chars/nightshalk/nightshalk_walk_s_06.png",
+					"chars/nightshalk/nightshalk_walk_s_07.png"
+				]
+			},
+			"fps": 10.0,
+			"mirror": {
+				"w": "e"
+			}
+		}
+	},
+	"dirs": {
+		"e": "chars/nightshalk/nightshalk_idle_e_00.png",
+		"n": "chars/nightshalk/nightshalk_idle_n_00.png",
+		"s": "chars/nightshalk/nightshalk_idle_s_00.png"
+	},
+	"mirror": {
+		"w": "e"
+	},
+	"pivot": [
+		31.0,
+		54.0
+	]
+}

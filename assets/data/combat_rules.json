@@ -1,0 +1,28 @@
+{
+	"combat": {
+		"mitigation_K": 100, "crit_damage_mult": 1.5, "gcd": 0.55, "spell_queue_window": 0.2,
+		"combo_window": 1.05, "spark_combo_window": 1.25,
+		"target_acquire_range": 400, "aoe_inner_radius_ratio": 0.5, "aoe_falloff_min": 0.6,
+		"knockback_duration": 0.18, "aoe_y_squash": 0.75, "respawn_seconds": 2.0,
+		"pvp_damage_mult": 0.6, "pvp_player_radius": 9, "pvp_knockback_seconds": 0.15
+	},
+	"movement": {
+		"accel_ms": 100,
+		"friction_ms": 80,
+		"turn_ms": 70,
+		"dodge_duration": 0.18,
+		"dodge_speed": 340.0,
+		"dodge_cooldown": 1.4,
+		"dodge_iframes": 0.12,
+		"input_buffer_ms": 120
+	},
+	"feel": {
+		"tiers": {
+			"light": { "hitstop": 0, "flash": 50, "shake": 0, "squash": [], "embers": 4, "wobble": 0.06 },
+			"medium": { "hitstop": 50, "flash": 70, "shake": 0.25, "squash": [0.9, 80], "embers": 12, "wobble": 0.14 },
+			"heavy": { "hitstop": 90, "flash": 90, "shake": 0.5, "squash": [0.85, 100], "embers": 24, "wobble": 0.22 }
+		},
+		"shake_max_px": 6, "trauma_decay": 1.6, "scorch_seconds": 3, "max_combat_lights": 6
+	},
+	"anim": { "attack": { "frames": 6, "fps": 12, "release": 3 } }
+}

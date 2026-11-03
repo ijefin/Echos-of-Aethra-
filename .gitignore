@@ -16,7 +16,9 @@ project.local.yaml
 production/session-logs/
 # Ephemeral per-session checkpoint. directory-structure.md documents this as
 # gitignored; the rule was missing, so active.md would have been committed.
-production/session-state/
+production/session-state/*
+# Handoffs entre sessões são o registro do estado do projeto — versionados.
+!production/session-state/HANDOFF-*.md
 .scratch/
 # Per-agent working memory written at runtime — not release material
 .claude/agent-memory/
@@ -68,7 +70,10 @@ dist/
 # Keep this un-ignore, or run `godot --headless --import` once after cloning.
 !**/.godot/global_script_class_cache.cfg
 *.translation
-export_presets.cfg
+# O preset deste jogo faz parte do fluxo de release. Projetos de exemplo ainda
+# podem manter presets locais ignorados, mas o preset da raiz precisa ser versionado.
+**/export_presets.cfg
+!/export_presets.cfg
 # Uncomment if using Godot:
 # *.import
 
@@ -175,3 +180,10 @@ $RECYCLE.BIN/
 # the project root. Anchored so a reports/ folder elsewhere stays tracked.
 /reports/
 /test-results/
+
+# === Projeto: Ecos de Aethra ===
+# Logs locais do Playwright MCP
+.playwright-mcp/
+# FBX do KayKit: o Godot ignora (.gdignore) e o jogo usa só os glTF (~95 MB)
+assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Characters/fbx/
+assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/fbx/

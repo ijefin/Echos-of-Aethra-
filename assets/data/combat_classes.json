@@ -1,0 +1,77 @@
+{
+	"derived": ["max_hp", "max_resource", "resource_regen", "attack_power", "spell_power", "armor", "resist", "crit_chance", "haste", "move_speed"],
+	"resources": {
+		"mana": { "color": [0.24, 0.56, 0.66], "start_full": true },
+		"rage": { "color": [0.78, 0.29, 0.16], "start_full": false, "gain_per_hp_lost": 0.6, "decay_per_s": 3.0, "decay_delay_s": 5.0 }
+	},
+	"classes": {
+		"fire_mage": {
+			"name": "Mago de Fogo", "resource_type": "mana", "sheet": "chars/spr_mage_fire_sheet.png", "staff_light": true,
+			"sprite8": { "manifest": "sprites_mage.json" },
+			"starter_items": ["fire_staff", "apprentice_robe", "mage_hat"],
+			"test_items": ["apprentice_hood", "ember_robe", "ember_amulet", "linen_trousers", "wanderer_boots", "ember_orb", "pyromancer_staff", "pyromancer_robe", "pyromancer_hood", "pyromancer_amulet", "pyromancer_trousers", "pyromancer_boots", "pyromancer_grimoire"],
+			"primary": { "STR": 3, "AGI": 5, "INT": 12, "VIT": 6, "SPI": 8 },
+			"base": { "max_hp": 60, "max_resource": 40, "resource_regen": 0, "spell_power": 8, "attack_power": 2, "crit_chance": 0.05, "resist": 5, "armor": 3, "move_speed": 120 },
+			"coeff": { "max_hp": { "VIT": 8 }, "max_resource": { "INT": 4, "SPI": 2 }, "resource_regen": { "SPI": 0.5 }, "spell_power": { "INT": 2 }, "crit_chance": { "AGI": 0.004 }, "attack_power": { "STR": 1 } },
+			"growth": { "max_hp": 6, "max_resource": 4, "spell_power": 2 },
+			"abilities": ["fire_spark", "fireball", "flame_pillar", "fire_nova"],
+			"level_track": {
+				"name": "Magic Level", "short": "ML", "gained_by": "mana_spent",
+				"start": 1, "base_points": 120, "growth": 1.35,
+				"per_level": { "damage_pct": 4.0, "cost_pct": -1.5, "range_px": 6.0 },
+				"min_cost_mult": 0.6
+			}
+		},
+		"warrior": {
+			"name": "Guerreiro", "resource_type": "rage", "sheet": "chars/spr_warrior_sheet.png", "staff_light": false,
+			"primary": { "STR": 12, "AGI": 6, "INT": 2, "VIT": 11, "SPI": 3 },
+			"base": { "max_hp": 90, "max_resource": 100, "attack_power": 6, "crit_chance": 0.05, "armor": 15, "resist": 12, "move_speed": 115 },
+			"coeff": { "max_hp": { "VIT": 10 }, "attack_power": { "STR": 2 }, "armor": { "VIT": 1.5 }, "crit_chance": { "AGI": 0.003 } },
+			"growth": { "max_hp": 10, "attack_power": 2 },
+			"abilities": ["heavy_strike", "charge", "war_cry", "whirlwind"]
+		},
+		"nightshalk": {
+			"name": "Nightshalk (Assassino)", "resource_type": "rage", "staff_light": false,
+			"primary": { "STR": 9, "AGI": 13, "INT": 3, "VIT": 8, "SPI": 4 },
+			"base": { "max_hp": 78, "max_resource": 100, "attack_power": 7, "crit_chance": 0.1, "armor": 9, "resist": 10, "move_speed": 130 },
+			"coeff": { "max_hp": { "VIT": 9 }, "attack_power": { "STR": 1.5, "AGI": 1.2 }, "armor": { "VIT": 1.0 }, "crit_chance": { "AGI": 0.004 } },
+			"growth": { "max_hp": 8, "attack_power": 2 },
+			"abilities": ["heavy_strike", "charge", "war_cry", "whirlwind"],
+			"sprite8": { "manifest": "sprites_nightshalk.json", "walk_bob_px": 0.0 }
+		},
+		"rogue_test": {
+			"name": "Ladino (teste)", "resource_type": "rage", "staff_light": false,
+			"primary": { "STR": 9, "AGI": 12, "INT": 3, "VIT": 9, "SPI": 4 },
+			"base": { "max_hp": 80, "max_resource": 100, "attack_power": 6, "crit_chance": 0.08, "armor": 10, "resist": 10, "move_speed": 128 },
+			"coeff": { "max_hp": { "VIT": 9 }, "attack_power": { "STR": 1.5, "AGI": 1.0 }, "armor": { "VIT": 1.0 }, "crit_chance": { "AGI": 0.004 } },
+			"growth": { "max_hp": 8, "attack_power": 2 },
+			"abilities": ["heavy_strike", "charge", "war_cry", "whirlwind"],
+			"sprite8": {
+				"pivot": [24, 46],
+				"dirs": {
+					"s": "chars/rogue/rogue_s.png", "se": "chars/rogue/rogue_se.png", "e": "chars/rogue/rogue_e.png",
+					"ne": "chars/rogue/rogue_ne.png", "n": "chars/rogue/rogue_n.png", "nw": "chars/rogue/rogue_nw.png"
+				},
+				"mirror": { "w": "e", "sw": "se" },
+				"walk_bob_px": 2.0, "walk_bob_hz": 4.5
+			}
+		},
+		"paladin": {
+			"name": "Paladino", "resource_type": "mana",
+			"primary": { "STR": 9, "AGI": 4, "INT": 5, "VIT": 10, "SPI": 10 },
+			"base": { "max_hp": 85, "max_resource": 60, "resource_regen": 1, "attack_power": 4, "spell_power": 4, "armor": 12, "resist": 10, "move_speed": 115 },
+			"coeff": { "max_hp": { "VIT": 9 }, "attack_power": { "STR": 1.5 }, "spell_power": { "SPI": 1.5 }, "resist": { "SPI": 1 } },
+			"growth": { "max_hp": 8, "attack_power": 1, "spell_power": 1 },
+			"abilities": []
+		},
+		"archer": {
+			"name": "Arqueiro", "resource_type": "mana",
+			"primary": { "STR": 5, "AGI": 13, "INT": 4, "VIT": 7, "SPI": 5 },
+			"base": { "max_hp": 70, "max_resource": 100, "resource_regen": 8, "attack_power": 4, "crit_chance": 0.08, "armor": 6, "move_speed": 130 },
+			"coeff": { "max_hp": { "VIT": 8 }, "attack_power": { "AGI": 2 }, "crit_chance": { "AGI": 0.005 } },
+			"growth": { "max_hp": 7, "attack_power": 2 },
+			"abilities": []
+		}
+	},
+	"playable": ["nightshalk", "fire_mage", "warrior", "rogue_test"]
+}

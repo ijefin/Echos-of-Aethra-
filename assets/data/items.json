@@ -1,0 +1,312 @@
+{
+	"inventory_size": 30,
+	"slots": {
+		"head": {
+			"name": "Cabeça",
+			"z": 3
+		},
+		"neck": {
+			"name": "Colar",
+			"z": 4
+		},
+		"weapon": {
+			"name": "Arma",
+			"behind": true,
+			"z": 0
+		},
+		"chest": {
+			"name": "Peito",
+			"z": 2
+		},
+		"legs": {
+			"name": "Calça",
+			"z": 1
+		},
+		"feet": {
+			"name": "Botas",
+			"z": 1
+		},
+		"shield": {
+			"name": "Escudo",
+			"z": 5
+		}
+	},
+	"stat_names": {
+		"STR": "Força",
+		"AGI": "Agilidade",
+		"INT": "Inteligência",
+		"VIT": "Vitalidade",
+		"SPI": "Espírito",
+		"max_hp": "Vida",
+		"max_resource": "Mana/Fúria máx.",
+		"resource_regen": "Regeneração",
+		"attack_power": "Poder de Ataque",
+		"spell_power": "Poder Mágico",
+		"armor": "Armadura",
+		"resist": "Resistência",
+		"crit_chance": "Crítico",
+		"haste": "Aceleração",
+		"move_speed": "Velocidade"
+	},
+	"items": {
+		"fire_staff": {
+			"name": "Cajado de Brasa",
+			"slot": "weapon",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"spell_power": 4,
+				"INT": 2
+			},
+			"manifest": "sprites_mage_weapon.json",
+			"light": true
+		},
+		"mage_hat": {
+			"name": "Chapéu de Mago",
+			"slot": "head",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"INT": 2,
+				"resist": 2
+			},
+			"manifest": "sprites_mage_hat.json"
+		},
+		"apprentice_hood": {
+			"name": "Capuz de Aprendiz",
+			"slot": "head",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"SPI": 2,
+				"resist": 1
+			}
+		},
+		"apprentice_robe": {
+			"name": "Robe de Aprendiz",
+			"slot": "chest",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"INT": 3,
+				"armor": 2,
+				"max_resource": 10
+			},
+			"manifest": "sprites_mage_robe.json"
+		},
+		"ember_robe": {
+			"name": "Robe de Brasa",
+			"slot": "chest",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"INT": 5,
+				"armor": 3,
+				"spell_power": 3
+			}
+		},
+		"ember_amulet": {
+			"name": "Colar de Brasa",
+			"slot": "neck",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"spell_power": 3,
+				"crit_chance": 0.02
+			}
+		},
+		"linen_trousers": {
+			"name": "Calça de Linho Encantado",
+			"slot": "legs",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"VIT": 2,
+				"armor": 1
+			}
+		},
+		"wanderer_boots": {
+			"name": "Botas de Andarilho",
+			"slot": "feet",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"AGI": 1,
+				"move_speed": 6
+			}
+		},
+		"ember_orb": {
+			"name": "Orbe de Brasa",
+			"slot": "shield",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"max_resource": 15,
+				"resource_regen": 0.5
+			}
+		},
+		"pyromancer_staff": {
+			"name": "Cajado do Piromante",
+			"slot": "weapon",
+			"rarity": "epic",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"spell_power": 14,
+				"INT": 6,
+				"crit_chance": 0.03
+			},
+			"manifest": "sprites_mage_pyro_staff.json",
+			"light": true,
+			"fx": {
+				"emit": "sprites_mage_pyro_staff_emit.json",
+				"emit_hdr": 2.6,
+				"pulse_hz": 1.6,
+				"pulse_amp": 0.45
+			}
+		},
+		"pyromancer_robe": {
+			"name": "Manto do Piromante",
+			"slot": "chest",
+			"rarity": "epic",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"INT": 10,
+				"armor": 6,
+				"spell_power": 8,
+				"max_resource": 30
+			},
+			"manifest": "sprites_mage_pyro_robe.json",
+			"fx": {
+				"emit": "sprites_mage_pyro_robe_emit.json",
+				"emit_hdr": 2.2,
+				"pulse_hz": 0.7,
+				"pulse_amp": 0.5,
+				"aura": {
+					"amount": 12,
+					"lifetime": 1.1,
+					"extents": [
+						9,
+						4
+					],
+					"rise": [
+						8,
+						20
+					],
+					"color": [
+						2.4,
+						1.0,
+						0.3
+					]
+				},
+				"light": {
+					"color": [
+						1.0,
+						0.42,
+						0.16
+					],
+					"energy": 0.55,
+					"scale": 2.2,
+					"offset": [
+						0,
+						-14
+					]
+				}
+			}
+		},
+		"pyromancer_hood": {
+			"name": "Capuz do Piromante",
+			"slot": "head",
+			"rarity": "epic",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"INT": 5,
+				"SPI": 3,
+				"resist": 6
+			},
+			"manifest": "sprites_mage_pyro_hood.json",
+			"fx": {
+				"emit": "sprites_mage_pyro_hood_emit.json",
+				"emit_hdr": 2.8,
+				"pulse_hz": 0.7,
+				"pulse_amp": 0.5
+			}
+		},
+		"pyromancer_amulet": {
+			"name": "Coração de Brasa",
+			"slot": "neck",
+			"rarity": "epic",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"spell_power": 7,
+				"crit_chance": 0.04
+			}
+		},
+		"pyromancer_trousers": {
+			"name": "Calça do Piromante",
+			"slot": "legs",
+			"rarity": "epic",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"VIT": 5,
+				"armor": 3,
+				"INT": 3
+			}
+		},
+		"pyromancer_boots": {
+			"name": "Passos de Cinza",
+			"slot": "feet",
+			"rarity": "epic",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"AGI": 3,
+				"move_speed": 10
+			}
+		},
+		"pyromancer_grimoire": {
+			"name": "Grimório Incandescente",
+			"slot": "shield",
+			"rarity": "epic",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"max_resource": 25,
+				"resource_regen": 1.5,
+				"spell_power": 4
+			}
+		}
+	},
+	"rarity_colors": {
+		"common": [
+			1.0,
+			0.96,
+			0.82
+		],
+		"epic": [
+			1.0,
+			0.55,
+			0.25
+		]
+	}
+}
