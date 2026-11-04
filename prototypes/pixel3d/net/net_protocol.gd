@@ -49,9 +49,9 @@ const KIND_MONSTER := 2
 const KIND_PROJECTILE := 3
 
 ## Tabela de efeitos genéricos (bit = índice). Acrescente no FIM e suba VERSION.
-const EFFECTS := ["dodge", "blink", "windup", "hurt", "light", "dead", "casting", "ring"]
+const EFFECTS := ["dodge", "blink", "windup", "hurt", "light", "dead", "casting", "ring", "slow"]
 
-const MONSTER_SUBKINDS := ["frog", "spider"]
+const MONSTER_SUBKINDS := ["frog", "spider", "wolf"]
 
 const FLAG_DODGE := 1
 
