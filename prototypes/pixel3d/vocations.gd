@@ -17,6 +17,9 @@ var all: Dictionary = {}
 var _arrow_mat: ShaderMaterial
 var _string_mat: ShaderMaterial
 var _charge_hit: Array = []
+## Material da arma no modelo (espada do Guerreiro / madeira do arco do Arqueiro): o item vestido tinge.
+var weapon_mat: ShaderMaterial
+var weapon_base := Color.WHITE
 
 
 static func load_all() -> Dictionary:
@@ -28,6 +31,26 @@ func setup(owner_demo, class_id: String) -> void:
 	all = load_all()
 	id = class_id if all.classes.has(class_id) else "mage"
 	cfg = all.classes[id]
+
+
+## Visual da arma vestida (items.json: "tint" multiplica, "glow"/"glow_energy" brilham;
+## no arco a cor do item vira a madeira).
+func apply_weapon(it: Dictionary) -> void:
+	if weapon_mat == null:
+		return
+	var glow: Array = it.get("glow", [0, 0, 0])
+	var energy := float(it.get("glow_energy", 0.0))
+	if id == "archer":
+		var c: Array = it.get("color", [weapon_base.r, weapon_base.g, weapon_base.b])
+		weapon_mat.set_shader_parameter("albedo", Color(float(c[0]), float(c[1]), float(c[2])))
+		if _string_mat != null:
+			_string_mat.set_shader_parameter("emission", Color(float(glow[0]), float(glow[1]), float(glow[2])))
+			_string_mat.set_shader_parameter("emission_energy", energy * 2.0)
+	else:
+		var t: Array = it.get("tint", [1, 1, 1])
+		weapon_mat.set_shader_parameter("tint", Color(float(t[0]), float(t[1]), float(t[2])))
+	weapon_mat.set_shader_parameter("emission", Color(float(glow[0]), float(glow[1]), float(glow[2])))
+	weapon_mat.set_shader_parameter("emission_energy", energy)
 
 
 func is_mage() -> bool:
@@ -63,6 +86,8 @@ func build_model(holder: Node3D) -> void:
 			mat.set_shader_parameter("albedo_tex", src.albedo_texture)
 			mat.set_shader_parameter("use_tex", true)
 		m.material_override = mat
+		if String(m.name) == "1H_Sword":
+			weapon_mat = mat
 	demo._anim = body.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	for a: String in ["Idle", "Running_A", "Walking_A", "Blocking"]:
 		if demo._anim.has_animation(a):
@@ -83,6 +108,8 @@ func build_model(holder: Node3D) -> void:
 ## Arco procedural (o pacote só tem bestas): lâminas curvas de madeira + corda.
 func _build_bow(hand: Node3D) -> void:
 	var wood: ShaderMaterial = demo._toon(Color(0.72, 0.48, 0.24))  # claro: contrasta com o capuz verde
+	weapon_mat = wood
+	weapon_base = Color(0.72, 0.48, 0.24)
 	_string_mat = demo._toon(Color(0.9, 0.88, 0.8))
 	var bow := Node3D.new()
 	hand.add_child(bow)

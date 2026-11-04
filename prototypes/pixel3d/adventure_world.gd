@@ -328,8 +328,12 @@ func build_npcs(quest_data: Dictionary) -> void:
 			"marker": label(npc, "", Vector3(0, 2.7, 0), Color(1, 0.8, 0.24), 64)}
 
 
-## Objeto de missão no chão: insígnia de metal com um brilho fraco que pulsa.
-func pickup_node(key: String, at: Vector2) -> Node3D:
+## Distância (m) em que o nome de um objeto de missão no chão aparece (padrão Tibia).
+const PICKUP_NAME_RADIUS := 6.0
+
+## Objeto de missão no chão: insígnia de metal com um brilho fraco que pulsa. O nome fica
+## sobre ele (meta "label") e só aparece com o jogador perto (pickup_names).
+func pickup_node(key: String, at: Vector2, title := "") -> Node3D:
 	if pickup_nodes.has(key):
 		return pickup_nodes[key]
 	var node := Node3D.new()
@@ -344,8 +348,20 @@ func pickup_node(key: String, at: Vector2) -> Node3D:
 	light.omni_range = 2.2
 	light.position.y = 0.5
 	node.add_child(light)
+	if not title.is_empty():
+		var l := label(node, title, Vector3(0, 0.95, 0), Color(1.0, 0.88, 0.53), 26)
+		l.visible = false
+		node.set_meta("label", l)
 	pickup_nodes[key] = node
 	return node
+
+
+## Nome dos objetos de missão visíveis só quando o jogador está a PICKUP_NAME_RADIUS.
+func pickup_names(player: Vector3) -> void:
+	for key: String in pickup_nodes:
+		var node: Node3D = pickup_nodes[key]
+		if node.has_meta("label"):
+			(node.get_meta("label") as Label3D).visible = node.visible and Vector2(player.x, player.z).distance_to(Vector2(node.global_position.x, node.global_position.z)) < PICKUP_NAME_RADIUS
 
 
 ## Marco de segredo já revelado: anel de runa e luz azulada (fica para sempre).

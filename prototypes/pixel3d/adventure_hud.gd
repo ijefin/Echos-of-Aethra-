@@ -64,7 +64,17 @@ func flash_mana() -> void:
 
 
 func update() -> void:
-	_mana_flash = maxf(0.0, _mana_flash - get_process_delta_time())
+	var dt := get_process_delta_time()
+	_mana_flash = maxf(0.0, _mana_flash - dt)
+	_stat_fx = maxf(0.0, _stat_fx - dt)
+	for fx: Dictionary in [_reject_fx, _accept_fx]:
+		for key: String in fx.keys():
+			fx[key] = float(fx[key]) - dt
+			if float(fx[key]) <= 0.0:
+				fx.erase(key)
+	if panel != "bag":
+		_drag_id = ""
+		_drag_live = false
 	queue_redraw()
 
 
@@ -444,33 +454,374 @@ func _char_panel() -> void:
 		y += _px(24)
 
 
-func _bag_panel() -> void:
-	var r := _panel_rect(420, 320)
-	var y := _title(r, "BOLSA", "I")
-	var inv = adventure.inventory
-	_text("Equipado", Vector2(r.position.x + _px(18), y), 11, Color(GOLD, 0.85), true)
-	y += _px(22)
-	for slot: String in inv.equipped:
-		var it: Dictionary = inv.item(String(inv.equipped[slot]))
-		_text("•  " + String(it.get("name", "")), Vector2(r.position.x + _px(22), y), 12, CREAM)
-		y += _px(20)
-	y += _px(8)
-	_text("Consumíveis", Vector2(r.position.x + _px(18), y), 11, Color(GOLD, 0.85), true)
-	y += _px(22)
-	_text("•  Poção de vida  ×%d" % int(adventure.potions.hp), Vector2(r.position.x + _px(22), y), 12, CREAM)
-	_text("•  Poção de mana  ×%d" % int(adventure.potions.mana), Vector2(r.position.x + _px(22), y + _px(20)), 12, CREAM)
-	y += _px(46)
+# ------------------------------------------------------------------ bolsa (estilo Tibia)
+## Painel I: bonecos do equipamento à esquerda (posições do Tibia) e a grade da bolsa à
+## direita. Arrastar um item até o slot ou dar duplo clique veste; item de outra vocação
+## fica apagado e é recusado com o slot piscando em vermelho (sem texto). Poção com duplo
+## clique é bebida. Nome e atributos aparecem ao passar o mouse.
+
+## Slot → [coluna, linha] no boneco (Tibia: colar/cabeça, arma/peito/escudo, calça, botas).
+const DOLL := {"neck": [0, 0], "head": [1, 0], "weapon": [0, 1], "chest": [1, 1], "shield": [2, 1], "legs": [1, 2], "feet": [1, 3]}
+const BAG_COLS := 6
+const REJECT := Color(0.95, 0.22, 0.18)
+
+## Células desenhadas no último quadro (para o mouse): {rect, kind, id}.
+var _bag_cells: Array[Dictionary] = []
+var _doll_rects: Dictionary = {}
+## Arraste em curso: id do item, de onde saiu e se já passou do limiar.
+var _drag_id := ""
+var _drag_press := Vector2.ZERO
+var _drag_live := false
+## Feedback: id/slot → tempo restante do brilho (recusa vermelha, aceite dourado).
+var _reject_fx: Dictionary = {}
+var _accept_fx: Dictionary = {}
+## Online: item pedido ao servidor, ainda sem resposta (célula pulsando).
+var pending_equip := ""
+var _stat_fx := 0.0
+
+
+func _rarity_color(it: Dictionary) -> Color:
+	var rc: Array = (adventure.inventory.db.get("rarity_colors", {}) as Dictionary).get(String(it.get("rarity", "common")), [0.7, 0.68, 0.62])
+	return Color(float(rc[0]), float(rc[1]), float(rc[2]))
+
+
+static func _arr_color(a: Variant, fallback: Color) -> Color:
+	if a is Array and (a as Array).size() >= 3:
+		return Color(float(a[0]), float(a[1]), float(a[2]))
+	return fallback
+
+
+## O que a bolsa mostra, na ordem: poções, itens de missão, equipamento guardado.
+func bag_entries() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for k: String in ["hp", "mana"]:
+		if int(adventure.potions.get(k, 0)) > 0:
+			out.append({"kind": "potion", "id": k, "count": int(adventure.potions[k])})
 	var held: Dictionary = adventure.quests.items
-	var spare: Array = inv.items
-	if not held.is_empty() or not spare.is_empty():
-		_text("Mochila", Vector2(r.position.x + _px(18), y), 11, Color(GOLD, 0.85), true)
-		y += _px(22)
-		for it: String in held:
-			_text("•  %s  ×%d" % [adventure.quests.item_name(it), int(held[it])], Vector2(r.position.x + _px(22), y), 12, CREAM)
-			y += _px(20)
-		for it: String in spare:
-			_text("•  " + String(inv.item(it).get("name", it)), Vector2(r.position.x + _px(22), y), 12, MUTED)
-			y += _px(20)
+	for id: String in held:
+		out.append({"kind": "quest", "id": id, "count": int(held[id])})
+	for id: String in adventure.inventory.items:
+		out.append({"kind": "item", "id": id})
+	return out
+
+
+func _bag_panel() -> void:
+	var inv = adventure.inventory
+	var cell := _px(44)
+	var gap := _px(5)
+	var rows := ceili(float(inv.capacity()) / BAG_COLS)
+	var doll_w := cell * 3 + gap * 2
+	var grid_w := cell * BAG_COLS + gap * (BAG_COLS - 1)
+	var r := _panel_rect((22 + 30 + 22) + (doll_w + grid_w) / _ui, 48 + 22 + (cell * rows + gap * (rows - 1)) / _ui)
+	var y := _title(r, "BOLSA", "I") - _px(18)
+	var mouse := get_local_mouse_position()
+	var t := Time.get_ticks_msec() / 1000.0
+	_bag_cells.clear()
+	_doll_rects.clear()
+	var drag_it: Dictionary = inv.item(_drag_id) if _drag_live else {}
+	# --- boneco do equipamento
+	var dx := r.position.x + _px(22)
+	var hover := {}
+	for slot: String in DOLL:
+		var cr: Array = DOLL[slot]
+		var rect := Rect2(dx + float(cr[0]) * (cell + gap), y + float(cr[1]) * (cell + gap), cell, cell)
+		rect.position.x += _shake(slot)
+		_doll_rects[slot] = rect
+		var id := String(inv.equipped.get(slot, ""))
+		_frame(rect, Color(0.05, 0.055, 0.075, 0.9))
+		if id.is_empty():
+			_item_icon(rect, {"slot": slot, "color": [0.6, 0.6, 0.6]}, 0.16)
+		else:
+			_item_icon(rect, inv.item(id), 1.0)
+			draw_rect(rect.grow(-1.0), Color(_rarity_color(inv.item(id)), 0.55), false, 1.0)
+		if not drag_it.is_empty() and String(drag_it.get("slot", "")) == slot and inv.can_use(_drag_id) == "":
+			draw_rect(rect.grow(_px(2)), Color(GOLD, 0.6 + 0.3 * sin(t * 8.0)), false, _px(2))
+		_fx_border(rect, slot)
+		if rect.has_point(mouse) and not id.is_empty():
+			hover = inv.item(id)
+	# números do personagem logo abaixo (brilham quando mudam)
+	var sy := y + 4 * (cell + gap) + _px(14)
+	var voc: Dictionary = adventure.demo._voc.cfg
+	var sc := CREAM.lerp(GOLD, clampf(_stat_fx / 0.4, 0.0, 1.0))
+	_text(String(voc.attack_label), Vector2(dx, sy), 11, MUTED)
+	_text("%d" % adventure.basic_damage(), Vector2(dx, sy), 11, sc, true, HORIZONTAL_ALIGNMENT_RIGHT, doll_w)
+	_text("Armadura", Vector2(dx, sy + _px(17)), 11, MUTED)
+	_text("%d%%" % roundi(adventure.armor_ratio() * 100.0), Vector2(dx, sy + _px(17)), 11, sc, true, HORIZONTAL_ALIGNMENT_RIGHT, doll_w)
+	# --- grade da bolsa
+	var gx := dx + doll_w + _px(30)
+	var entries := bag_entries()
+	for i in rows * BAG_COLS:
+		var rect := Rect2(gx + (i % BAG_COLS) * (cell + gap), y + (i / BAG_COLS) * (cell + gap), cell, cell)
+		draw_rect(rect, Color(0.03, 0.035, 0.05, 0.85))
+		draw_rect(rect, Color(BRASS_DIM, 0.45), false, 1.0)
+		if i >= entries.size():
+			continue
+		var e: Dictionary = entries[i]
+		var id := String(e.id)
+		rect.position.x += _shake(id) if e.kind == "item" else 0.0
+		_bag_cells.append({"rect": rect, "kind": e.kind, "id": id})
+		var dragging_this: bool = _drag_live and _drag_id == id and e.kind == "item"
+		var a := 0.3 if dragging_this else 1.0
+		match String(e.kind):
+			"potion":
+				_slot_potion(rect, id, a)
+				_text("%d" % int(e.count), Vector2(rect.position.x, rect.end.y - _px(3)), 11, CREAM, true, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - _px(3))
+			"quest":
+				_quest_icon(rect, id, a)
+				if int(e.count) > 1:
+					_text("%d" % int(e.count), Vector2(rect.position.x, rect.end.y - _px(3)), 11, CREAM, true, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - _px(3))
+			"item":
+				var it: Dictionary = inv.item(id)
+				var usable: bool = inv.can_use(id) == ""
+				if not usable:
+					a *= 0.42
+				if id == pending_equip:
+					a *= 0.55 + 0.45 * absf(sin(t * 6.0))
+				_item_icon(rect, it, a)
+				draw_rect(rect.grow(-1.0), Color(_rarity_color(it), 0.6 * a), false, 1.0)
+				_fx_border(rect, id)
+		if rect.has_point(mouse) and not _drag_live:
+			hover = _entry_info(e)
+	# --- item arrastado segue o mouse
+	if not drag_it.is_empty():
+		_item_icon(Rect2(mouse - Vector2(cell, cell) * 0.5, Vector2(cell, cell)), drag_it, 0.85)
+	elif not hover.is_empty():
+		_tooltip(mouse, hover)
+
+
+## Deslocamento horizontal de quem acabou de ser recusado (tremida curta).
+func _shake(key: String) -> float:
+	var left := float(_reject_fx.get(key, 0.0))
+	return sin(left * 70.0) * _px(3) * clampf(left / 0.5, 0.0, 1.0) if left > 0.0 else 0.0
+
+
+func _fx_border(rect: Rect2, key: String) -> void:
+	var rj := float(_reject_fx.get(key, 0.0))
+	if rj > 0.0:
+		draw_rect(rect, Color(REJECT, 0.35 * clampf(rj / 0.5, 0, 1)))
+		draw_rect(rect.grow(_px(1)), Color(REJECT, clampf(rj / 0.5, 0, 1)), false, _px(2))
+	var ok := float(_accept_fx.get(key, 0.0))
+	if ok > 0.0:
+		draw_rect(rect.grow(_px(1)), Color(GOLD, clampf(ok / 0.5, 0, 1)), false, _px(2))
+
+
+func _entry_info(e: Dictionary) -> Dictionary:
+	match String(e.kind):
+		"potion":
+			return {"name": "Poção de vida" if e.id == "hp" else "Poção de mana"}
+		"quest":
+			return {"name": adventure.quests.item_name(String(e.id))}
+	return adventure.inventory.item(String(e.id))
+
+
+## Nome (cor da raridade) e atributos do item sob o mouse.
+func _tooltip(at: Vector2, it: Dictionary) -> void:
+	var lines: Array[String] = []
+	var names: Dictionary = adventure.inventory.db.get("stat_names", {})
+	var stats: Dictionary = it.get("stats", {})
+	for k: String in stats:
+		var v := float(stats[k])
+		var val := ("+%d%%" % roundi(v * 100.0)) if absf(v) < 1.0 and v != 0.0 else ("%+d" % roundi(v))
+		lines.append("%s %s" % [val, String(names.get(k, k))])
+	var w := _bold.get_string_size(String(it.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(12 * _ui)).x
+	for l in lines:
+		w = maxf(w, _font.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(11 * _ui)).x)
+	var box := Rect2(at + Vector2(_px(16), _px(12)), Vector2(w + _px(16), _px(24) + lines.size() * _px(15)))
+	box.position = box.position.clamp(Vector2.ZERO, size - box.size)
+	draw_rect(box, Color(0.02, 0.025, 0.035, 0.94))
+	draw_rect(box, BRASS_DIM, false, 1.0)
+	var col := _rarity_color(it) if it.has("slot") else CREAM
+	_text(String(it.get("name", "")), box.position + Vector2(_px(8), _px(17)), 12, col, true)
+	var ly := box.position.y + _px(33)
+	for l in lines:
+		_text(l, Vector2(box.position.x + _px(8), ly), 11, CREAM)
+		ly += _px(15)
+
+
+func _slot_potion(rect: Rect2, kind: String, a: float) -> void:
+	var c := rect.get_center()
+	var k := rect.size.x / 42.0
+	var col := Color(0.86, 0.18, 0.2, a) if kind == "hp" else Color(0.25, 0.5, 0.95, a)
+	draw_rect(Rect2(c + Vector2(-2.5, -11) * k, Vector2(5, 6) * k), Color(0.75, 0.7, 0.6, a))
+	draw_circle(c + Vector2(0, 3) * k, 8.5 * k, Color(0.85, 0.85, 0.8, 0.6 * a))
+	draw_circle(c + Vector2(0, 4) * k, 7 * k, col)
+	draw_circle(c + Vector2(-3, 1) * k, 2 * k, Color(1, 1, 1, 0.6 * a))
+
+
+## Itens de missão: insígnia (losango de latão), presas (dente curvo).
+func _quest_icon(rect: Rect2, id: String, a: float) -> void:
+	var c := rect.get_center()
+	var k := rect.size.x / 42.0
+	if id.contains("fang"):
+		var bone := Color(0.95, 0.92, 0.8, a) if id == "wolf_fang" else Color(1.0, 0.86, 0.5, a)
+		draw_colored_polygon(PackedVector2Array([c + Vector2(-6, -10) * k, c + Vector2(4, -9) * k, c + Vector2(3, 2) * k, c + Vector2(-1, 11) * k, c + Vector2(-3, 1) * k]), bone)
+		draw_line(c + Vector2(-6, -10) * k, c + Vector2(4, -9) * k, Color(0.5, 0.35, 0.2, a), 2 * k)
+		return
+	draw_colored_polygon(PackedVector2Array([c + Vector2(0, -11) * k, c + Vector2(9, 0) * k, c + Vector2(0, 11) * k, c + Vector2(-9, 0) * k]), Color(0.72, 0.56, 0.28, a))
+	draw_colored_polygon(PackedVector2Array([c + Vector2(0, -6) * k, c + Vector2(5, 0) * k, c + Vector2(0, 6) * k, c + Vector2(-5, 0) * k]), Color(0.35, 0.55, 0.85, a))
+
+
+## Ícone desenhado por slot (forma) e cor do item (items.json "color"); arma pela vocação.
+func _item_icon(rect: Rect2, it: Dictionary, a: float) -> void:
+	var c := rect.get_center()
+	var k := rect.size.x / 42.0
+	var base := _arr_color(it.get("color"), Color(0.6, 0.6, 0.6))
+	if base.v < 0.5:
+		base = base.lightened(0.3)  # madeira/tecido escuro some no fundo escuro do slot
+	var col := Color(base, a)
+	var dark := Color(base.darkened(0.45), a)
+	var glow := Color(_arr_color(it.get("glow"), base.lightened(0.4)), a)
+	var classes: Array = it.get("classes", [])
+	var cls := String(classes[0]) if classes.size() == 1 else ""
+	match String(it.get("slot", "")):
+		"weapon":
+			match cls:
+				"fire_mage":
+					draw_line(c + Vector2(-9, 11) * k, c + Vector2(6, -6) * k, col, 3 * k)
+					draw_circle(c + Vector2(8, -8) * k, 4.5 * k, glow)
+					draw_circle(c + Vector2(7, -9) * k, 1.8 * k, Color(1, 1, 1, 0.7 * a))
+				"archer":
+					draw_arc(c + Vector2(4, 0) * k, 11 * k, PI * 0.62, PI * 1.38, 12, col, 3 * k)
+					draw_line(c + Vector2(-4.5, -10) * k, c + Vector2(-4.5, 10) * k, Color(glow if it.get("glow_energy", 0.0) > 0.0 else Color(0.92, 0.9, 0.82), a), 1.2 * k)
+				_:
+					draw_line(c + Vector2(-7, 7) * k, c + Vector2(9, -9) * k, col, 3.5 * k)
+					draw_line(c + Vector2(-9, 3) * k, c + Vector2(-3, 9) * k, Color(0.75, 0.6, 0.3, a), 3 * k)
+					draw_line(c + Vector2(-10, 10) * k, c + Vector2(-7, 7) * k, dark, 3 * k)
+		"head":
+			var pts := PackedVector2Array()
+			for i in 9:
+				var ang := PI + PI * float(i) / 8.0
+				pts.append(c + Vector2(cos(ang) * 9, sin(ang) * 9 + 3) * k)
+			draw_colored_polygon(pts, col)
+			draw_rect(Rect2(c + Vector2(-11, 2) * k, Vector2(22, 3.5) * k), dark)
+		"neck":
+			draw_arc(c + Vector2(0, -4) * k, 8 * k, 0.15 * PI, 0.85 * PI, 10, Color(0.8, 0.7, 0.45, a), 1.5 * k)
+			draw_arc(c + Vector2(0, -10) * k, 8 * k, 0.1, PI - 0.1, 10, Color(0.8, 0.7, 0.45, a), 1.5 * k)
+			draw_circle(c + Vector2(0, 5) * k, 4.5 * k, col)
+			draw_circle(c + Vector2(-1.5, 3.5) * k, 1.5 * k, Color(1, 1, 1, 0.6 * a))
+		"chest":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-11, -8) * k, c + Vector2(-4, -11) * k, c + Vector2(4, -11) * k, c + Vector2(11, -8) * k,
+				c + Vector2(8, -2) * k, c + Vector2(7, 11) * k, c + Vector2(-7, 11) * k, c + Vector2(-8, -2) * k]), col)
+			draw_line(c + Vector2(0, -10) * k, c + Vector2(0, 10) * k, dark, 1.2 * k)
+		"legs":
+			draw_rect(Rect2(c + Vector2(-8, -10) * k, Vector2(16, 5) * k), dark)
+			draw_rect(Rect2(c + Vector2(-8, -6) * k, Vector2(7, 17) * k), col)
+			draw_rect(Rect2(c + Vector2(1, -6) * k, Vector2(7, 17) * k), col)
+		"feet":
+			for o: float in [-6.0, 5.0]:
+				draw_colored_polygon(PackedVector2Array([c + Vector2(o - 3, -9) * k, c + Vector2(o + 2, -9) * k, c + Vector2(o + 2, 5) * k,
+					c + Vector2(o + 6, 6) * k, c + Vector2(o + 6, 10) * k, c + Vector2(o - 3, 10) * k]), col)
+		"shield":
+			match cls:
+				"fire_mage":
+					if String(it.get("name", "")).to_lower().contains("orbe"):
+						draw_circle(c, 9 * k, Color(glow, 0.5 * a))
+						draw_circle(c, 6 * k, col)
+					else:
+						draw_rect(Rect2(c + Vector2(-8, -10) * k, Vector2(16, 20) * k), col)
+						draw_rect(Rect2(c + Vector2(-8, -10) * k, Vector2(3, 20) * k), dark)
+						draw_circle(c + Vector2(2, 0) * k, 3 * k, Color(1.0, 0.6, 0.2, a))
+				_:
+					draw_circle(c, 11 * k, dark)
+					draw_circle(c, 9 * k, col)
+					draw_circle(c, 3 * k, Color(0.8, 0.8, 0.85, a))
+
+
+# ------------------------------------------------------------------ bolsa: mouse
+
+## Mouse do painel I: arrastar item até um slot, duplo clique veste/bebe. true = consumiu.
+func bag_mouse(event: InputEvent) -> bool:
+	if panel != "bag":
+		return false
+	if event is InputEventMouseMotion:
+		if not _drag_id.is_empty() and not _drag_live and (event as InputEventMouseMotion).position.distance_to(_drag_press) > _px(6):
+			_drag_live = true
+		return not _drag_id.is_empty()
+	if not (event is InputEventMouseButton) or (event as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT:
+		return false
+	var mb := event as InputEventMouseButton
+	if mb.pressed:
+		var cell := _cell_at(mb.position)
+		if cell.is_empty():
+			return true   # clique dentro do painel não ataca
+		if mb.double_click:
+			_drag_id = ""
+			_drag_live = false
+			use_entry(String(cell.kind), String(cell.id))
+			return true
+		if cell.kind == "item":
+			_drag_id = String(cell.id)
+			_drag_press = mb.position
+			_drag_live = false
+		return true
+	# soltou
+	var id := _drag_id
+	var live := _drag_live
+	_drag_id = ""
+	_drag_live = false
+	if id.is_empty() or not live:
+		return true
+	for slot: String in _doll_rects:
+		if (_doll_rects[slot] as Rect2).has_point(mb.position):
+			drop_on_slot(id, slot)
+			break
+	return true
+
+
+func _cell_at(p: Vector2) -> Dictionary:
+	for c: Dictionary in _bag_cells:
+		if (c.rect as Rect2).has_point(p):
+			return c
+	return {}
+
+
+## Duplo clique numa célula: poção é bebida; equipamento é vestido no slot dele.
+func use_entry(kind: String, id: String) -> void:
+	match kind:
+		"potion":
+			adventure.drink(id)
+		"item":
+			drop_on_slot(id, String(adventure.inventory.item(id).get("slot", "")))
+
+
+## Soltar o item no slot: recusa (vermelho) se o slot não é o dele ou a vocação não usa;
+## senão pede ao jogo (offline veste na hora; online espera o servidor).
+func drop_on_slot(id: String, slot: String) -> bool:
+	var inv = adventure.inventory
+	if String(inv.item(id).get("slot", "")) != slot or inv.can_use(id) != "":
+		equip_refused(id, slot)
+		return false
+	var err: String = adventure.equip_item(id)
+	if err != "":
+		equip_refused(id, slot)
+		return false
+	if adventure.online != null:
+		pending_equip = id
+	else:
+		equip_done(slot)
+	return true
+
+
+## Recusa: célula e slot tremem e piscam em vermelho.
+func equip_refused(id := "", slot := "") -> void:
+	if id.is_empty():
+		id = pending_equip
+	if slot.is_empty():
+		slot = String(adventure.inventory.item(id).get("slot", ""))
+	pending_equip = ""
+	_reject_fx[id] = 0.5
+	if not slot.is_empty():
+		_reject_fx[slot] = 0.5
+
+
+## Aceite: o slot brilha em dourado e os números do personagem acendem.
+func equip_done(slot := "") -> void:
+	if slot.is_empty() and not pending_equip.is_empty():
+		slot = String(adventure.inventory.item(pending_equip).get("slot", ""))
+	pending_equip = ""
+	if not slot.is_empty():
+		_accept_fx[slot] = 0.5
+	_stat_fx = 0.6
 
 
 
