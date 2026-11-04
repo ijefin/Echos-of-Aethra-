@@ -34,6 +34,11 @@ var npc_name: Label3D
 ## Fala da Nessa sobre a cabeça (estilo Tibia).
 var npc_speech: Label3D
 var portal_node: Node3D
+## NPCs do conteúdo (quests.json): id → {node, name, speech, marker, pos, display}.
+var npcs: Dictionary = {}
+## Objetos de missão no chão (um por passo "collect" com `at`): chave → Node3D.
+var pickup_nodes: Dictionary = {}
+const CHAR_DIR := "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Characters/gltf/"
 var _box := BoxMesh.new()
 var _cave_materials: Dictionary = {}
 
@@ -270,6 +275,102 @@ func build(owner_demo: Node) -> void:
 	demo._vp.add_child(surface)
 	_npc()
 	_room()
+
+
+## NPCs das missões (mesmo estilo da Nessa: modelo KayKit, toon com textura, tinta,
+## nome perto, fala sobre a cabeça, "!"/"?" quando há missão).
+func build_npcs(quest_data: Dictionary) -> void:
+	for id: String in quest_data.npcs:
+		var spec: Dictionary = quest_data.npcs[id]
+		var pos := Vector3(float(spec.pos[0]), 0, float(spec.pos[1]))
+		var npc := Node3D.new()
+		npc.name = "npc_" + id
+		surface.add_child(npc)
+		npc.position = pos
+		var model := (load(CHAR_DIR + String(spec.model) + ".glb") as PackedScene).instantiate() as Node3D
+		npc.add_child(model)
+		model.rotation.y = deg_to_rad(float(spec.get("yaw", 0)))
+		model.scale = Vector3.ONE * 0.72
+		var hide: Array = spec.get("hide", [])
+		var tint: Array = spec.get("tint", [1, 1, 1])
+		for child in model.find_children("*", "MeshInstance3D", true, false):
+			var mi := child as MeshInstance3D
+			if String(mi.name) in hide:
+				mi.hide()
+				continue
+			var source := mi.get_active_material(0) as BaseMaterial3D
+			var material: ShaderMaterial = demo._toon(Color.WHITE)
+			if source != null and source.albedo_texture != null:
+				material.set_shader_parameter("albedo_tex", source.albedo_texture)
+				material.set_shader_parameter("use_tex", true)
+			if "Cape" in mi.name or "Body" in mi.name:
+				material.set_shader_parameter("tint", Color(float(tint[0]), float(tint[1]), float(tint[2])))
+			mi.material_override = material
+		var anim := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		if anim != null and anim.has_animation("Idle"):
+			anim.get_animation("Idle").loop_mode = Animation.LOOP_LINEAR
+			anim.play("Idle")
+		if bool(spec.get("lantern", false)):
+			var hand := model.find_child("handslot_l", true, false) as Node3D
+			if hand != null:
+				var lantern := BoxMesh.new()
+				lantern.size = Vector3(0.19, 0.24, 0.19)
+				demo._mesh(lantern, demo._toon(Color(0.7, 1, 0.6), Color(0.5, 1, 0.45), 3), Vector3(0, -0.12, 0), hand)
+				var light := OmniLight3D.new()
+				light.light_color = Color(0.6, 1, 0.55)
+				light.light_energy = 0.7
+				light.omni_range = 2.8
+				hand.add_child(light)
+		rune(surface, pos, Color(0.28, 0.58, 0.76), 0.65)
+		npcs[id] = {"node": npc, "pos": pos, "display": String(spec.name),
+			"name": label(npc, String(spec.name), Vector3(0, 2.1, 0), Color(0.85, 0.93, 1)),
+			"speech": label(npc, "", Vector3(0, 2.75, 0), Color(1.0, 0.93, 0.35), 34),
+			"marker": label(npc, "", Vector3(0, 2.7, 0), Color(1, 0.8, 0.24), 64)}
+
+
+## Objeto de missão no chão: insígnia de metal com um brilho fraco que pulsa.
+func pickup_node(key: String, at: Vector2) -> Node3D:
+	if pickup_nodes.has(key):
+		return pickup_nodes[key]
+	var node := Node3D.new()
+	surface.add_child(node)
+	node.position = Vector3(at.x, 0, at.y)
+	cube(node, Vector3(0, 0.06, 0), Vector3(0.42, 0.08, 0.5), Color(0.55, 0.5, 0.42))
+	cube(node, Vector3(0, 0.12, 0), Vector3(0.24, 0.05, 0.3), Color(0.85, 0.7, 0.3))
+	rune(node, Vector3.ZERO, Color(0.95, 0.8, 0.4), 0.5)
+	var light := OmniLight3D.new()
+	light.light_color = Color(1, 0.85, 0.5)
+	light.light_energy = 0.6
+	light.omni_range = 2.2
+	light.position.y = 0.5
+	node.add_child(light)
+	pickup_nodes[key] = node
+	return node
+
+
+## Marco de segredo já revelado: anel de runa e luz azulada (fica para sempre).
+func secret_glow(parent: Node3D) -> void:
+	if parent.has_node("glow"):
+		return
+	var g := Node3D.new()
+	g.name = "glow"
+	parent.add_child(g)
+	rune(g, Vector3.ZERO, Color(0.45, 0.75, 1.0), 1.1)
+	var light := OmniLight3D.new()
+	light.light_color = Color(0.5, 0.75, 1.0)
+	light.light_energy = 1.1
+	light.omni_range = 3.5
+	light.position.y = 1.2
+	g.add_child(light)
+
+
+## Nome perto, marcador quando calado (texto vindo das missões).
+func sync_npcs(player: Vector3, markers: Dictionary) -> void:
+	for id: String in npcs:
+		var n: Dictionary = npcs[id]
+		(n.name as Label3D).visible = player.distance_to(n.pos) < 9.0
+		var speech: Label3D = n.speech
+		(n.marker as Label3D).text = String(markers.get(id, "")) if speech.text.is_empty() else ""
 
 func sync(lit: Array[int], reward: bool, stage: String, t: float, player := Vector3.ZERO) -> void:
 	# nome só quando o jogador está na área; a "!" some enquanto ela fala

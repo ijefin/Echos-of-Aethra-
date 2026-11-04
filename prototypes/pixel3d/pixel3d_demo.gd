@@ -196,7 +196,7 @@ func _ready() -> void:
 	for mi in _model.find_children("*", "MeshInstance3D", true, false):
 		if (mi as MeshInstance3D).material_override is ShaderMaterial:
 			_char_mats.append((mi as MeshInstance3D).material_override)
-	_set_pyro(args.has("pyro") or _auto)
+	_set_pyro(_voc.is_mage() and (args.has("pyro") or _auto))  # Piromante é do Mago
 	if args.has("hour"):
 		_sky.hour = float(args.hour)
 		_sky.update(0.0)

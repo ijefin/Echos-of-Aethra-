@@ -24,6 +24,10 @@ var _slow_until := -1.0
 var _slow_factor := 1.0
 var _web: MeshInstance3D
 var _fx: Node3D  # raiz dos efeitos (anéis, faixas, teias) dentro do SubViewport
+## Monstros `"lazy": true` de field_enemies (elite): só nascem quando o jogador chega
+## perto (LAZY_RADIUS), como um chefe que aparece na região dele.
+var _lazy: Array = []
+const LAZY_RADIUS := 45.0
 
 func _nameplate(kind: String, hp: int, maximum: int) -> String:
 	var cfg: Dictionary = adventure.config.enemy.get(kind, {})
@@ -75,8 +79,7 @@ func _spider(parent: Node3D) -> Array[Node3D]:
 
 ## Lobo cinzento procedural: corpo, peito, cabeça com focinho, orelhas, cauda e 4 patas
 ## (pivôs devolvidos para a animação de passada).
-func _wolf(parent: Node3D) -> Array[Node3D]:
-	var grey := Color(0.44, 0.43, 0.47)
+func _wolf(parent: Node3D, grey := Color(0.44, 0.43, 0.47)) -> Array[Node3D]:
 	var dark := grey.darkened(0.38)
 	var light := Color(0.72, 0.70, 0.68)
 	_part(parent, Vector3(0, 0.56, 0.08), Vector3(0.27, 0.25, 0.52), grey)
@@ -103,9 +106,38 @@ func _wolf(parent: Node3D) -> Array[Node3D]:
 	legs.append(tail)
 	return legs
 
+## Atributos do tipo escalados pelo nível da caçada (`level` em field_enemies):
+## vida, dano (todos os golpes) e XP crescem por nível acima do 1. Tuning em
+## first_adventure.json → `enemy_level` ({hp, damage, xp}: fração extra por nível).
+func scaled_cfg(kind: String, level: int) -> Dictionary:
+	var base: Dictionary = adventure.config.enemy[kind]
+	if level <= 1:
+		return base
+	var k: Dictionary = adventure.config.get("enemy_level", {"hp": 0.15, "damage": 0.08, "xp": 0.35})
+	var cfg := base.duplicate()
+	var n := level - 1
+	cfg.hp = int(round(float(base.hp) * (1.0 + float(k.hp) * n)))
+	cfg.xp = int(round(float(base.xp) * (1.0 + float(k.xp) * n)))
+	for key: String in ["damage", "leap_damage", "charge_damage", "projectile_damage"]:
+		if base.has(key):
+			cfg[key] = int(round(float(base[key]) * (1.0 + float(k.damage) * n)))
+	cfg.level = level
+	return cfg
+
+
+## Registro de um monstro pelo id ({} se não existe).
+func find(id: String) -> Dictionary:
+	for a: Dictionary in actors:
+		if String(a.id) == id:
+			return a
+	return {}
+
+
 ## Cria um monstro e o registra na IA. Devolve o registro (dicionário) do monstro.
-func spawn(id: String, kind: String, at: Vector3, cave: bool) -> Dictionary:
-	var cfg: Dictionary = adventure.config.enemy[kind]
+## `level` escala vida/dano/XP; `hunt` é a caçada de origem (para as missões).
+func spawn(id: String, kind: String, at: Vector3, cave: bool, level := 1, hunt := "") -> Dictionary:
+	var cfg: Dictionary = scaled_cfg(kind, level)
+	var look := String(cfg.get("model", kind))  # elite usa o corpo de outro tipo
 	var body := CharacterBody3D.new()
 	body.motion_mode = CharacterBody3D.MOTION_MODE_GROUNDED
 	body.floor_max_angle = deg_to_rad(46.0)
@@ -123,22 +155,26 @@ func spawn(id: String, kind: String, at: Vector3, cave: bool) -> Dictionary:
 	col.shape = shape
 	col.position.y = 0.65
 	body.add_child(col)
+	var rig := Node3D.new()  # escala do corpo (elite maior); a animação mexe em `model`
+	body.add_child(rig)
+	rig.scale = Vector3.ONE * float(cfg.get("scale", 1.0))
 	var model := Node3D.new()
-	body.add_child(model)
+	rig.add_child(model)
 	var legs: Array[Node3D] = []
-	match kind:
+	match look:
 		"frog":
 			_frog(model)
 		"wolf":
-			legs = _wolf(model)
+			var fur: Array = cfg.get("fur", [0.44, 0.43, 0.47])
+			legs = _wolf(model, Color(float(fur[0]), float(fur[1]), float(fur[2])))
 		_:
 			legs = _spider(model)
-	var label: Label3D = adventure.world.label(body, _nameplate(kind, cfg.hp, cfg.hp), Vector3(0, 1.45 if kind == "wolf" else 1.35, 0), Color(1, 0.80, 0.68), 34)
+	var label: Label3D = adventure.world.label(body, _nameplate(kind, cfg.hp, cfg.hp), Vector3(0, (1.45 if look == "wolf" else 1.35) * float(cfg.get("scale", 1.0)), 0), Color(1, 0.80, 0.68), 34)
 	var telegraph: MeshInstance3D = demo._mesh(_ring_mesh, _mat_warn, Vector3(0, 0.035, 0), body, Vector3.ZERO, Vector3(1, 0.16, 1))
 	telegraph.top_level = true  # o anel fica no ponto do golpe (pouso do salto), não no corpo
 	telegraph.hide()
 	var dead: bool = cave and adventure.state.cave_kills.has(id)
-	var actor := {"id": id, "kind": kind, "body": body, "model": model, "home": at, "cave": cave, "hp": int(cfg.hp), "dead": dead, "respawn": 24.0, "windup": -1.0, "cooldown": 1.0, "label": label, "ring": telegraph, "lane": null, "legs": legs, "cfg": cfg, "regen": 0.0}
+	var actor := {"id": id, "kind": kind, "body": body, "model": model, "home": at, "cave": cave, "hp": int(cfg.hp), "dead": dead, "respawn": 24.0, "windup": -1.0, "cooldown": 1.0, "label": label, "ring": telegraph, "lane": null, "legs": legs, "cfg": cfg, "regen": 0.0, "look": look, "level": level, "hunt": hunt}
 	actors.append(actor)
 	director.add_agent(actor)
 	if dead:
@@ -186,7 +222,10 @@ func build(owner_adventure) -> void:
 	_web.hide()
 	var spawns: Array = adventure.config.field_enemies
 	for i in spawns.size():
-		spawn("field%d" % i, spawns[i].kind, Vector3(float(spawns[i].x), 0, float(spawns[i].z)), false)
+		if bool(spawns[i].get("lazy", false)):
+			_lazy.append(["field%d" % i, spawns[i]])
+			continue
+		spawn("field%d" % i, spawns[i].kind, Vector3(float(spawns[i].x), 0, float(spawns[i].z)), false, int(spawns[i].get("level", 1)), String(spawns[i].get("hunt", "")))
 	for i in int(adventure.config.cave_guardians):
 		var local: Vector3 = adventure.world.CAVE_SPAWNS[i % adventure.world.CAVE_SPAWNS.size()]
 		spawn("cave%d" % i, "spider", adventure.world.ROOM + local, true)
@@ -244,12 +283,12 @@ func hit(collider: Object, damage: int) -> bool:
 	var body: CharacterBody3D = a.body
 	a.hp = maxi(0, int(a.hp) - damage)
 	adventure.floating("-%d" % damage, body.position + Vector3(0, 1, 0), Color(1, 0.77, 0.37))
-	var cfg: Dictionary = adventure.config.enemy[a.kind]
+	var cfg: Dictionary = a.cfg
 	(a.label as Label3D).text = _nameplate(a.kind, a.hp, cfg.hp)
 	if int(a.hp) == 0:
 		a.dead = true
 		a.windup = -1.0
-		a.respawn = 24.0
+		a.respawn = float(cfg.get("respawn", 24.0))
 		body.collision_layer = 0
 		body.hide()
 		director.reset_agent(a)
@@ -269,7 +308,21 @@ func ai_stats() -> Dictionary:
 
 # ------------------------------------------------------------------ quadro
 
+## Faz nascer os monstros adiados perto do jogador (ou todos, com `force`).
+func spawn_lazy(force := false) -> void:
+	var player: Vector3 = demo._player.global_position
+	for i in range(_lazy.size() - 1, -1, -1):
+		var entry: Array = _lazy[i]
+		var s: Dictionary = entry[1]
+		var at := Vector3(float(s.x), 0, float(s.z))
+		if force or (not adventure.in_cave and player.distance_to(at) < LAZY_RADIUS):
+			spawn(String(entry[0]), String(s.kind), at, false, int(s.get("level", 1)), String(s.get("hunt", "")))
+			_lazy.remove_at(i)
+
+
 func update(delta: float, t: float) -> void:
+	if not _lazy.is_empty():
+		spawn_lazy()
 	var player: Vector3 = demo._player.global_position
 	for a: Dictionary in actors:
 		var body: CharacterBody3D = a.body
@@ -278,13 +331,13 @@ func update(delta: float, t: float) -> void:
 				a.respawn = float(a.respawn) - delta
 				if float(a.respawn) <= 0.0 and player.distance_to(a.home) > 5.0:
 					a.dead = false
-					a.hp = int(adventure.config.enemy[a.kind].hp)
+					a.hp = int(a.cfg.hp)
 					a.cooldown = 1.0
 					body.position = a.home
 					body.collision_layer = 8
 					director.reset_agent(a)
 					adventure.state.respawn_enemy(a.id)
-					adventure.chat.post("Servidor", "Um %s voltou a rondar %s." % [String(adventure.config.enemy[a.kind].name), adventure.region_name(a.home)])
+					adventure.chat.post("Servidor", "%s %s voltou a rondar %s." % [String(a.cfg.get("article", "Um")), String(a.cfg.name), adventure.region_name(a.home)])
 					(a.label as Label3D).text = _nameplate(a.kind, a.hp, a.hp)
 			continue
 		body.visible = a.cave == adventure.in_cave
@@ -331,7 +384,7 @@ func _apply_slow() -> void:
 ## recuperação lenta. Tudo procedural (escala, inclinação, pulo do modelo).
 func _animate(a: Dictionary, b: Brain, delta: float, t: float) -> void:
 	var model: Node3D = a.model
-	var kind: String = a.kind
+	var kind: String = a.get("look", a.kind)
 	var k := b.phase()
 	var sc := Vector3.ONE
 	var lift := 0.0

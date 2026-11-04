@@ -82,30 +82,30 @@ func build_model(holder: Node3D) -> void:
 
 ## Arco procedural (o pacote só tem bestas): lâminas curvas de madeira + corda.
 func _build_bow(hand: Node3D) -> void:
-	var wood: ShaderMaterial = demo._toon(Color(0.45, 0.28, 0.14))
+	var wood: ShaderMaterial = demo._toon(Color(0.72, 0.48, 0.24))  # claro: contrasta com o capuz verde
 	_string_mat = demo._toon(Color(0.9, 0.88, 0.8))
 	var bow := Node3D.new()
 	hand.add_child(bow)
 	bow.rotation_degrees = Vector3(0, 90, 0)
 	var segs := 7
-	var half_h := 0.62
+	var half_h := 0.78
 	var pts: Array[Vector3] = []
 	for i in segs + 1:
 		var k := float(i) / segs * 2.0 - 1.0  # -1..1
-		pts.append(Vector3(0.0, k * half_h, -0.16 * (1.0 - k * k)))
+		pts.append(Vector3(0.0, k * half_h, -0.22 * (1.0 - k * k)))
 	for i in segs:
 		var a := pts[i]
 		var b := pts[i + 1]
 		var cyl := CylinderMesh.new()
-		cyl.top_radius = 0.022
-		cyl.bottom_radius = 0.03 if absf(i - segs * 0.5) < 1.5 else 0.022
+		cyl.top_radius = 0.045
+		cyl.bottom_radius = 0.06 if absf(i - segs * 0.5) < 1.5 else 0.045
 		cyl.height = a.distance_to(b)
 		cyl.radial_segments = 5
 		var m: MeshInstance3D = demo._mesh(cyl, wood, (a + b) * 0.5, bow)
 		m.quaternion = Quaternion(Vector3.UP, (b - a).normalized())
 	var string := CylinderMesh.new()
-	string.top_radius = 0.006
-	string.bottom_radius = 0.006
+	string.top_radius = 0.012
+	string.bottom_radius = 0.012
 	string.height = half_h * 2.0
 	string.radial_segments = 3
 	demo._mesh(string, _string_mat, Vector3.ZERO, bow)

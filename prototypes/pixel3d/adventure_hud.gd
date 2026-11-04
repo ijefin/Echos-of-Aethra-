@@ -129,7 +129,7 @@ func _draw() -> void:
 			shown += 1
 	# painel discreto (pouca opacidade) atrás do objetivo
 	_frame(Rect2(size.x - _px(262), _px(10), _px(250), _px(30) + shown * _px(16) + _px(8)), Color(0.035, 0.04, 0.055, 0.45))
-	_text("NESSA · AS TRÊS BRASAS", Vector2(size.x - _px(250), _px(26)), 11, Color(GOLD, 0.9), true)
+	_text(String(adventure.objective_title()), Vector2(size.x - _px(250), _px(26)), 11, Color(GOLD, 0.9), true)
 	var ly := _px(44)
 	for l in lines.slice(0, 3):
 		if not l.is_empty():
@@ -297,18 +297,47 @@ func _help_panel() -> void:
 			yy += _px(28)
 
 
+## Diário (J): Nessa e as missões do conteúdo. Ativas mostram o passo (história) e o
+## progresso; concluídas ficam embaixo, apagadas. Segredos revelados no rodapé.
 func _quest_panel() -> void:
-	var r := _panel_rect(460, 280)
+	var q = adventure.quests
+	var ids: Array[String] = q.active_ids()
+	var finished: Array[String] = q.done.duplicate()
+	var r := _panel_rect(520, 150 + ids.size() * 92 + finished.size() * 20 + (0 if adventure.state.stage == "complete" else 70))
 	var y := _title(r, "MISSÕES", "J")
-	_text("As Três Brasas", Vector2(r.position.x + _px(18), y), 13, CREAM, true)
+	var x := r.position.x + _px(18)
+	var w := r.size.x - _px(36)
 	var stage := {"available": "Disponível", "active": "Em andamento", "claimed": "Colar recuperado", "complete": "Concluída"}
+	_text("As Três Brasas", Vector2(x, y), 13, CREAM if adventure.state.stage != "complete" else MUTED, true)
 	_text(String(stage.get(adventure.state.stage, "")), Vector2(r.position.x, y), 11, GOLD, false, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(18))
-	var yy := y + _px(26)
-	for l in String(adventure.objective()).split("\n"):
-		if not l.is_empty():
-			_text(l, Vector2(r.position.x + _px(18), yy), 12, CREAM)
-		yy += _px(18)
-	_text("Nessa, a lampadeira, perdeu o colar na Gruta das Raízes, a oeste do acampamento.", Vector2(r.position.x + _px(18), r.end.y - _px(20)), 11, MUTED)
+	var yy := y + _px(20)
+	if adventure.state.stage != "complete":
+		for l in String(adventure.objective()).split("\n"):
+			if not l.is_empty():
+				_text(l, Vector2(x, yy), 12, CREAM)
+			yy += _px(18)
+		_text("Nessa, a lampadeira, perdeu o colar na Gruta das Raízes, a oeste do acampamento.", Vector2(x, yy), 11, MUTED, false, HORIZONTAL_ALIGNMENT_LEFT, w)
+		yy += _px(24)
+	for id: String in ids:
+		var quest: Dictionary = q.quest(id)
+		yy += _px(6)
+		_text(String(quest.name), Vector2(x, yy), 13, CREAM, true)
+		_text("Em andamento", Vector2(r.position.x, yy), 11, GOLD, false, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(18))
+		yy += _px(19)
+		yy = _wrap(String(quest.summary), Vector2(x, yy), w, 11, MUTED) + _px(3)
+		yy = _wrap(q.step_text(id), Vector2(x, yy), w, 12, CREAM)
+		var prog: String = q.progress_text(id)
+		if not prog.is_empty():
+			_text(prog, Vector2(x + _px(10), yy), 11, Color(GOLD, 0.85))
+			yy += _px(17)
+	if not finished.is_empty():
+		yy += _px(8)
+		for id: String in finished:
+			_text(String(q.quest(id).name), Vector2(x, yy), 12, MUTED)
+			_text("Concluída", Vector2(r.position.x, yy), 11, Color(GOLD, 0.6), false, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(18))
+			yy += _px(20)
+	if not q.secrets.is_empty():
+		_text("Segredos revelados: %d de %d" % [q.secrets.size(), (q.data.secrets as Dictionary).size()], Vector2(x, r.end.y - _px(20)), 11, Color(0.6, 0.8, 1.0, 0.85))
 
 
 func _char_panel() -> void:
@@ -318,7 +347,7 @@ func _char_panel() -> void:
 	var voc: Dictionary = adventure.demo._voc.cfg
 	var rows := [["Vocação", String(voc.name)], ["Nível", "%d" % st.level], ["Experiência", "%d / %d" % [st.xp, st.xp_required()]],
 		["Vida", "%d / %d" % [ceili(adventure.hp), st.max_hp()]], ["Mana", "%d / %d" % [floori(adventure.mana), adventure.max_mana()]],
-		[String(voc.attack_label), "%d" % adventure.basic_damage()], ["Armadura", "%d%%" % roundi(float(voc.armor) * 100.0)]]
+		[String(voc.attack_label), "%d" % adventure.basic_damage()], ["Armadura", "%d%%" % roundi(adventure.armor_ratio() * 100.0)]]
 	for row: Array in rows:
 		_text(String(row[0]), Vector2(r.position.x + _px(22), y), 12, MUTED)
 		_text(String(row[1]), Vector2(r.position.x, y), 12, CREAM, true, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(22))
@@ -340,6 +369,18 @@ func _bag_panel() -> void:
 	y += _px(22)
 	_text("•  Poção de vida  ×%d" % int(adventure.potions.hp), Vector2(r.position.x + _px(22), y), 12, CREAM)
 	_text("•  Poção de mana  ×%d" % int(adventure.potions.mana), Vector2(r.position.x + _px(22), y + _px(20)), 12, CREAM)
+	y += _px(46)
+	var held: Dictionary = adventure.quests.items
+	var spare: Array = inv.items
+	if not held.is_empty() or not spare.is_empty():
+		_text("Mochila", Vector2(r.position.x + _px(18), y), 11, Color(GOLD, 0.85), true)
+		y += _px(22)
+		for it: String in held:
+			_text("•  %s  ×%d" % [adventure.quests.item_name(it), int(held[it])], Vector2(r.position.x + _px(22), y), 12, CREAM)
+			y += _px(20)
+		for it: String in spare:
+			_text("•  " + String(inv.item(it).get("name", it)), Vector2(r.position.x + _px(22), y), 12, MUTED)
+			y += _px(20)
 
 
 

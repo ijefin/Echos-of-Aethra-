@@ -12,6 +12,11 @@ var _paid_deaths: Dictionary = {}
 ## Vocação escolhida (mage / warrior / archer) e multiplicador de vida dela (classes.json).
 var vocation := "mage"
 var hp_mult := 1.0
+## Vida máxima extra (equipamento + relíquias permanentes), posta pelo adventure.
+var bonus_hp := 0
+## Conteúdo jogável (quests.gd: missões, segredos, itens de missão, equipamento ganho,
+## poções). Opaco aqui; saves antigos sem a chave restauram como {}.
+var content: Dictionary = {}
 
 func _init(tuning: Dictionary) -> void:
 	config = tuning
@@ -21,7 +26,7 @@ func xp_required() -> int:
 	return int(config.xp_first) + (level - 1) * int(config.xp_step)
 
 func max_hp() -> int:
-	return int(round((int(config.player_hp) + (level - 1) * int(config.hp_per_level)) * hp_mult))
+	return int(round((int(config.player_hp) + (level - 1) * int(config.hp_per_level)) * hp_mult)) + bonus_hp
 
 func has_skill(id: String) -> bool:
 	return level >= int(config.get(id + "_level", 1))
@@ -36,13 +41,14 @@ func add_xp(amount: int) -> void:
 		xp = mini(xp, xp_required() - 1)
 
 ## Called once per enemy death. Respawning field enemies must clear their death token.
-func record_kill(id: String, kind: String, in_cave: bool) -> bool:
+## `xp_gain` < 0 usa o XP base do tipo (monstros de caçada passam o XP escalado pelo nível).
+func record_kill(id: String, kind: String, in_cave: bool, xp_gain := -1) -> bool:
 	if _paid_deaths.has(id) or not (config.enemy as Dictionary).has(kind):
 		return false
 	_paid_deaths[id] = true
 	if in_cave and id.begins_with("cave"):  # só os guardiões da gruta contam para o baú
 		cave_kills[id] = true
-	add_xp(int(config.enemy[kind].xp))
+	add_xp(int(config.enemy[kind].xp) if xp_gain < 0 else xp_gain)
 	return true
 
 func respawn_enemy(id: String) -> void:
@@ -86,12 +92,14 @@ func has_reward() -> bool:
 	return stage in ["claimed", "complete"]
 
 func snapshot() -> Dictionary:
-	return {"version": 1, "vocation": vocation, "level": level, "xp": xp, "stage": stage, "lit": lit.duplicate(), "cave_kills": cave_kills.duplicate()}
+	return {"version": 1, "vocation": vocation, "level": level, "xp": xp, "stage": stage, "lit": lit.duplicate(), "cave_kills": cave_kills.duplicate(), "content": content.duplicate(true)}
 
 ## Validate local save values and reconstruct consistent terminal quest states.
 func restore(data: Dictionary) -> void:
 	level = clampi(int(data.get("level", 1)), 1, int(config.max_level))
 	vocation = String(data.get("vocation", vocation))
+	var saved_content: Variant = data.get("content", {})
+	content = (saved_content as Dictionary).duplicate(true) if saved_content is Dictionary else {}
 	xp = clampi(int(data.get("xp", 0)), 0, xp_required() - 1)
 	var saved_stage := String(data.get("stage", "available"))
 	stage = saved_stage if saved_stage in ["available", "active", "claimed", "complete"] else "available"

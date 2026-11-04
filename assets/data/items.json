@@ -382,6 +382,109 @@
 				"AGI": 2,
 				"move_speed": 4
 			}
+		},
+		"sentinel_staff": {
+			"name": "Cajado de Sentinela",
+			"slot": "weapon",
+			"rarity": "rare",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"spell_power": 7,
+				"INT": 3
+			}
+		},
+		"guard_sword": {
+			"name": "Espada da Guarda",
+			"slot": "weapon",
+			"rarity": "rare",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"attack_power": 7,
+				"STR": 3
+			}
+		},
+		"yew_bow": {
+			"name": "Arco de Teixo",
+			"slot": "weapon",
+			"rarity": "rare",
+			"classes": [
+				"archer"
+			],
+			"stats": {
+				"attack_power": 6,
+				"AGI": 3
+			}
+		},
+		"mist_mantle": {
+			"name": "Manto das Brumas",
+			"slot": "chest",
+			"rarity": "rare",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"INT": 4,
+				"armor": 6,
+				"max_resource": 20
+			}
+		},
+		"lair_cuirass": {
+			"name": "Couraça do Covil",
+			"slot": "chest",
+			"rarity": "rare",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 10,
+				"VIT": 3
+			}
+		},
+		"wolfhide_jerkin": {
+			"name": "Gibão de Pele de Lobo",
+			"slot": "chest",
+			"rarity": "rare",
+			"classes": [
+				"archer"
+			],
+			"stats": {
+				"armor": 6,
+				"AGI": 3,
+				"move_speed": 4
+			}
+		},
+		"elder_fang_charm": {
+			"name": "Colmilho do Vigia",
+			"slot": "neck",
+			"rarity": "epic",
+			"classes": [
+				"fire_mage",
+				"warrior",
+				"archer"
+			],
+			"stats": {
+				"attack_power": 6,
+				"max_hp": 20,
+				"max_resource": 10
+			}
+		},
+		"crypt_greaves": {
+			"name": "Grevas da Cripta",
+			"slot": "feet",
+			"rarity": "rare",
+			"classes": [
+				"fire_mage",
+				"warrior",
+				"archer"
+			],
+			"stats": {
+				"armor": 4,
+				"max_hp": 10
+			}
 		}
 	},
 	"rarity_colors": {
@@ -394,6 +497,11 @@
 			1.0,
 			0.55,
 			0.25
+		],
+		"rare": [
+			0.45,
+			0.7,
+			1.0
 		]
 	}
 }

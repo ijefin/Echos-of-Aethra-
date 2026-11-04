@@ -115,6 +115,53 @@
           31.0
         ]
       ]
+    },
+    "wolf_elite": {
+      "name": "Garra-Velha",
+      "short": "Garra-Velha",
+      "hp": 95,
+      "damage": 10,
+      "speed": 3.2,
+      "xp": 16,
+      "windup": 0.7,
+      "detect_radius": 10.0,
+      "lose_radius": 16.0,
+      "memory_s": 4.0,
+      "attack_range": 1.8,
+      "hit_radius": 2.1,
+      "preferred_distance": 1.1,
+      "leash": 18.0,
+      "cooldown": 1.4,
+      "recover": 0.4,
+      "patrol_radius": 3.0,
+      "charge_min": 3.0,
+      "charge_max": 8.0,
+      "charge_windup": 1.1,
+      "charge_speed": 11.0,
+      "charge_overshoot": 1.5,
+      "charge_width": 1.8,
+      "charge_damage": 15,
+      "charge_cooldown": 4.5,
+      "charge_recover": 1.0,
+      "article": "",
+      "model": "wolf",
+      "scale": 1.45,
+      "fur": [
+        0.24,
+        0.23,
+        0.27
+      ],
+      "elite": true,
+      "respawn": 120.0,
+      "leap_min": 2.6,
+      "leap_max": 5.0,
+      "leap_windup": 0.95,
+      "leap_time": 0.55,
+      "leap_height": 1.3,
+      "leap_radius": 2.3,
+      "leap_damage": 13,
+      "leap_cooldown": 6.0,
+      "leap_recover": 1.0
     }
   },
   "field_enemies": [
@@ -390,6 +437,14 @@
       "z": -82,
       "hunt": "vale_vigia",
       "level": 7
+    },
+    {
+      "kind": "wolf_elite",
+      "x": 22,
+      "z": -84,
+      "hunt": "vale_vigia",
+      "level": 7,
+      "lazy": true
     }
   ],
   "mana_base": 40,
@@ -406,5 +461,11 @@
     "start_hp": 3,
     "start_mana": 3,
     "cooldown": 1.0
+  },
+  "enemy_level": {
+    "_doc": "fração extra por nível de caçada acima do 1 (vida, dano de todos os golpes, XP)",
+    "hp": 0.15,
+    "damage": 0.08,
+    "xp": 0.35
   }
 }
