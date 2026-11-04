@@ -16,6 +16,7 @@ const Protocol := preload("res://prototypes/pixel3d/net/net_protocol.gd")
 const Vocations := preload("res://prototypes/pixel3d/vocations.gd")
 const Enemies := preload("res://prototypes/pixel3d/adventure_enemies.gd")
 const AdvWorld := preload("res://prototypes/pixel3d/adventure_world.gd")
+const DashMotion := preload("res://prototypes/pixel3d/net/dash_motion.gd")
 
 ## canal do servidor → aba do chat
 const CHAT_TAB := {"local": "Local", "global": "Servidor", "server": "Servidor", "private": "Grupo"}
@@ -36,6 +37,8 @@ var _light_left := 0.0
 var _ring_mat: StandardMaterial3D
 var _ring_mesh := TorusMesh.new()
 var _args := {}
+## Investida/salto do próprio jogador em andamento (DashMotion); {} = nenhum.
+var _dash := {}
 
 
 ## `owner_adventure` = pixel3d_adventure (já com world/hud/chat montados).
@@ -228,7 +231,10 @@ func physics(delta: float, input: Vector2) -> void:
 	var np: Vector3 = net.local_position()
 	var cave := np.y < -4.0
 	if cave != bool(adventure.in_cave):
+		_dash = {}
 		adventure.warp(np, cave)   # escada/gruta decidida pelo servidor: troca o andar visível
+	if DashMotion.active(_dash):
+		np = DashMotion.step(_dash, delta, np)   # investida/salto: desliza até a posição do servidor
 	var v: Vector3 = (np - demo._player.global_position) / maxf(delta, 0.001)
 	v.y = 0.0
 	demo._player.velocity = v
@@ -373,6 +379,20 @@ func _on_event(ev: Dictionary) -> void:
 				var fr: Array = ev.get("from", [])
 				if fr.size() >= 2:
 					demo._ghost(Vector3(float(fr[0]), 0, float(fr[1])), 0.5, 0.3)
+				if String(ev.get("type", "")) == "dash":
+					# investida/salto: desliza (o Eco do mago continua sendo teleporte)
+					var who := int(ev.get("eid", 0))
+					var t := float(ev.get("time", 0.3))
+					if who == my_id():
+						# parte de "from" do servidor: se o snapshot chegou antes do evento, não fica parado no destino
+						var start: Vector3 = demo._player.global_position
+						if fr.size() >= 2:
+							start = Vector3(float(fr[0]), start.y, float(fr[1]))
+						_dash = DashMotion.start(start, to, t)
+					elif remotes.has(who):
+						var rr: Dictionary = remotes[who]
+						var rp: Vector3 = (rr.root as Node3D).position
+						rr.dash = DashMotion.start(rp, Vector3(to.x, rp.y, to.z), t)
 		"whirl":
 			demo._shockwave(_pos_of(int(ev.get("eid", 0)), at), float(ev.get("radius", 2.6)))
 		"torch":
@@ -573,6 +593,10 @@ func _update_remote(r: Dictionary, e: Dictionary, delta: float) -> void:
 	var pos: Vector3 = e.pos
 	var moved := Vector2(pos.x - (r.last as Vector3).x, pos.z - (r.last as Vector3).z).length() / maxf(delta, 0.001)
 	r.last = pos
+	var dash: Dictionary = r.get("dash", {})
+	if DashMotion.active(dash):
+		var to: Vector3 = dash.to
+		pos = DashMotion.step(dash, delta, Vector3(to.x, pos.y, to.z))   # investida/salto de outro jogador
 	root.position = pos
 	var fx: Array = e.effects
 	match int(r.kind):
