@@ -698,8 +698,27 @@ func _quest_icon(rect: Rect2, id: String, a: float) -> void:
 	draw_colored_polygon(PackedVector2Array([c + Vector2(0, -6) * k, c + Vector2(5, 0) * k, c + Vector2(0, 6) * k, c + Vector2(-5, 0) * k]), Color(0.35, 0.55, 0.85, a))
 
 
+## Texturas de items.json "icon" (gerados por src/items/tools/), lidas uma vez.
+var _icon_tex: Dictionary = {}
+
+
+## Ícone gerado do item (items.json "icon"), ou null para cair no desenho por código.
+func _item_tex(it: Dictionary) -> Texture2D:
+	var path := String(it.get("icon", ""))
+	if path.is_empty():
+		return null
+	if not _icon_tex.has(path):
+		_icon_tex[path] = load(path) if ResourceLoader.exists(path) else null
+	return _icon_tex[path]
+
+
 ## Ícone desenhado por slot (forma) e cor do item (items.json "color"); arma pela vocação.
+## Se o item tem "icon", desenha a textura gerada no lugar.
 func _item_icon(rect: Rect2, it: Dictionary, a: float) -> void:
+	var tex := _item_tex(it)
+	if tex != null:
+		draw_texture_rect(tex, rect.grow(-rect.size.x * 0.04), false, Color(1, 1, 1, a))
+		return
 	var c := rect.get_center()
 	var k := rect.size.x / 42.0
 	var base := _arr_color(it.get("color"), Color(0.6, 0.6, 0.6))
