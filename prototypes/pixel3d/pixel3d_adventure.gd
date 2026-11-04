@@ -11,6 +11,13 @@ const Chat := preload("res://prototypes/pixel3d/adventure_chat.gd")
 const Dressing := preload("res://prototypes/pixel3d/pixel3d_dressing.gd")
 const BUBBLE_TIME := 10.0
 const ItemInventory := preload("res://src/core/inventory.gd")
+const Quests := preload("res://prototypes/pixel3d/quests.gd")
+## Atributos do equipamento que mexem no jogo (diferença para o equipamento inicial).
+const POWER_STATS := ["attack_power", "spell_power"]
+## Cada ponto de armadura do equipamento reduz 2 % do dano recebido (teto ARMOR_CAP).
+const ARMOR_PER_POINT := 0.02
+const ARMOR_CAP := 0.8
+const SECRET_RADIUS := 2.3
 const SAVE := "user://pixel3d-first-adventure-v1.json"
 var save_path := SAVE
 var demo: Node
@@ -43,6 +50,12 @@ var _bubbles := {}
 var _was_night := false
 var _talk: Array[String] = []
 var _talk_time := 0.0
+## Quem está falando agora ("nessa" ou id de quests.json → npcs).
+var _talk_npc := "nessa"
+## Missões, segredos e itens de missão (quests.gd).
+var quests
+## Soma dos atributos do equipamento inicial da vocação (linha de base dos bônus).
+var _baseline: Dictionary = {}
 const NESSA_ACCEPT := [
 	"Você também chegou com a tempestade, não foi?",
 	"Naquela noite a Gruta das Raízes, a oeste, engoliu meu colar de brasa.",
@@ -62,6 +75,7 @@ const NESSA_FINISH := [
 const NESSA_AFTER := [
 	["As lamparinas não tremem mais. Esta noite dormimos tranquilos."],
 	["Há outras sombras na floresta... mas hoje, obrigada."],
+	["Uma ermitã vive no Charco das Brumas, ao sul. Dizem que ela ouve a névoa."],
 ]
 
 func build(owner_demo: Node, args: Dictionary) -> void:
@@ -83,13 +97,22 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	inventory.give(voc.start_items)
 	for id: String in voc.start_items:
 		inventory.equip(id)
+	_baseline = inventory.bonus()
 	if state.has_reward():
 		_equip_reward()
+	potions = {"hp": int(config.potion.start_hp), "mana": int(config.potion.start_mana)}
+	quests = Quests.new(Quests.load_data())
+	quests.restore(state.content)
+	_restore_content(state.content)
+	if args.has("quest"):
+		_debug_quest(String(args.quest))
+	_refresh_stats()
 	hp = state.max_hp()
 	mana = max_mana()
-	potions = {"hp": int(config.potion.start_hp), "mana": int(config.potion.start_mana)}
 	world = World.new()
 	world.build(demo)
+	world.build_npcs(quests.data)
+	_sync_secret_marks()
 	enemies = Enemies.new()
 	enemies.build(self)
 	hud = Hud.new()
@@ -121,7 +144,50 @@ func _check_stairs() -> void:
 
 
 func max_mana() -> int:
-	return int(round((int(config.mana_base) + (state.level - 1) * int(config.mana_per_level)) * float(demo._voc.cfg.mana_mult)))
+	var extra := int(round(gear("max_resource"))) + int(quests.perm.max_resource) if quests != null else 0
+	return int(round((int(config.mana_base) + (state.level - 1) * int(config.mana_per_level)) * float(demo._voc.cfg.mana_mult))) + extra
+
+
+## Bônus de um atributo do equipamento vestido acima do equipamento inicial.
+func gear(stat: String) -> float:
+	return float(inventory.bonus().get(stat, 0.0)) - float(_baseline.get(stat, 0.0))
+
+
+## Redução de dano: armadura da vocação + armadura extra do equipamento.
+func armor_ratio() -> float:
+	return clampf(float(demo._voc.cfg.armor) + gear("armor") * ARMOR_PER_POINT, 0.0, ARMOR_CAP)
+
+
+## Recalcula o que vem do equipamento e das relíquias (vida máxima extra).
+func _refresh_stats() -> void:
+	state.bonus_hp = int(round(gear("max_hp"))) + int(quests.perm.max_hp)
+	hp = minf(hp, state.max_hp())
+	mana = minf(mana, max_mana())
+
+
+## Bolsa e poções do save (equipamento ganho em missões/segredos volta vestido).
+func _restore_content(content: Dictionary) -> void:
+	inventory.give(quests.owned)
+	var eq: Variant = content.get("equipped", {})
+	if eq is Dictionary:
+		for slot: String in eq:
+			var id := String(eq[slot])
+			if id in inventory.items:
+				inventory.equip(id)
+	var saved: Variant = content.get("potions", {})
+	if saved is Dictionary and not (saved as Dictionary).is_empty():
+		potions = {"hp": maxi(0, int(saved.get("hp", 0))), "mana": maxi(0, int(saved.get("mana", 0)))}
+
+
+## --quest=id[:passo] (prints/testes): missões anteriores concluídas, esta no passo dado.
+func _debug_quest(spec: String) -> void:
+	var parts := spec.split(":")
+	for q: Dictionary in quests.data.quests:
+		if String(q.id) == parts[0]:
+			quests.active[parts[0]] = {"step": int(parts[1]) if parts.size() > 1 else 0, "count": 0}
+			break
+		quests.done.append(String(q.id))
+	state.stage = "complete"
 
 
 func cost(skill: String) -> int:
@@ -161,8 +227,10 @@ func drink(kind: String) -> void:
 	_potion_cd = float(config.potion.cooldown)
 
 
-## Nessa fala frase por frase sobre a cabeça (tempo de leitura por frase).
-func npc_talk(lines: Array) -> void:
+## NPC fala frase por frase sobre a cabeça (tempo de leitura por frase).
+func npc_talk(lines: Array, who := "nessa") -> void:
+	_speech().text = ""
+	_talk_npc = who
 	_talk.clear()
 	for l: Variant in lines:
 		_talk.append(String(l))
@@ -170,14 +238,23 @@ func npc_talk(lines: Array) -> void:
 	_next_line()
 
 
+func _speech() -> Label3D:
+	return world.npc_speech if _talk_npc == "nessa" else world.npcs[_talk_npc].speech
+
+
+func _npc_pos(who: String) -> Vector3:
+	return World.NPC if who == "nessa" else world.npcs[who].pos
+
+
 func _next_line() -> void:
+	var speech := _speech()
 	if _talk.is_empty():
-		world.npc_speech.text = ""
+		speech.text = ""
 		return
 	var line: String = _talk.pop_front()
-	world.npc_speech.text = _wrap(line, 34)
-	world.npc_speech.modulate.a = 1.0
-	chat.post("Local", "Nessa: " + line)
+	speech.text = _wrap(line, 34)
+	speech.modulate.a = 1.0
+	chat.post("Local", ("Nessa" if _talk_npc == "nessa" else String(world.npcs[_talk_npc].display)) + ": " + line)
 	_talk_time = BUBBLE_TIME if _talk.is_empty() else 1.6 + line.length() * 0.055
 
 
@@ -196,9 +273,18 @@ static func _wrap(text: String, width: int) -> String:
 func _save() -> void:
 	if not _persist:
 		return
+	state.content = content_snapshot()
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file != null:
 		file.store_string(JSON.stringify(state.snapshot()))
+
+
+## Tudo do conteúdo jogável que vai no save (dentro de state.content).
+func content_snapshot() -> Dictionary:
+	var out: Dictionary = quests.snapshot()
+	out["potions"] = potions.duplicate()
+	out["equipped"] = inventory.equipped.duplicate()
+	return out
 
 func say(text: String, seconds := 5.0) -> void:
 	notice_text = text
@@ -218,18 +304,37 @@ func _equip_reward() -> void:
 		inventory.equip(id)
 
 func basic_damage() -> int:
-	# Starter weapon is the visual baseline; the quest pendant adds its actual stat bonus.
-	var necklace := String(inventory.equipped.get("neck", ""))
-	var bonus := int(inventory.item(necklace).get("stats", {}).get("spell_power", 0))
-	return int(round((int(config.basic_damage) + state.level - 1 + bonus) * float(demo._voc.cfg.damage_mult)))
+	# O equipamento inicial é a linha de base; arma/colar/etc. melhores somam o poder extra.
+	var bonus := 0.0
+	for stat: String in POWER_STATS:
+		bonus += gear(stat)
+	return int(round((int(config.basic_damage) + state.level - 1 + int(round(bonus))) * float(demo._voc.cfg.damage_mult)))
 
 func on_enemy_killed(id: String, kind: String, cave: bool, at: Vector3) -> void:
+	var actor: Dictionary = enemies.find(id) if enemies != null else {}
+	var cfg: Dictionary = actor.get("cfg", config.enemy[kind])
+	var xp_gain := int(cfg.xp)
 	var old_level: int = state.level
-	if not state.record_kill(id, kind, cave):
+	if not state.record_kill(id, kind, cave, xp_gain):
 		return
 	# Como no Tibia: número branco de XP subindo de onde o monstro morreu.
-	floating("%d" % int(config.enemy[kind].xp), at + Vector3(0, 1.6, 0), Color(1, 1, 1))
-	chat.post("Servidor", "Você derrotou %s. Ganhou %d de experiência." % [String(config.enemy[kind].name), int(config.enemy[kind].xp)])
+	floating("%d" % xp_gain, at + Vector3(0, 1.6, 0), Color(1, 1, 1))
+	chat.post("Servidor", "Você derrotou %s. Ganhou %d de experiência." % [String(cfg.name), xp_gain])
+	_quest_events(quests.on_kill(kind, String(actor.get("hunt", ""))), at)
+	_level_feedback(old_level)
+	_save()
+
+
+## XP de recompensa (missões/segredos), com a mesma festa de subida de nível.
+func gain_xp(amount: int) -> void:
+	var old_level: int = state.level
+	state.add_xp(amount)
+	floating("%d" % amount, demo._player.global_position + Vector3(0, 2.0, 0), Color(1, 1, 1))
+	chat.post("Servidor", "Você ganhou %d de experiência." % amount)
+	_level_feedback(old_level)
+
+
+func _level_feedback(old_level: int) -> void:
 	if state.level > old_level:
 		hp = state.max_hp()
 		mana = max_mana()
@@ -239,12 +344,11 @@ func on_enemy_killed(id: String, kind: String, cave: bool, at: Vector3) -> void:
 		var unlocked := ("Nova habilidade: " + String(voc.q.name)) if state.level == int(config.blink_level) else (("Nova habilidade: " + String(voc.r.name)) if state.level == int(config.ring_level) else "")
 		demo.world_labels.announce("Você subiu do nível %d para o nível %d." % [old_level, state.level], unlocked)
 		chat.post("Servidor", "Você subiu do nível %d para o nível %d." % [old_level, state.level], Color(1.0, 0.82, 0.38))
-	_save()
 
 func take_damage(amount: int, source := "") -> void:
 	if _invulnerable > 0 or demo._blink_t >= 0 or demo._dodge_t >= 0:
 		return
-	amount = maxi(1, int(round(amount * (1.0 - float(demo._voc.cfg.armor)))))  # armadura da vocação
+	amount = maxi(1, int(round(amount * (1.0 - armor_ratio()))))  # vocação + equipamento
 	hp = maxf(0, hp - amount)
 	_hurt_time = 0.0
 	chat.post("Servidor", "Você perdeu %d de vida por um ataque de %s." % [amount, source] if not source.is_empty() else "Você perdeu %d de vida." % amount, Color(1.0, 0.55, 0.5))
@@ -339,6 +443,20 @@ func prompt() -> String:
 		if p.distance_to(World.NPC) < 2.8:
 			prompt_at = World.NPC + Vector3(0, 3.5, 0)
 			return "E — conversar"
+		for id: String in world.npcs:
+			var pos: Vector3 = world.npcs[id].pos
+			if p.distance_to(pos) < 2.8:
+				prompt_at = pos + Vector3(0, 3.5, 0)
+				return "E — conversar"
+		for pk: Dictionary in quests.pickups():
+			var at: Vector2 = pk.at
+			if Vector2(p.x, p.z).distance_to(at) < Quests.PICKUP_RADIUS:
+				prompt_at = Vector3(at.x, 1.0, at.y)
+				return "E — pegar"
+		var sid := _secret_near(p)
+		if not sid.is_empty():
+			prompt_at = _secret_pos(sid) + Vector3(0, 1.9, 0)
+			return "E — examinar"
 	else:
 		if p.distance_to(World.CHEST) < 2.2 and state.can_open_chest():
 			prompt_at = World.CHEST + Vector3(0, 1.6, 0)
@@ -396,9 +514,137 @@ func region_name(at: Vector3) -> String:
 	return WorldLayout.region_name(p)
 
 
+## Segredo (marco de pedras) ainda não revelado ao alcance do jogador.
+func _secret_near(p: Vector3) -> String:
+	if demo._props == null:
+		return ""
+	for s: Dictionary in demo._props.secrets:
+		var c: Vector2 = s.position
+		if not (String(s.id) in quests.secrets) and Vector2(p.x, p.z).distance_to(c) < SECRET_RADIUS:
+			return String(s.id)
+	return ""
+
+
+func _secret_pos(id: String) -> Vector3:
+	for s: Dictionary in demo._props.secrets:
+		if String(s.id) == id:
+			return Vector3((s.position as Vector2).x, 0, (s.position as Vector2).y)
+	return Vector3.ZERO
+
+
+## Marcos já revelados brilham (save carregado ou recém-descobertos).
+func _sync_secret_marks() -> void:
+	if demo._props == null:
+		return
+	for s: Dictionary in demo._props.secrets:
+		if String(s.id) in quests.secrets:
+			world.secret_glow(s.node)
+
+
+## Revela um segredo: recompensa única, efeito no marco, mensagem central e no Servidor.
+func claim_secret(id: String) -> bool:
+	var entry: Dictionary = quests.claim_secret(id)
+	if entry.is_empty():
+		return false
+	var at := _secret_pos(id)
+	object_say("secret_" + id, demo._vp, at + Vector3(0, 2.4, 0), _wrap(String(entry.found), 34), Color(0.7, 0.88, 1.0))
+	demo._shockwave(at)
+	demo._burst(at + Vector3(0, 1.0, 0))
+	_sync_secret_marks()
+	_apply_reward(entry.get("reward", {}), String(entry.name), String(entry.get("announce", "")))
+	chat.post("Servidor", "Você descobriu um segredo: %s." % String(entry.name), Color(0.6, 0.85, 1.0))
+	_save()
+	return true
+
+
+## XP, poções, equipamento da vocação (vestido na hora) e bônus permanentes.
+func _apply_reward(reward: Dictionary, title: String, sub := "") -> void:
+	var lines: Array[String] = []
+	var items: Dictionary = reward.get("items", {})
+	var item_id := String(items.get(String(demo._voc.id), ""))
+	if not item_id.is_empty() and not inventory.item(item_id).is_empty():
+		var before_dmg := basic_damage()
+		var before_armor := armor_ratio()
+		var before_hp: int = state.max_hp()
+		var before_mana := max_mana()
+		inventory.give([item_id])
+		quests.owned.append(item_id)
+		inventory.equip(item_id)
+		_refresh_stats()
+		var it_name := String(inventory.item(item_id).name)
+		chat.post("Servidor", "Você recebeu: %s." % it_name, Color(1.0, 0.82, 0.38))
+		var gains: Array[String] = []
+		if basic_damage() > before_dmg:
+			gains.append("+%d de dano" % (basic_damage() - before_dmg))
+		if armor_ratio() > before_armor + 0.001:
+			gains.append("+%d%% de armadura" % roundi((armor_ratio() - before_armor) * 100.0))
+		if state.max_hp() > before_hp:
+			gains.append("+%d de vida" % (state.max_hp() - before_hp))
+		if max_mana() > before_mana:
+			gains.append("+%d de mana" % (max_mana() - before_mana))
+		title = it_name
+		sub = "  ".join(gains)
+	var perm: Dictionary = reward.get("perm", {})
+	for k: String in perm:
+		quests.perm[k] = int(quests.perm.get(k, 0)) + int(perm[k])
+	if not perm.is_empty():
+		_refresh_stats()
+		hp = state.max_hp()
+		mana = max_mana()
+	var pots: Dictionary = reward.get("potions", {})
+	for k: String in pots:
+		potions[k] = int(potions.get(k, 0)) + int(pots[k])
+		chat.post("Servidor", "Você recebeu %d poções de %s." % [int(pots[k]), "vida" if k == "hp" else "mana"], Color(1.0, 0.82, 0.38))
+	if not title.is_empty():
+		demo.world_labels.announce(title, sub)
+	if int(reward.get("xp", 0)) > 0:
+		gain_xp(int(reward.xp))
+
+
+## Eventos das missões (abate, coleta, chegada): itens de missão e diário atualizado.
+func _quest_events(events: Array, at: Vector3) -> void:
+	for ev: Dictionary in events:
+		if ev.has("drop"):
+			var it_name: String = quests.item_name(String(ev.drop))
+			chat.post("Servidor", "Você encontrou: %s." % it_name, Color(1.0, 0.82, 0.38))
+			floating(it_name, at + Vector3(0, 2.1, 0), Color(1.0, 0.82, 0.38))
+		if String(ev.type) == "step":
+			chat.post("Servidor", "Diário atualizado: %s." % String(quests.quest(String(ev.quest)).name), Color(1.0, 0.82, 0.38))
+
+
+func _talk_content(id: String) -> void:
+	var r: Dictionary = quests.talk(id, state.level)
+	npc_talk(r.lines, id)
+	var q: Dictionary = quests.quest(String(r.quest))
+	match String(r.event):
+		"accept":
+			chat.post("Servidor", "Missão iniciada: %s." % String(q.name), Color(1.0, 0.82, 0.38))
+		"step":
+			chat.post("Servidor", "Diário atualizado: %s." % String(q.name), Color(1.0, 0.82, 0.38))
+		"complete":
+			chat.post("Servidor", "Missão concluída: %s." % String(q.name), Color(1.0, 0.82, 0.38))
+			demo._shockwave(demo._player.global_position)
+			_apply_reward(r.get("reward", {}), String(q.name), "Missão concluída")
+	_save()
+
+
 func interact() -> void:
 	var p: Vector3 = demo._player.global_position
 	if not in_cave:
+		for id: String in world.npcs:
+			if p.distance_to(world.npcs[id].pos) < 2.8:
+				_talk_content(id)
+				return
+		var picked: Dictionary = quests.pickup(Vector2(p.x, p.z))
+		if not picked.is_empty():
+			demo._burst(p + Vector3(0, 0.6, 0))
+			_quest_events([picked], p)
+			_save()
+			return
+		var sid := _secret_near(p)
+		if not sid.is_empty():
+			claim_secret(sid)
+			return
 		if p.distance_to(World.NPC) < 2.8:
 			if state.accept_quest():
 				npc_talk(NESSA_ACCEPT)
@@ -426,11 +672,56 @@ func interact() -> void:
 			ignite(i)
 			return
 
+## Título do painel de objetivo no canto (missão que o objetivo descreve).
+func objective_title() -> String:
+	if state.stage in ["available", "active", "claimed"]:
+		return "NESSA · AS TRÊS BRASAS"
+	var ids: Array[String] = quests.active_ids()
+	if not ids.is_empty():
+		return String(quests.quest(ids[0]).name).to_upper()
+	return "AETHRA"
+
+
+## Objetivo de uma missão do conteúdo: frase de história + distância quando é um lugar.
+func quest_objective(id: String) -> String:
+	var s: Dictionary = quests.step(id)
+	var text := String(s.get("text", ""))
+	var target := Vector3.INF
+	match String(s.get("type", "")):
+		"talk":
+			target = _npc_pos(String(s.npc))
+		"reach":
+			target = Vector3(float(s.at[0]), 0, float(s.at[1]))
+		"collect":
+			if s.has("at"):
+				target = Vector3(float(s.at[0]), 0, float(s.at[1]))
+	if target != Vector3.INF and not in_cave:
+		var d: float = demo._player.global_position.distance_to(target)
+		if d > 6.0:
+			text += "\n%d m" % ceili(d)
+	return text
+
+
+## Próximo NPC com missão nova: frase de onde ele está.
+func _next_giver() -> String:
+	for q: Dictionary in quests.data.quests:
+		var st: String = quests.status(String(q.id), state.level)
+		if st == "available" or st == "weak":
+			var n: Dictionary = quests.npc(String(q.giver))
+			var pos := _npc_pos(String(q.giver))
+			return "%s espera %s." % [String(n.name), WorldLayout.region_name(Vector2(pos.x, pos.z))]
+	return ""
+
+
 func objective() -> String:
 	if state.stage == "available":
 		return "Converse com Nessa no acampamento."
 	if state.stage == "complete":
-		return "Concluída."
+		var ids: Array[String] = quests.active_ids()
+		if not ids.is_empty():
+			return quest_objective(ids[0])
+		var next := _next_giver()
+		return next if not next.is_empty() else "Concluída."
 	if state.has_reward():
 		if not in_cave:
 			return "Leve o colar de volta à Nessa."
@@ -439,6 +730,28 @@ func objective() -> String:
 		return "Guardiões: %d/%d\nTochas acesas: %d/3" % [state.cave_kills.size(), int(config.cave_guardians), state.lit.size()]
 	var distance: float = demo._player.global_position.distance_to(World.ENTRANCE)
 	return "Encontre a Gruta das Raízes, a oeste.\n%d m" % ceili(distance)
+
+## Passos "reach", objetos de missão visíveis só quando servem, marcadores dos NPCs.
+func _update_content() -> void:
+	var p: Vector3 = demo._player.global_position
+	if not in_cave:
+		var events: Array = quests.on_reach(Vector2(p.x, p.z))
+		if not events.is_empty():
+			_quest_events(events, p)
+			_save()
+	var wanted := {}
+	for pk: Dictionary in quests.pickups():
+		var key := String(pk.quest) + ":" + String(pk.item)
+		wanted[key] = true
+		world.pickup_node(key, pk.at).visible = not in_cave
+	for key: String in world.pickup_nodes:
+		if not wanted.has(key):
+			(world.pickup_nodes[key] as Node3D).visible = false
+	var markers := {}
+	for id: String in world.npcs:
+		markers[id] = quests.marker(id, state.level)
+	world.sync_npcs(p, markers)
+
 
 func update(delta: float, t: float) -> void:
 	notice_time = maxf(0, notice_time - delta)
@@ -462,10 +775,11 @@ func update(delta: float, t: float) -> void:
 		_talk_time -= delta
 		if _talk_time <= 0.0:
 			_next_line()
-		elif demo._player.global_position.distance_to(World.NPC) > 12.0:
+		elif demo._player.global_position.distance_to(_npc_pos(_talk_npc)) > 12.0:
 			_talk.clear()
 			_talk_time = 0.0
-			world.npc_speech.text = ""
+			_speech().text = ""
+	_update_content()
 	mana = minf(max_mana(), mana + float(config.mana_regen_per_second) * delta)
 	_invulnerable = maxf(0, _invulnerable - delta)
 	_hurt_time += delta

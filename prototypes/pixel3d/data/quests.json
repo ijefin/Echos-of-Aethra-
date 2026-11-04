@@ -1,0 +1,186 @@
+{
+  "_doc": "Missões, NPCs e segredos do conteúdo jogável (quests.gd). Passos: kill {kind, hunt?, count}, reach {at [x,z], radius}, collect {item, count, from {kind, hunt?} | at [x,z]}, talk {npc}. O último passo de toda missão é talk (entrega). Recompensas: xp, potions {hp, mana}, items {vocação: id em items.json}, perm {max_hp, max_resource}. Textos são só história (sem teclas, sem instruções de interface).",
+  "items": {
+    "patrol_badge": {"name": "Insígnia da Patrulha"},
+    "wolf_fang": {"name": "Presa de Lobo"},
+    "elder_fang": {"name": "Colmilho de Garra-Velha"}
+  },
+  "npcs": {
+    "salvia": {
+      "name": "Sálvia",
+      "pos": [6.0, 73.0],
+      "yaw": 180,
+      "model": "Mage",
+      "hide": ["Mage_Hat", "Spellbook", "Spellbook_open", "1H_Wand", "2H_Staff"],
+      "tint": [0.55, 0.72, 0.5],
+      "lantern": true,
+      "idle": [
+        ["A névoa do charco tem memória. Ela lembra de quem pisou aqui antes de você."],
+        ["A estátua lá no oeste já foi uma guardiã. Agora só guarda a lama."]
+      ],
+      "weak": [
+        ["Ainda tem sal do mar no cabelo, criança.", "Os sapos daqui engolem quem não sabe se defender. Volte mais forte."]
+      ]
+    },
+    "rook": {
+      "name": "Sargento Rook",
+      "pos": [-78.5, 16.0],
+      "yaw": 180,
+      "model": "Knight",
+      "hide": ["Knight_Helmet", "1H_Sword_Offhand", "2H_Sword", "Badge_Shield", "Rectangle_Shield", "Spike_Shield", "Round_Shield"],
+      "tint": [0.62, 0.6, 0.72],
+      "lantern": false,
+      "idle": [
+        ["Este posto já teve doze homens. Hoje tem um, e ele fala sozinho."],
+        ["A Guarda da Costa não abandona a estrada. A estrada é que nos abandonou."]
+      ],
+      "weak": [
+        ["Você ainda tropeça na própria sombra, recruta.", "Volte quando os bichos da floresta tiverem medo de você."]
+      ]
+    },
+    "bran": {
+      "name": "Bran, o caçador",
+      "pos": [-26.5, -80.5],
+      "yaw": 90,
+      "model": "Rogue_Hooded",
+      "hide": ["Knife_Offhand", "1H_Crossbow", "Knife", "Throwable"],
+      "tint": [0.62, 0.5, 0.36],
+      "lantern": false,
+      "idle": [
+        ["Daqui de cima dá pra ver a floresta inteira respirar."],
+        ["O vento do vale traz uivo de longe. Sempre do mesmo lado."]
+      ],
+      "weak": [
+        ["O vale não é lugar pra quem ainda conta as próprias feridas.", "Cace mais lá embaixo e depois volte."]
+      ]
+    }
+  },
+  "quests": [
+    {
+      "id": "coaxar",
+      "name": "Coaxar nas Brumas",
+      "giver": "salvia",
+      "min_level": 2,
+      "requires": [],
+      "summary": "A ermitã Sálvia não dorme com o coaxar dos sapos bravios que tomaram o charco.",
+      "accept": [
+        "Escute... ouviu? Não são sapos comuns.",
+        "Desde a tempestade eles incham, brigam e avançam sobre quem passa.",
+        "A leste daqui, na água rasa, está o ninho deles. Faça o charco calar."
+      ],
+      "waiting": [["Ainda coaxam. Eu ouço cada um deles."]],
+      "complete": [
+        "Silêncio... finalmente o charco respira.",
+        "Leve isto. Minhas poções curam melhor do que as da vila.",
+        "Ah, e o Sargento Rook, no Posto Velho da Estrada Velha, anda pedindo ajuda a quem passa."
+      ],
+      "steps": [
+        {"type": "kill", "kind": "frog", "hunt": "charco", "count": 5, "text": "Cale os sapos bravios do charco, a leste de Sálvia.", "log": "Sapos do charco abatidos"},
+        {"type": "talk", "npc": "salvia", "text": "Volte até Sálvia, no Charco das Brumas."}
+      ],
+      "reward": {"xp": 25, "potions": {"hp": 3}}
+    },
+    {
+      "id": "fios_estrada",
+      "name": "Fios na Estrada Velha",
+      "giver": "rook",
+      "min_level": 3,
+      "requires": ["coaxar"],
+      "summary": "Uma patrulha da Guarda da Costa sumiu na Estrada Velha. Rook quer saber o que aconteceu.",
+      "accept": [
+        "A ermitã mandou você? Bom. Não tenho mais ninguém.",
+        "Minha patrulha desceu a estrada para o sul e não voltou.",
+        "Lá nas colunas caídas tem teia pra todo lado. Limpa aquilo e me traz o que sobrou deles."
+      ],
+      "waiting": [["Nada ainda? Então volta lá. Eu espero, é o que sei fazer."]],
+      "complete": [
+        "...a insígnia do Tiel. Ele nunca tirava isso.",
+        "Hoje você foi o exército inteiro, recruta.",
+        "Pega esta arma do arsenal. Melhor nas suas mãos do que enferrujando aqui."
+      ],
+      "steps": [
+        {"type": "reach", "at": [-80, 40], "radius": 7, "text": "Desça a Estrada Velha até as colunas caídas, ao sul do posto."},
+        {"type": "kill", "kind": "spider", "hunt": "estrada_velha", "count": 4, "text": "Livre a Estrada Velha das aranhas que tecem entre as colunas.", "log": "Aranhas da estrada abatidas"},
+        {"type": "collect", "item": "patrol_badge", "count": 1, "at": [-82.5, 47.5], "text": "Procure algum sinal da patrulha entre as ruínas da estrada.", "log": "Insígnia encontrada"},
+        {"type": "talk", "npc": "rook", "text": "Leve o que achou ao Sargento Rook, no Posto Velho."}
+      ],
+      "reward": {"xp": 45, "items": {"mage": "sentinel_staff", "warrior": "guard_sword", "archer": "yew_bow"}}
+    },
+    {
+      "id": "presas_covil",
+      "name": "Presas do Covil",
+      "giver": "rook",
+      "min_level": 4,
+      "requires": ["fios_estrada"],
+      "summary": "Lobos cinzentos andam com as aranhas no Covil do Bosque. Bran, o caçador da Torre de Vigia, sabe ler as presas deles.",
+      "accept": [
+        "As teias da estrada vieram do leste, do Covil do Bosque.",
+        "E não são só aranhas: tem lobo rondando junto. Lobo não anda com aranha. Nunca andou.",
+        "Arranca umas presas deles e leva pro Bran, na Torre de Vigia, ao norte. Ele sabe ler essas coisas."
+      ],
+      "waiting": [["O Covil fica a leste, depois da ponte. Não vá sem poção."]],
+      "complete": [
+        "Rook mandou você? Deixa eu ver essas presas.",
+        "Marcas de uma mordida mais velha... algo maior manda nesses lobos.",
+        "Toma, vista isto. Pele boa de lobo segura mais pancada do que parece."
+      ],
+      "steps": [
+        {"type": "collect", "item": "wolf_fang", "count": 2, "from": {"kind": "wolf", "hunt": "covil_bosque"}, "text": "Tire presas dos lobos que rondam o Covil do Bosque, a leste.", "log": "Presas de lobo"},
+        {"type": "kill", "kind": "spider", "hunt": "covil_bosque", "count": 3, "text": "As aranhas do Covil protegem os lobos. Abra caminho entre elas.", "log": "Aranhas do Covil abatidas"},
+        {"type": "talk", "npc": "bran", "text": "Leve as presas a Bran, na Torre de Vigia, ao norte."}
+      ],
+      "reward": {"xp": 60, "potions": {"mana": 2}, "items": {"mage": "mist_mantle", "warrior": "lair_cuirass", "archer": "wolfhide_jerkin"}}
+    },
+    {
+      "id": "vigia_vale",
+      "name": "O Vigia do Vale",
+      "giver": "bran",
+      "min_level": 6,
+      "requires": ["presas_covil"],
+      "summary": "Garra-Velha, o lobo mais antigo da serra, guia as matilhas do Vale do Vigia.",
+      "accept": [
+        "Os velhos chamam ele de Garra-Velha. Já era grisalho quando eu era menino.",
+        "Ele desce o vale quando a serra fica em silêncio, e as matilhas seguem.",
+        "Quando ele se abaixa, salta longe. Quando encara, investe reto. Vá e não volte sem o colmilho dele."
+      ],
+      "waiting": [["Ainda sinto o cheiro dele no vento. Ele está lá."]],
+      "complete": [
+        "...é ele. Esse colmilho tem mais idade que a torre.",
+        "As matilhas vão se espalhar agora, sem ninguém mandando.",
+        "Pendure no pescoço. Quem derruba o Garra-Velha merece andar com ele."
+      ],
+      "steps": [
+        {"type": "kill", "kind": "wolf_elite", "hunt": "vale_vigia", "count": 1, "text": "Derrube Garra-Velha no Vale do Vigia, a leste da torre.", "log": "Garra-Velha"},
+        {"type": "collect", "item": "elder_fang", "count": 1, "from": {"kind": "wolf_elite"}, "text": "Arranque o colmilho de Garra-Velha.", "log": "Colmilho"},
+        {"type": "talk", "npc": "bran", "text": "Leve o colmilho a Bran, na Torre de Vigia."}
+      ],
+      "reward": {"xp": 100, "potions": {"hp": 2, "mana": 2}, "items": {"mage": "elder_fang_charm", "warrior": "elder_fang_charm", "archer": "elder_fang_charm"}}
+    }
+  ],
+  "secrets": {
+    "segredo_serra_fenda": {
+      "name": "Fenda do Contraforte",
+      "found": "Entre as pedras, uma pedra-coração ainda morna pulsa devagar.",
+      "announce": "+15 de vida máxima",
+      "reward": {"perm": {"max_hp": 15}}
+    },
+    "segredo_bosque_raizes": {
+      "name": "Ninho das Raízes",
+      "found": "Raízes guardam um embrulho de couro: poções antigas, ainda lacradas.",
+      "announce": "3 poções de vida e 3 de mana",
+      "reward": {"xp": 30, "potions": {"hp": 3, "mana": 3}}
+    },
+    "segredo_charco_juncos": {
+      "name": "Ilhota dos Juncos",
+      "found": "No meio dos juncos, uma seiva azul brilha como água de lua.",
+      "announce": "+15 de mana máxima",
+      "reward": {"perm": {"max_resource": 15}}
+    },
+    "segredo_ruinas_cripta": {
+      "name": "Cripta Esquecida",
+      "found": "Sob a laje tombada, grevas de um guarda antigo esperavam por alguém.",
+      "announce": "Grevas da Cripta",
+      "reward": {"items": {"mage": "crypt_greaves", "warrior": "crypt_greaves", "archer": "crypt_greaves"}}
+    }
+  }
+}
