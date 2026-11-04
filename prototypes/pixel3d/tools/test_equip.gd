@@ -84,6 +84,20 @@ func run() -> void:
 	check(hud.pending_equip == "" and hud._reject_fx.has("chest"), "online: recusa do servidor pisca o slot")
 	check(not hud.drop_on_slot("iron_sword", "weapon") and fake.asked.size() == 1, "online: item de outra vocação nem é pedido")
 	a.online = null
+	# ---------------- nome sobre a Insígnia da Patrulha (missão 2) só de perto
+	a._debug_quest("fios_estrada:2")
+	var pk: Array = a.quests.pickups()
+	check(pk.size() == 1, "missão 2 no passo da insígnia")
+	if pk.size() == 1:
+		var at: Vector2 = pk[0].at
+		demo._player.global_position = Vector3(at.x + 2.0, 0, at.y)
+		a._update_content()
+		var node: Node3D = a.world.pickup_nodes.values()[0]
+		var lab: Label3D = node.get_meta("label") if node.has_meta("label") else null
+		check(lab != null and lab.text == "Insígnia da Patrulha" and lab.visible, "perto (2 m): nome \"%s\" sobre a insígnia" % (lab.text if lab != null else ""))
+		demo._player.global_position = Vector3(at.x + 12.0, 0, at.y)
+		a._update_content()
+		check(lab != null and not lab.visible, "longe (12 m): nome some")
 	# ---------------- Guerreiro
 	await _load("warrior")
 	hud = a.hud

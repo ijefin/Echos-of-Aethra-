@@ -109,6 +109,9 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	_restore_content(state.content)
 	if args.has("give"):  # prints/testes: --give=id,id (itens extras na bolsa, de qualquer vocação)
 		inventory.give(Array(String(args.give).split(",")))
+	if args.has("equip"):  # prints: --equip=id,id veste da bolsa (com --give)
+		for id: String in String(args.equip).split(","):
+			inventory.equip(id)
 	if args.has("quest"):
 		_debug_quest(String(args.quest))
 	if args.has("level"):  # prints/testes
@@ -830,10 +833,11 @@ func _update_content() -> void:
 	for pk: Dictionary in quests.pickups():
 		var key := String(pk.quest) + ":" + String(pk.item)
 		wanted[key] = true
-		world.pickup_node(key, pk.at).visible = not in_cave
+		world.pickup_node(key, pk.at, quests.item_name(String(pk.item))).visible = not in_cave
 	for key: String in world.pickup_nodes:
 		if not wanted.has(key):
 			(world.pickup_nodes[key] as Node3D).visible = false
+	world.pickup_names(p)
 	var markers := {}
 	for id: String in world.npcs:
 		markers[id] = quests.marker(id, state.level)
