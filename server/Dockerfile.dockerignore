@@ -7,4 +7,10 @@
 !prototypes/pixel3d/data/core_skills.json
 !prototypes/pixel3d/ai/
 !prototypes/pixel3d/net/
+!prototypes/pixel3d/quests.gd
+!prototypes/pixel3d/data/quests.json
+!prototypes/pixel3d/data/world_regions.json
+!assets/data/items.json
+!src/core/inventory.gd
+!src/core/json_data.gd
 prototypes/pixel3d/net/tests/

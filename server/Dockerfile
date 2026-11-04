@@ -20,6 +20,13 @@ COPY prototypes/pixel3d/first_adventure_state.gd /app/prototypes/pixel3d/first_a
 COPY prototypes/pixel3d/data/first_adventure.json /app/prototypes/pixel3d/data/first_adventure.json
 COPY prototypes/pixel3d/data/classes.json /app/prototypes/pixel3d/data/classes.json
 COPY prototypes/pixel3d/data/core_skills.json /app/prototypes/pixel3d/data/core_skills.json
+# conteúdo autoritativo (net/server_content.gd): missões, segredos, itens e bolsa
+COPY prototypes/pixel3d/quests.gd /app/prototypes/pixel3d/quests.gd
+COPY prototypes/pixel3d/data/quests.json /app/prototypes/pixel3d/data/quests.json
+COPY prototypes/pixel3d/data/world_regions.json /app/prototypes/pixel3d/data/world_regions.json
+COPY assets/data/items.json /app/assets/data/items.json
+COPY src/core/inventory.gd /app/src/core/inventory.gd
+COPY src/core/json_data.gd /app/src/core/json_data.gd
 COPY prototypes/pixel3d/ai/ /app/prototypes/pixel3d/ai/
 COPY prototypes/pixel3d/net/ /app/prototypes/pixel3d/net/
 RUN chown -R aethra:aethra /app

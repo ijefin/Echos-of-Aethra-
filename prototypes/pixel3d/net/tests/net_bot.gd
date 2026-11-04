@@ -7,6 +7,7 @@ extends SceneTree
 const NetClient := preload("res://prototypes/pixel3d/net/net_client.gd")
 const NetConfig := preload("res://prototypes/pixel3d/net/net_config.gd")
 const Protocol := preload("res://prototypes/pixel3d/net/net_protocol.gd")
+const StairsRef := preload("res://prototypes/pixel3d/net/server_world.gd")
 
 const PASSWORD := "segredo-teste-1"
 
@@ -435,7 +436,7 @@ func _go_to(goal: Vector3, timeout: float, done: Callable) -> bool:
 	return bool(done.call())
 
 
-func _bfs(col: RefCounted, a: Vector2, b: Vector2) -> Array[Vector2]:
+func _bfs(col: RefCounted, a: Vector2, b: Vector2, clear := 0.32, avoid: Array = []) -> Array[Vector2]:
 	const CELL := 0.5
 	var lo := Vector2(minf(a.x, b.x), minf(a.y, b.y)) - Vector2(15, 15)
 	var nx := int((absf(a.x - b.x) + 30.0) / CELL) + 1
@@ -456,7 +457,13 @@ func _bfs(col: RefCounted, a: Vector2, b: Vector2) -> Array[Vector2]:
 			var n := k + d
 			if n.x < 0 or n.y < 0 or n.x >= nx or n.y >= nz or prev.has(n):
 				continue
-			if n != goal and col.blocked(center.call(n), 0.32):
+			if n != goal and col.blocked(center.call(n), clear):
+				continue
+			var bad := false
+			for q: Vector2 in avoid:   # bocas de escada: não descer sem querer
+				if (center.call(n) as Vector2).distance_to(q) < 2.2:
+					bad = true
+			if bad:
 				continue
 			prev[n] = k
 			queue.append(n)
@@ -554,7 +561,7 @@ func hunt_until(kind: String, near: Vector3, cond: Callable, timeout: float) -> 
 			_move = Vector2(to.x, to.z).normalized() if Vector2(to.x, to.z).length() > 9.0 else Vector2.ZERO
 			c.action("fire", {"target": int(m.id)})
 		elif near != Vector3.INF and c.predicted_position().distance_to(near) > 6.0:
-			var d := near - c.predicted_position()
+			var d: Vector3 = near - c.predicted_position()
 			_move = Vector2(d.x, d.z).normalized()
 		else:
 			_move = Vector2.ZERO
@@ -610,13 +617,13 @@ func _quester() -> void:
 	# 1) nível 2 (a Sálvia só passa a missão a partir dele)
 	check(await hunt_until("", Vector3.INF, func() -> bool: return int(c.me.level) >= 2, 60.0), "sobe ao nível 2 caçando perto da chegada (nível %d)" % int(c.me.level))
 	# 2) aceitar a missão 1 com a Sálvia
-	check(await _go_to(_npc("salvia") + Vector3(0, 0, 1.6), 70.0, func() -> bool: return server_pos().distance_to(_npc("salvia")) < 3.0), "anda até a Sálvia (servidor em %s)" % str(server_pos()))
+	check(await _walk_to(_npc("salvia") + Vector3(0, 0, 1.6), 70.0, func() -> bool: return server_pos().distance_to(_npc("salvia")) < 3.0), "anda até a Sálvia (servidor em %s)" % str(server_pos()))
 	var acc: Dictionary = await interact("npc:salvia", "talk")
 	check(String(acc.get("event", "")) == "accept" and String(acc.get("quest", "")) == "coaxar", "missão 1 aceita pelo servidor (%s)" % str(acc.get("event", "")))
 	# 3) 5 sapos do Charco
 	check(await hunt_until("frog", CHARCO, func() -> bool: return quest_step("coaxar") >= 1, 120.0), "abates do servidor fecham o passo (5 sapos do Charco)")
 	# 4) entrega e recompensa
-	await _go_to(_npc("salvia") + Vector3(0, 0, 1.6), 40.0, func() -> bool: return server_pos().distance_to(_npc("salvia")) < 3.0)
+	await _walk_to(_npc("salvia") + Vector3(0, 0, 1.6), 40.0, func() -> bool: return server_pos().distance_to(_npc("salvia")) < 3.0)
 	await wait(0.5)
 	var xp0 := total_xp()
 	var pots0 := int(c.me.pot_hp)
@@ -627,7 +634,7 @@ func _quester() -> void:
 	check(total_xp() - xp0 == 25, "XP da missão fica no snapshot (não é sobrescrito): +%d" % (total_xp() - xp0))
 	check(int(c.me.pot_hp) == pots0 + 3, "recompensa: +3 poções de vida no snapshot (%d → %d)" % [pots0, int(c.me.pot_hp)])
 	# 5) segredo: uma vez só, inclusive depois de reconectar
-	check(await _go_to(SECRET_AT, 50.0, func() -> bool: return Vector2(server_pos().x - 40.0, server_pos().z - 88.0).length() < 3.2), "anda até o marco da Ilhota dos Juncos (%s)" % str(server_pos()))
+	check(await _walk_to(SECRET_AT, 50.0, func() -> bool: return Vector2(server_pos().x - 40.0, server_pos().z - 88.0).length() < 3.2), "anda até o marco da Ilhota dos Juncos (%s)" % str(server_pos()))
 	var mm0 := int(c.me.max_mana)
 	var sec: Dictionary = await interact("secret:" + SECRET, "secret")
 	check(not sec.is_empty(), "segredo revelado pelo servidor")
@@ -655,16 +662,16 @@ func _quester() -> void:
 func _quest_two() -> void:
 	if int(c.me.level) < 3:
 		await hunt_until("frog", CHARCO, func() -> bool: return int(c.me.level) >= 3, 60.0)
-	await _go_to(_npc("rook") + Vector3(1.6, 0, 0), 90.0, func() -> bool: return server_pos().distance_to(_npc("rook")) < 3.0)
+	await _walk_to(_npc("rook") + Vector3(1.6, 0, 0), 90.0, func() -> bool: return server_pos().distance_to(_npc("rook")) < 3.0)
 	var acc: Dictionary = await interact("npc:rook", "talk")
 	check(String(acc.get("quest", "")) == "fios_estrada" and String(acc.get("event", "")) == "accept", "missão 2 aceita com o Rook (%s, nível %d)" % [str(acc.get("event", "")), int(c.me.level)])
-	check(await _go_to(ESTRADA, 40.0, func() -> bool: return quest_step("fios_estrada") >= 1), "chegada à Estrada Velha confirmada pelo servidor (passo %d)" % quest_step("fios_estrada"))
+	check(await _walk_to(ESTRADA, 40.0, func() -> bool: return quest_step("fios_estrada") >= 1), "chegada à Estrada Velha confirmada pelo servidor (passo %d)" % quest_step("fios_estrada"))
 	check(await hunt_until("spider", ESTRADA, func() -> bool: return quest_step("fios_estrada") >= 2, 150.0), "4 aranhas da Estrada Velha (passo %d)" % quest_step("fios_estrada"))
 	var badge := Vector3(-82.5, 0, 47.5)
-	await _go_to(badge, 30.0, func() -> bool: return server_pos().distance_to(badge) < 1.5)
+	await _walk_to(badge, 30.0, func() -> bool: return server_pos().distance_to(badge) < 1.5)
 	var picked: Dictionary = await interact("pickup", "quest")
 	check(not picked.is_empty() and quest_step("fios_estrada") >= 3, "insígnia pega no servidor (passo %d)" % quest_step("fios_estrada"))
-	await _go_to(_npc("rook") + Vector3(1.6, 0, 0), 60.0, func() -> bool: return server_pos().distance_to(_npc("rook")) < 3.0)
+	await _walk_to(_npc("rook") + Vector3(1.6, 0, 0), 60.0, func() -> bool: return server_pos().distance_to(_npc("rook")) < 3.0)
 	var done: Dictionary = await interact("npc:rook", "talk")
 	var rw: Dictionary = done.get("reward", {})
 	check(String(done.get("event", "")) == "complete" and String(rw.get("item", "")) == "yew_bow", "missão 2 concluída: Arco de Teixo (%s)" % str(rw.get("item", "")))
@@ -702,6 +709,53 @@ func _quester_after_restart() -> void:
 		"persistência: arma da missão continua vestida")
 	c.logout()
 	await wait(0.6)
+
+
+## Caminhada longa na superfície: BFS com folga (0,55 m) longe das bocas de escada,
+## replaneja quando empaca (árvore/monstro) e espera parado no destino até `done`.
+func _walk_to(goal: Vector3, timeout: float, done: Callable) -> bool:
+	var avoid: Array = []
+	for st: Dictionary in StairsRef.STAIRS:
+		avoid.append(Vector2((st.down as Vector3).x, (st.down as Vector3).z))
+	var g2 := Vector2(goal.x, goal.z)
+	var end := _now() + timeout
+	var tries := 0
+	while _now() < end:
+		if done.call():
+			_move = Vector2.ZERO
+			return true
+		var me := server_pos()
+		var col: RefCounted = c.col_at(me.y)
+		var path := _bfs(col, Vector2(me.x, me.z), g2, 0.55 if tries % 2 == 0 else 0.4, avoid)
+		if path.is_empty():
+			path = _bfs(col, Vector2(me.x, me.z), g2, 0.36, avoid)
+		path.append(g2)
+		tries += 1
+		var i := 0
+		var check_t := _now()
+		var check_p: Vector3 = c.predicted_position()
+		var stuck := false
+		while _now() < end and not stuck:
+			if done.call():
+				_move = Vector2.ZERO
+				return true
+			var p: Vector3 = c.predicted_position()
+			var here := Vector2(p.x, p.z)
+			while i < path.size() - 1 and here.distance_to(path[i]) < 0.45:
+				i += 1
+			var d := path[i] - here
+			var at_goal := here.distance_to(g2) < 0.5
+			_move = Vector2.ZERO if at_goal else d.normalized()
+			if _now() - check_t > 1.5:
+				stuck = not at_goal and p.distance_to(check_p) < 0.4
+				check_t = _now()
+				check_p = p
+			await process_frame
+		if stuck:   # empacou: um passo de lado e replaneja
+			_move = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized()
+			await wait(0.35)
+	_move = Vector2.ZERO
+	return bool(done.call())
 
 
 func _friend_in_list(n: String) -> bool:

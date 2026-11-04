@@ -7,6 +7,7 @@ extends SceneTree
 ## As teclas são simuladas com Input.parse_input_event (o jogo lê o teclado de verdade).
 
 const Protocol := preload("res://prototypes/pixel3d/net/net_protocol.gd")
+const AdvWorld := preload("res://prototypes/pixel3d/adventure_world.gd")
 
 var demo: Node
 var adv
@@ -95,6 +96,19 @@ func run() -> void:
 	check(await wait_until(func() -> bool: return _friend_online("Bia"), 20.0), "Bia aceitou: aparece online no painel de amigos")
 	await process_frame
 	adv.hud.panel = ""
+	# conversar com a Nessa (tecla E): o servidor aceita a missão; o cliente só mostra
+	var npc: Vector3 = AdvWorld.NPC
+	var t_end := Time.get_ticks_msec() + 10000
+	while Time.get_ticks_msec() < t_end and demo._player.global_position.distance_to(npc) > 2.0:
+		var dn: Vector3 = npc - demo._player.global_position
+		_hold(Vector2(dn.x, dn.z).normalized())
+		await process_frame
+	_hold(Vector2.ZERO)
+	await wait(0.3)
+	check(adv.interact_target() == "nessa", "perto da Nessa: E pede \"nessa\" ao servidor (%.1f m)" % demo._player.global_position.distance_to(npc))
+	adv.interact()
+	check(await wait_until(func() -> bool: return String(adv.state.stage) == "active", 5.0), "Nessa: missão aceita pelo servidor (estágio %s)" % String(adv.state.stage))
+	check(_chat_has("Servidor", "Missão iniciada: As Três Brasas.") and not String(adv.world.npc_speech.text).is_empty(), "Nessa: aviso de missão no chat e fala sobre a cabeça")
 	# caçar: andar até um monstro e atirar pelo caminho normal do jogo (_attack_at)
 	var killed := await _hunt(45.0)
 	check(killed, "abate de monstro pelo cliente do jogo (evento do servidor)")
