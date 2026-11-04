@@ -7,6 +7,8 @@ var cell := 16.0
 var enter_m := 40.0
 var leave_m := 48.0
 var max_entities := 48
+## Diferença de altura que separa andares (superfície y=0, gruta y=-8).
+const FLOOR_GAP := 4.0
 var _grid: Dictionary = {}       # Vector2i → Array[int] (ids)
 var _pos: Dictionary = {}        # id → Vector3
 var _tier: Dictionary = {}       # id → int (0 = mais importante)
@@ -48,6 +50,8 @@ func query(observer: int, at: Vector3) -> Dictionary:
 				if id == observer:
 					continue
 				var p: Vector3 = _pos[id]
+				if absf(p.y - at.y) > FLOOR_GAP:
+					continue   # outro andar (gruta 8 m abaixo): não aparece, como no Tibia
 				var d := Vector2(p.x - at.x, p.z - at.z).length()
 				if d <= enter_m or (was.has(id) and d <= leave_m):
 					cand.append([int(_tier[id]), d, id])

@@ -17,10 +17,29 @@ const AdventureState := preload("res://prototypes/pixel3d/first_adventure_state.
 
 const NPC := Vector3(-14, 0, -25)
 const ENTRANCE := Vector3(-38, 0, -28)
+## Andar -1 (Gruta das Raízes): mesmos valores de adventure_world.gd (o teste
+## tests/unit/net/server_floors_test.gd confere). Copiados para o servidor não carregar a cena.
+const ROOM := Vector3(-38, -8, -39)
+const STAIRS := [
+	{"down": Vector3(-38, 0, -31.3), "arrive": Vector3(-38, -8, -32.0), "up": Vector3(-38, -8, -28.6), "exit": Vector3(-38, 0, -28.4)},
+	{"down": Vector3(36, 0, 30.7), "arrive": Vector3(36, -8, 30.2), "up": Vector3(36, -8, 33.0), "exit": Vector3(36, 0, 33.4)},
+]
+const PORTAL := Vector3(-29.5, -8, -54.5)
+const CHEST := Vector3(-33, -8, -56.2)
+const TORCHES := [Vector3(0, 0, -9), Vector3(12, 0, -6), Vector3(6, 0, -1.5)]
+const CAVE_SPAWNS := [Vector3(-8, 0, 3), Vector3(-4, 0, 5), Vector3(-7, 0, -1), Vector3(-2, 0, 0),
+	Vector3(3, 0, -9), Vector3(9, 0, -10), Vector3(9, 0, -4), Vector3(4, 0, -5)]
+const TUNNEL_SPAWNS := [[Vector3(28, 0, -1), "spider"], [Vector3(30, 0, 2), "frog"], [Vector3(47, 0, 13), "spider"],
+	[Vector3(50, 0, 15), "spider"], [Vector3(46, 0, 16), "frog"], [Vector3(62, 0, 38), "spider"], [Vector3(65, 0, 40), "spider"]]
+const STAIR_RADIUS := 1.0
+const PORTAL_RADIUS := 1.1
+const TORCH_REACH := 12.0
 
 var cfg: Dictionary
 var tuning: Dictionary
 var col: RefCounted
+## Colisão por andar: {0: superfície, -1: gruta}. Sem a gruta, o servidor só tem a superfície.
+var floors: Dictionary = {}
 var combat: RefCounted
 var interest: RefCounted
 var now := 0.0
@@ -42,10 +61,12 @@ var monster_shots: Dictionary = {}
 
 
 ## `classes_data` = data/classes.json e `core_data` = data/core_skills.json (vazios = só o mago antigo).
-func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCounted, seed_value := 7, classes_data: Dictionary = {}, core_data: Dictionary = {}) -> void:
+func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCounted, seed_value := 7, classes_data: Dictionary = {}, core_data: Dictionary = {}, floors_data: Dictionary = {}) -> void:
 	cfg = net_cfg
 	tuning = adventure_tuning
 	col = collision
+	floors = floors_data.duplicate() if not floors_data.is_empty() else {0: collision}
+	floors[0] = collision
 	combat = Combat.new(tuning, cfg.get("combat", {}), col, classes_data, core_data)
 	interest = Interest.new(cfg)
 	_mcfg = cfg.get("monsters", {})
@@ -61,6 +82,13 @@ func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCoun
 	for w_i in wolves.size():
 		var w: Array = wolves[w_i]
 		spawn_monster("wolf%d" % w_i, "wolf", Vector3(float(w[0]), 0, float(w[1])), int(w[2]) if w.size() > 2 else 1)
+	# gruta: guardiões (contam para o baú) e bandos do túnel, só se a gruta foi carregada
+	if floors.has(-1):
+		for g in int(tuning.get("cave_guardians", 0)):
+			spawn_monster("cave%d" % g, "spider", ROOM + (CAVE_SPAWNS[g % CAVE_SPAWNS.size()] as Vector3))
+		for t_i in TUNNEL_SPAWNS.size():
+			var t: Array = TUNNEL_SPAWNS[t_i]
+			spawn_monster("tunnel%d" % t_i, String(t[1]), ROOM + (t[0] as Vector3))
 
 
 ## Liga a IA real (ServerAI). Chamar uma vez, logo depois de criar o mundo.
@@ -98,12 +126,14 @@ func add_player(key: String, display: String, saved: Dictionary, vocation := "")
 	var spread := float(cfg.get("spawn_spread_m", 1.5))
 	var fresh := spawn + Vector3(_rng.randf_range(-spread, spread), 0, _rng.randf_range(-spread, spread))
 	var pos := _v3(saved.get("pos", []), fresh)
-	var p2: Vector2 = col.resolve(Vector2(pos.x, pos.z), _radius)
-	var ms := Motion.new_state(Vector3(p2.x, 0, p2.y))
+	var fl := floor_of(pos.y) if floors.has(floor_of(pos.y)) else 0
+	var fcol: RefCounted = floors[fl]
+	var p2: Vector2 = fcol.resolve(Vector2(pos.x, pos.z), _radius)
+	var ms := Motion.new_state(Vector3(p2.x, fcol.ground_y(p2.x, p2.y), p2.y))
 	ms.yaw = float(saved.get("yaw", 0.0))
 	var pots: Dictionary = tuning.get("potion", {})
 	var p := {
-		"eid": eid, "key": key, "name": display, "ms": ms, "state": st,
+		"eid": eid, "key": key, "name": display, "ms": ms, "state": st, "floor": fl, "stair_cd": 0.0,
 		"hp": clampf(float(saved.get("hp", st.max_hp())), 1.0, float(st.max_hp())),
 		"mana": clampf(float(saved.get("mana", combat.max_mana(st.level, st.vocation))), 0.0, float(combat.max_mana(st.level, st.vocation))),
 		"vocation": st.vocation, "speed": combat.move_speed(st.vocation, float(_mv.get("speed", 4.2))),
@@ -146,6 +176,8 @@ func player_input(eid: int, cmds: Array) -> void:
 
 func region_of(pos: Vector3) -> String:
 	var p := Vector2(pos.x, pos.z)
+	if floor_of(pos.y) < 0:
+		return "na Gruta das Raízes"
 	if Vector2(ENTRANCE.x, ENTRANCE.z).distance_to(p) < 12.0:
 		return "perto da Gruta das Raízes"
 	if Vector2(NPC.x, NPC.z).distance_to(p) < 14.0:
@@ -166,7 +198,10 @@ func player_action(eid: int, act: Dictionary) -> String:
 		return "no_player"
 	var p: Dictionary = players[eid]
 	var a := String(act.get("act", ""))
+	combat.col = _col(p)   # alcance/visão/destino no andar do jogador
 	match a:
+		"torch":
+			return _act_torch(p, act)
 		"fire", "attack":
 			return _act_attack(p, act)
 		"blink", "q":
@@ -260,7 +295,7 @@ func _act_q(p: Dictionary, act: Dictionary) -> String:
 						break
 				if hit_id != 0:
 					_damage_monster(monsters[hit_id], combat.skill_damage(p, "q"), int(p.eid))
-			p.ms.pos = Vector3(end.x, col.ground_y(end.x, end.y), end.y)
+			p.ms.pos = Vector3(end.x, _col(p).ground_y(end.x, end.y), end.y)
 			p.ms.dodge_t = -1.0
 			p.ms.yaw = atan2(dir.x, dir.y) if not charge else atan2(-dir.x, -dir.y)
 			(p.validator as RefCounted).reset_budget()
@@ -309,9 +344,29 @@ func _act_r(p: Dictionary, act: Dictionary) -> String:
 	_set_effect(p, "ring", 0.4)
 	var rr := float(tuning.get("ring_radius", 3.2))
 	for m: Dictionary in monsters.values():
-		if String(m.state) != "dead" and Vector2(m.pos.x - me.x, m.pos.z - me.z).length() <= rr + float(_mcfg.get("radius", 0.45)):
+		if String(m.state) != "dead" and _same_floor(m.pos, me) and Vector2(m.pos.x - me.x, m.pos.z - me.z).length() <= rr + float(_mcfg.get("radius", 0.45)):
 			_damage_monster(m, combat.ring_damage(p), int(p.eid))
 	return ""
+
+
+## Tocha das Ruínas (andar -1): o servidor confere andar, distância e linha de visão;
+## a ordem e o reinício ficam em first_adventure_state.ignite (regra pura do jogo).
+func _act_torch(p: Dictionary, act: Dictionary) -> String:
+	var i := int(act.get("index", -1))
+	if i < 0 or i >= TORCHES.size():
+		return "target"
+	if int(p.floor) != -1:
+		return "floor"
+	var st: RefCounted = p.state
+	if st.stage != "active":
+		return "stage"
+	var tp: Vector3 = ROOM + (TORCHES[i] as Vector3)
+	var me: Vector3 = p.ms.pos
+	if Vector2(tp.x - me.x, tp.z - me.z).length() > TORCH_REACH:
+		return "range"
+	var ok: bool = st.ignite(i)
+	events.append({"to": int(p.eid), "type": "torch", "index": i, "ok": ok, "lit": (st.lit as Array).duplicate()})
+	return "" if ok else "order"
 
 
 func _act_potion(p: Dictionary, act: Dictionary) -> String:
@@ -355,14 +410,14 @@ func _melee(p: Dictionary, dir: Vector2, reach: float, arc_deg: float, dmg: int)
 	var a := Vector2(me.x, me.z)
 	var hits := 0
 	for m: Dictionary in monsters.values():
-		if String(m.state) == "dead":
+		if String(m.state) == "dead" or not _same_floor(m.pos, me):
 			continue
 		var to := Vector2(m.pos.x, m.pos.z) - a
 		if to.length() > reach + float(_mcfg.get("radius", 0.45)):
 			continue
 		if arc_deg < 359.0 and to.length() > 0.2 and rad_to_deg(absf(dir.angle_to(to.normalized()))) > arc_deg * 0.5:
 			continue
-		if not col.segment_clear(a, Vector2(m.pos.x, m.pos.z), 0.0):
+		if not _col(p).segment_clear(a, Vector2(m.pos.x, m.pos.z), 0.0):
 			continue
 		_damage_monster(m, dmg, int(p.eid))
 		hits += 1
@@ -378,7 +433,7 @@ func _shoot(p: Dictionary, tgt: Vector3, dmg: int, pierce: bool) -> void:
 	var sub := maxi(0, Protocol.PROJECTILE_SUBKINDS.find(String(sp.name)))
 	projectiles[jid] = {"eid": jid, "owner": int(p.eid), "pos": me + Vector3(0, 0.85, 0),
 		"vel": Vector3(d.x, 0, d.y) * float(sp.speed), "life": float(sp.life), "dmg": dmg,
-		"pierce": pierce, "hit": [], "name": String(sp.name), "sub": sub}
+		"pierce": pierce, "hit": [], "name": String(sp.name), "sub": sub, "floor": int(p.floor)}
 
 
 ## Ponto de mira: entidade alvo (posição do SERVIDOR, não a do cliente) ou ponto no chão.
@@ -443,9 +498,12 @@ func _step_player(p: Dictionary, dt: float) -> void:
 			continue
 		var before: Vector3 = p.ms.pos
 		var trial := Motion.copy(p.ms)
-		Motion.step(trial, c.dir, int(c.flags), v.cmd_dt, col, _move_cfg(p), _radius)
+		Motion.step(trial, c.dir, int(c.flags), v.cmd_dt, _col(p), _move_cfg(p), _radius)
 		if v.check_step(before, trial.pos):
 			p.ms = trial
+	p.stair_cd = maxf(0.0, float(p.stair_cd) - dt)
+	if float(p.stair_cd) <= 0.0 and float(p.hp) > 0.0:
+		_check_stairs(p)
 	if float(p.ms.dodge_t) >= 0.0:
 		_set_effect(p, "dodge", 0.06)
 	var st: RefCounted = p.state
@@ -478,6 +536,52 @@ func slow_player(eid: int, factor: float, seconds: float) -> void:
 	_set_effect(p, "slow", seconds)
 
 
+# ------------------------------------------------------------------ andares
+
+## Andar de uma altura (superfície 0, gruta -1).
+static func floor_of(y: float) -> int:
+	return -1 if y < -4.0 else 0
+
+
+func _same_floor(a: Vector3, b: Vector3) -> bool:
+	return floor_of(a.y) == floor_of(b.y)
+
+
+func _col(p: Dictionary) -> RefCounted:
+	return floors.get(int(p.get("floor", 0)), col)
+
+
+## Escadas estilo Tibia (sem tecla): pisou na boca desce, pisou na escada sobe; o círculo
+## de retorno ao lado do baú leva de volta à Nessa depois do colar.
+func _check_stairs(p: Dictionary) -> void:
+	if not floors.has(-1):
+		return
+	var me: Vector3 = p.ms.pos
+	var flat := Vector2(me.x, me.z)
+	for s: Dictionary in STAIRS:
+		var down: Vector3 = s.down
+		var up: Vector3 = s.up
+		if int(p.floor) == 0 and flat.distance_to(Vector2(down.x, down.z)) < STAIR_RADIUS:
+			_warp(p, s.arrive, -1)
+			return
+		if int(p.floor) == -1 and flat.distance_to(Vector2(up.x, up.z)) < STAIR_RADIUS:
+			_warp(p, s.exit, 0)
+			return
+	if int(p.floor) == -1 and (p.state as RefCounted).has_reward() and flat.distance_to(Vector2(PORTAL.x, PORTAL.z)) < PORTAL_RADIUS:
+		_warp(p, NPC + Vector3(0, 0, 2.1), 0)
+
+
+func _warp(p: Dictionary, to: Vector3, fl: int) -> void:
+	var from: Vector3 = p.ms.pos
+	var fcol: RefCounted = floors.get(fl, col)
+	var q: Vector2 = fcol.resolve(Vector2(to.x, to.z), _radius)
+	p.floor = fl
+	p.ms = Motion.new_state(Vector3(q.x, fcol.ground_y(q.x, q.y), q.y))
+	p.stair_cd = 1.0
+	(p.validator as RefCounted).reset_budget()
+	events.append({"to": -1, "type": "floor", "eid": int(p.eid), "floor": fl, "from": [from.x, from.z], "at": [q.x, q.y]})
+
+
 func _step_projectiles(dt: float) -> void:
 	var mr := float(_mcfg.get("radius", 0.45))
 	var sr := float((cfg.get("combat", {}) as Dictionary).get("shot_radius", 0.25))
@@ -489,7 +593,7 @@ func _step_projectiles(dt: float) -> void:
 		var hit := false
 		# varredura do segmento contra monstros vivos
 		for m: Dictionary in monsters.values():
-			if String(m.state) == "dead":
+			if String(m.state) == "dead" or floor_of(m.pos.y) != int(j.get("floor", 0)):
 				continue
 			var mp := Vector2(m.pos.x, m.pos.z)
 			var a := Vector2(from.x, from.z)
@@ -505,7 +609,7 @@ func _step_projectiles(dt: float) -> void:
 				_damage_monster(m, int(j.dmg), int(j.owner))
 				hit = true
 				break
-		if not hit and not col.segment_clear(Vector2(from.x, from.z), Vector2(to.x, to.z), 0.0):
+		if not hit and not (floors.get(int(j.get("floor", 0)), col) as RefCounted).segment_clear(Vector2(from.x, from.z), Vector2(to.x, to.z), 0.0):
 			hit = true
 		j.pos = to
 		if hit or float(j.life) <= 0.0:
@@ -572,7 +676,7 @@ func _damage_monster(m: Dictionary, amount: int, by: int) -> void:
 	var p: Dictionary = players[by]
 	var st: RefCounted = p.state
 	var old_level: int = st.level
-	if st.record_kill(String(m.key), String(m.kind), false, int(m.xp)):
+	if st.record_kill(String(m.key), String(m.kind), floor_of((m.home as Vector3).y) < 0, int(m.xp)):
 		p.kills = int(p.kills) + 1
 		events.append({"to": by, "type": "kill", "target": int(m.eid), "name": String(m.name), "xp": int(m.xp),
 			"kind": String(m.kind), "hunt": String(m.get("hunt", "")), "at": [m.pos.x, m.pos.z]})
@@ -679,6 +783,7 @@ func damage_player(eid: int, amount: int, source: String) -> bool:
 		var rp := _v3(cfg.get("respawn", []), NPC + Vector3(0, 0, 2.3))
 		events.append({"to": eid, "type": "death", "source": source})
 		p.hp = float((p.state as RefCounted).max_hp())
+		p.floor = 0
 		p.ms = Motion.new_state(rp)
 		(p.validator as RefCounted).reset_budget()
 	return true
