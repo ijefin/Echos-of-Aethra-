@@ -106,6 +106,8 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	_restore_content(state.content)
 	if args.has("quest"):
 		_debug_quest(String(args.quest))
+	if args.has("level"):  # prints/testes
+		state.level = clampi(int(args.level), 1, int(config.max_level))
 	_refresh_stats()
 	hp = state.max_hp()
 	mana = max_mana()
@@ -113,6 +115,10 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	world.build(demo)
 	world.build_npcs(quests.data)
 	_sync_secret_marks()
+	if args.has("talk"):  # print: conversa com um NPC das missões logo ao abrir
+		_talk_content.call_deferred(String(args.talk))
+	if args.has("secret"):  # print: revela um segredo logo ao abrir
+		claim_secret.call_deferred(String(args.secret))
 	enemies = Enemies.new()
 	enemies.build(self)
 	hud = Hud.new()
@@ -179,12 +185,13 @@ func _restore_content(content: Dictionary) -> void:
 		potions = {"hp": maxi(0, int(saved.get("hp", 0))), "mana": maxi(0, int(saved.get("mana", 0)))}
 
 
-## --quest=id[:passo] (prints/testes): missões anteriores concluídas, esta no passo dado.
+## --quest=id[:passo|offer] (prints/testes): missões anteriores concluídas, esta no passo dado.
 func _debug_quest(spec: String) -> void:
 	var parts := spec.split(":")
 	for q: Dictionary in quests.data.quests:
 		if String(q.id) == parts[0]:
-			quests.active[parts[0]] = {"step": int(parts[1]) if parts.size() > 1 else 0, "count": 0}
+			if parts.size() < 2 or parts[1] != "offer":  # offer: só as anteriores concluídas
+				quests.active[parts[0]] = {"step": int(parts[1]) if parts.size() > 1 else 0, "count": 0}
 			break
 		quests.done.append(String(q.id))
 	state.stage = "complete"
@@ -595,10 +602,15 @@ func _apply_reward(reward: Dictionary, title: String, sub := "") -> void:
 	for k: String in pots:
 		potions[k] = int(potions.get(k, 0)) + int(pots[k])
 		chat.post("Servidor", "Você recebeu %d poções de %s." % [int(pots[k]), "vida" if k == "hp" else "mana"], Color(1.0, 0.82, 0.38))
-	if not title.is_empty():
-		demo.world_labels.announce(title, sub)
+	var old_level: int = state.level
 	if int(reward.get("xp", 0)) > 0:
 		gain_xp(int(reward.xp))
+	if not title.is_empty():
+		if state.level > old_level and is_inside_tree():
+			# a mensagem de nível vem primeiro; a do prêmio entra quando ela some
+			get_tree().create_timer(4.6).timeout.connect(demo.world_labels.announce.bind(title, sub))
+		else:
+			demo.world_labels.announce(title, sub)
 
 
 ## Eventos das missões (abate, coleta, chegada): itens de missão e diário atualizado.
@@ -685,7 +697,7 @@ func objective_title() -> String:
 ## Objetivo de uma missão do conteúdo: frase de história + distância quando é um lugar.
 func quest_objective(id: String) -> String:
 	var s: Dictionary = quests.step(id)
-	var text := String(s.get("text", ""))
+	var text := _wrap(String(s.get("text", "")), 40)
 	var target := Vector3.INF
 	match String(s.get("type", "")):
 		"talk":
@@ -709,7 +721,7 @@ func _next_giver() -> String:
 		if st == "available" or st == "weak":
 			var n: Dictionary = quests.npc(String(q.giver))
 			var pos := _npc_pos(String(q.giver))
-			return "%s espera %s." % [String(n.name), WorldLayout.region_name(Vector2(pos.x, pos.z))]
+			return _wrap("%s espera %s." % [String(n.name), WorldLayout.region_name(Vector2(pos.x, pos.z))], 40)
 	return ""
 
 
@@ -763,8 +775,8 @@ func update(delta: float, t: float) -> void:
 	if _stair_cd <= 0.0:
 		_check_stairs()
 	var action := prompt() if not hud.any_open() else ""
-	if action == "E — conversar" and not world.npc_speech.text.is_empty():
-		action = ""  # não cobre a fala da Nessa
+	if action == "E — conversar" and not _speech().text.is_empty():
+		action = ""  # não cobre a fala de quem está falando
 	demo.world_labels.prompt_text = action
 	demo.world_labels.prompt_at = prompt_at
 	var night: bool = demo._sky.night > 0.5

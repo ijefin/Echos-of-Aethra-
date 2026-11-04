@@ -303,7 +303,7 @@ func _quest_panel() -> void:
 	var q = adventure.quests
 	var ids: Array[String] = q.active_ids()
 	var finished: Array[String] = q.done.duplicate()
-	var r := _panel_rect(500, 230 + ids.size() * 80 + finished.size() * 22)
+	var r := _panel_rect(520, 150 + ids.size() * 92 + finished.size() * 20 + (0 if adventure.state.stage == "complete" else 70))
 	var y := _title(r, "MISSÕES", "J")
 	var x := r.position.x + _px(18)
 	var w := r.size.x - _px(36)
@@ -316,7 +316,7 @@ func _quest_panel() -> void:
 			if not l.is_empty():
 				_text(l, Vector2(x, yy), 12, CREAM)
 			yy += _px(18)
-		_text("Nessa, a lampadeira, perdeu o colar na Gruta das Raízes, a oeste do acampamento.", Vector2(x, yy), 11, MUTED)
+		_text("Nessa, a lampadeira, perdeu o colar na Gruta das Raízes, a oeste do acampamento.", Vector2(x, yy), 11, MUTED, false, HORIZONTAL_ALIGNMENT_LEFT, w)
 		yy += _px(24)
 	for id: String in ids:
 		var quest: Dictionary = q.quest(id)
@@ -324,10 +324,8 @@ func _quest_panel() -> void:
 		_text(String(quest.name), Vector2(x, yy), 13, CREAM, true)
 		_text("Em andamento", Vector2(r.position.x, yy), 11, GOLD, false, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(18))
 		yy += _px(19)
-		_text(String(quest.summary), Vector2(x, yy), 11, MUTED, false, HORIZONTAL_ALIGNMENT_LEFT, w)
-		yy += _px(17)
-		_text(q.step_text(id), Vector2(x, yy), 12, CREAM, false, HORIZONTAL_ALIGNMENT_LEFT, w)
-		yy += _px(17)
+		yy = _wrap(String(quest.summary), Vector2(x, yy), w, 11, MUTED) + _px(3)
+		yy = _wrap(q.step_text(id), Vector2(x, yy), w, 12, CREAM)
 		var prog: String = q.progress_text(id)
 		if not prog.is_empty():
 			_text(prog, Vector2(x + _px(10), yy), 11, Color(GOLD, 0.85))
