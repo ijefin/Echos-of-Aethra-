@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_bjsv6"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/wall.gltf.glb" id="2_s7c5i"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/wall_cracked.gltf.glb" id="3_8rjkn"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/wall_pillar.gltf.glb" id="4_c11ik"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6w8tb"]
+size = Vector3(3, 3, 0.75)
+
+[node name="Wall" type="Node3D" unique_id=1355650927]
+script = ExtResource("1_bjsv6")
+prop_id = &"wall"
+category = &"wall"
+footprint = Vector2i(2, 1)
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=344192085]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1603560328 instance=ExtResource("2_s7c5i")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=1797201438]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=368781065 instance=ExtResource("3_8rjkn")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Variant2" type="Node3D" parent="." unique_id=299860581]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant2" unique_id=1789450683 instance=ExtResource("4_c11ik")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=427853367]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1608815144]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+shape = SubResource("BoxShape3D_6w8tb")

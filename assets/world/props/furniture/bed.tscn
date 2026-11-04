@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_hv7k8"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/bed_frame.gltf.glb" id="2_trtp4"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/bed_decorated.gltf.glb" id="3_nvngn"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/bed_floor.gltf.glb" id="4_e3ged"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_qbyvu"]
+size = Vector3(1.125, 0.796974, 2.25)
+
+[node name="Bed" type="Node3D" unique_id=2018866616]
+script = ExtResource("1_hv7k8")
+prop_id = &"bed"
+category = &"furniture"
+footprint = Vector2i(1, 2)
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=924627993]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1853769199 instance=ExtResource("2_trtp4")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=1358547841]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=2127000470 instance=ExtResource("3_nvngn")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Variant2" type="Node3D" parent="." unique_id=295452224]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant2" unique_id=1479644954 instance=ExtResource("4_e3ged")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=1656508719]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=175351917]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.39848706, 0)
+shape = SubResource("BoxShape3D_qbyvu")

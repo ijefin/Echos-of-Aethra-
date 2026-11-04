@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_e2gba"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/nature/tree_single_A_cut.gltf" id="2_q1lf2"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/nature/tree_single_B_cut.gltf" id="3_uelqj"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gvjjy"]
+size = Vector3(0.67870516, 1.320962, 0.64682007)
+
+[node name="TreeStump" type="Node3D" unique_id=1155131204]
+script = ExtResource("1_e2gba")
+prop_id = &"tree_stump"
+category = &"tree"
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=1969625264]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=28629120 instance=ExtResource("2_q1lf2")]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0.00021094084, 0, 0.032981426)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=313225139]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=1769180474 instance=ExtResource("3_uelqj")]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 1.7285347e-06, 0, 1.7881393e-07)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=148566091]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=456430474]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25005183, 0)
+shape = SubResource("BoxShape3D_gvjjy")

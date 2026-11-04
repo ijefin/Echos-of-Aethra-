@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_ujrbn"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/floor_wood_small.gltf.glb" id="2_6xckt"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/floor_wood_small_dark.gltf.glb" id="3_tsd8v"]
+
+[node name="FloorWood" type="Node3D" unique_id=1283721595]
+script = ExtResource("1_ujrbn")
+prop_id = &"floor_wood"
+category = &"floor"
+
+[node name="Variant0" type="Node3D" parent="." unique_id=766096879]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1628009405 instance=ExtResource("2_6xckt")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=1626301426]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=1222260371 instance=ExtResource("3_tsd8v")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)

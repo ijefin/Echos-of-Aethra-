@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_mxqn1"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/buildings/neutral/fence_wood_straight.gltf" id="2_qvvb3"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cdrsp"]
+size = Vector3(3.0022225, 1.430033, 0.26)
+
+[node name="FenceWood" type="Node3D" unique_id=1247451569]
+script = ExtResource("1_mxqn1")
+prop_id = &"fence_wood"
+category = &"fence"
+footprint = Vector2i(2, 1)
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=2146423073]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=577731757 instance=ExtResource("2_qvvb3")]
+transform = Transform3D(-1.13649605e-07, 0, 2.6, 0, 2.6, 0, -2.6, 0, -1.13649605e-07, 0, 0, -2.599999)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=227632723]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=98469812]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.58498347, -1.1920929e-07)
+shape = SubResource("BoxShape3D_cdrsp")

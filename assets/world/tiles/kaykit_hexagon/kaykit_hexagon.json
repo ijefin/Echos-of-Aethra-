@@ -1,0 +1,384 @@
+{
+	"kit": "kaykit_hexagon",
+	"cell_size": 1.5,
+	"scale": 3.6,
+	"rotations": [
+		0.0,
+		90.0,
+		180.0,
+		270.0
+	],
+	"mapping": "res://assets/world/tiles/kaykit_hexagon/mapping.json",
+	"props": {
+		"fence_wood": "res://assets/world/props/fence/fence_wood.tscn",
+		"fence_wood_gate": "res://assets/world/props/fence/fence_wood_gate.tscn",
+		"fence_stone": "res://assets/world/props/fence/fence_stone.tscn",
+		"fence_stone_gate": "res://assets/world/props/fence/fence_stone_gate.tscn",
+		"bridge": "res://assets/world/props/bridge/bridge.tscn",
+		"well": "res://assets/world/props/decor/well.tscn",
+		"tree_round": "res://assets/world/props/tree/tree_round.tscn",
+		"tree_pine": "res://assets/world/props/tree/tree_pine.tscn",
+		"tree_grove": "res://assets/world/props/tree/tree_grove.tscn",
+		"tree_stump": "res://assets/world/props/tree/tree_stump.tscn",
+		"rock_small": "res://assets/world/props/rock/rock_small.tscn",
+		"rock_medium": "res://assets/world/props/rock/rock_medium.tscn",
+		"rock_large": "res://assets/world/props/rock/rock_large.tscn",
+		"cart": "res://assets/world/props/decor/cart.tscn",
+		"sacks": "res://assets/world/props/decor/sacks.tscn",
+		"street_crate": "res://assets/world/props/decor/street_crate.tscn",
+		"lumber_pile": "res://assets/world/props/decor/lumber_pile.tscn",
+		"tent": "res://assets/world/props/decor/tent.tscn",
+		"house_small": "res://assets/world/props/building/house_small.tscn",
+		"house_tall": "res://assets/world/props/building/house_tall.tscn",
+		"town_wall": "res://assets/world/props/wall/town_wall.tscn",
+		"town_wall_corner": "res://assets/world/props/wall/town_wall_corner.tscn",
+		"town_wall_gate": "res://assets/world/props/wall/town_wall_gate.tscn"
+	},
+	"info": {
+		"fence_wood": {
+			"category": "fence",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 2.6,
+			"size": [
+				3.0,
+				1.43,
+				0.26
+			]
+		},
+		"fence_wood_gate": {
+			"category": "fence",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 2.6,
+			"size": [
+				3.0,
+				1.69,
+				0.36
+			]
+		},
+		"fence_stone": {
+			"category": "fence",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 2.6,
+			"size": [
+				3.0,
+				0.7,
+				0.52
+			]
+		},
+		"fence_stone_gate": {
+			"category": "fence",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 2.6,
+			"size": [
+				3.0,
+				0.77,
+				0.52
+			]
+		},
+		"bridge": {
+			"category": "bridge",
+			"footprint": [
+				3,
+				4
+			],
+			"blocks": false,
+			"variants": 2,
+			"scale": 3.0,
+			"size": [
+				4.0,
+				3.75,
+				5.77
+			]
+		},
+		"well": {
+			"category": "decor",
+			"footprint": [
+				1,
+				2
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 3.0,
+			"size": [
+				1.96,
+				2.48,
+				2.25
+			]
+		},
+		"tree_round": {
+			"category": "tree",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 4.0,
+			"size": [
+				2.3,
+				4.79,
+				2.19
+			]
+		},
+		"tree_pine": {
+			"category": "tree",
+			"footprint": [
+				2,
+				2
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 4.0,
+			"size": [
+				2.74,
+				4.85,
+				2.88
+			]
+		},
+		"tree_grove": {
+			"category": "tree",
+			"footprint": [
+				4,
+				4
+			],
+			"blocks": true,
+			"variants": 3,
+			"scale": 3.0,
+			"size": [
+				5.25,
+				3.89,
+				5.44
+			]
+		},
+		"tree_stump": {
+			"category": "tree",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 2,
+			"scale": 4.0,
+			"size": [
+				0.68,
+				1.32,
+				0.65
+			]
+		},
+		"rock_small": {
+			"category": "rock",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": false,
+			"variants": 2,
+			"scale": 3.6,
+			"size": [
+				1.07,
+				0.25,
+				1.02
+			]
+		},
+		"rock_medium": {
+			"category": "rock",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 2,
+			"scale": 3.6,
+			"size": [
+				1.24,
+				0.7,
+				1.24
+			]
+		},
+		"rock_large": {
+			"category": "rock",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 5.0,
+			"size": [
+				2.44,
+				0.97,
+				1.74
+			]
+		},
+		"cart": {
+			"category": "decor",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 3.0,
+			"size": [
+				0.71,
+				0.57,
+				1.52
+			]
+		},
+		"sacks": {
+			"category": "decor",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": false,
+			"variants": 1,
+			"scale": 5.0,
+			"size": [
+				0.53,
+				0.32,
+				0.8
+			]
+		},
+		"street_crate": {
+			"category": "decor",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 4,
+			"scale": 3.6,
+			"size": [
+				0.76,
+				0.76,
+				0.76
+			]
+		},
+		"lumber_pile": {
+			"category": "decor",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 2,
+			"scale": 3.6,
+			"size": [
+				2.47,
+				0.76,
+				1.19
+			]
+		},
+		"tent": {
+			"category": "decor",
+			"footprint": [
+				2,
+				2
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 6.0,
+			"size": [
+				3.1,
+				3.1,
+				3.1
+			]
+		},
+		"house_small": {
+			"category": "building",
+			"footprint": [
+				3,
+				3
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 6.0,
+			"size": [
+				4.75,
+				5.58,
+				5.12
+			]
+		},
+		"house_tall": {
+			"category": "building",
+			"footprint": [
+				3,
+				4
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 6.0,
+			"size": [
+				5.25,
+				7.68,
+				6.59
+			]
+		},
+		"town_wall": {
+			"category": "wall",
+			"footprint": [
+				4,
+				2
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 3.0,
+			"size": [
+				6.0,
+				3.3,
+				2.4
+			]
+		},
+		"town_wall_corner": {
+			"category": "wall",
+			"footprint": [
+				4,
+				3
+			],
+			"blocks": true,
+			"variants": 2,
+			"scale": 3.0,
+			"size": [
+				5.28,
+				3.3,
+				4.3
+			]
+		},
+		"town_wall_gate": {
+			"category": "wall",
+			"footprint": [
+				4,
+				2
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 3.0,
+			"size": [
+				6.0,
+				4.24,
+				2.69
+			]
+		}
+	}
+}

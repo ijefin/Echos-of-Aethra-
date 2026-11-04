@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_ujfgk"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/props/tent.gltf" id="2_wiodc"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_02lb8"]
+size = Vector3(3.0960002, 3.0960002, 3.0960002)
+
+[node name="Tent" type="Node3D" unique_id=1566994467]
+script = ExtResource("1_ujfgk")
+prop_id = &"tent"
+category = &"decor"
+footprint = Vector2i(2, 2)
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=281092807]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1683865367 instance=ExtResource("2_wiodc")]
+transform = Transform3D(6, 0, 0, 0, 6, 0, 0, 0, 6, 0, 0, 0)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=619886755]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=943243332]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5480001, 0)
+shape = SubResource("BoxShape3D_02lb8")

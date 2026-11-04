@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_alod7"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/buildings/blue/building_home_A_blue.gltf" id="2_3l0jp"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_w8rbr"]
+size = Vector3(4.751759, 5.580001, 5.12191)
+
+[node name="HouseSmall" type="Node3D" unique_id=1183254783]
+script = ExtResource("1_alod7")
+prop_id = &"house_small"
+category = &"building"
+footprint = Vector2i(3, 3)
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=2081152309]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1618057485 instance=ExtResource("2_3l0jp")]
+transform = Transform3D(6, 0, 0, 0, 6, 0, 0, 0, 6, 2.3841858e-07, 0, 0.2509544)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=1947876963]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1504216807]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.7900002, 0)
+shape = SubResource("BoxShape3D_w8rbr")

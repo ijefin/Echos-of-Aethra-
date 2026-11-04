@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_h1qly"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/nature/tree_single_B.gltf" id="2_kj8bd"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ka21n"]
+size = Vector3(0.684882, 4.850709, 0.684882)
+
+[node name="TreePine" type="Node3D" unique_id=763342619]
+script = ExtResource("1_h1qly")
+prop_id = &"tree_pine"
+category = &"tree"
+footprint = Vector2i(2, 2)
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=1597767020]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=653186259 instance=ExtResource("2_kj8bd")]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, -3.8146973e-06, 0, 2.3841858e-07)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=151888041]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=232953881]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.025355, 0)
+shape = SubResource("BoxShape3D_ka21n")

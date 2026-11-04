@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_yq5rb"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/stairs.gltf.glb" id="2_e47t6"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/stairs_walled.gltf.glb" id="3_iqbbm"]
+
+[node name="Stairs" type="Node3D" unique_id=1239471607]
+script = ExtResource("1_yq5rb")
+prop_id = &"stairs"
+category = &"stairs"
+footprint = Vector2i(3, 2)
+
+[node name="Variant0" type="Node3D" parent="." unique_id=1518955763]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1731655650 instance=ExtResource("2_e47t6")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=25568004]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=2136774361 instance=ExtResource("3_iqbbm")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
