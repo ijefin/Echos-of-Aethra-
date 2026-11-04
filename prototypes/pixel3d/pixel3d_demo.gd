@@ -118,6 +118,8 @@ var _tree_spots: Array = []
 var edge_bushes: Array = []
 var _chunks
 var _props
+## Desligar = todos os pedaços visíveis (só para medir o ganho em tools/measure_world_perf.gd).
+var chunk_culling := true
 var _scorch_tex: GradientTexture2D
 var _ember_tex: GradientTexture2D
 var _biome := FastNoiseLite.new()
@@ -430,6 +432,9 @@ func _build_world() -> void:
 ## Só os pedaços do mundo na tela (+ margem) ficam visíveis; a margem sul é maior porque
 ## árvores e rochas altas logo abaixo da tela ainda aparecem por cima (câmera a -50°).
 func _update_chunks() -> void:
+	if not chunk_culling:
+		_chunks.update(_cam_focus, 1000.0, 1000.0, 1000.0)
+		return
 	var s := _cam.size
 	var aspect := float(_vp.size.x) / maxf(1.0, float(_vp.size.y))
 	var depth := s * 0.5 / sin(deg_to_rad(-_pitch))
