@@ -88,8 +88,12 @@ func _run() -> void:
 
 # ------------------------------------------------------------------ utilidades
 
+## Vocação de cada bot (personagem novo): Alice arqueira, Bruno guerreiro.
+const VOCATION := {"Alice": "archer", "Bruno": "warrior"}
+
+
 func login(user: String) -> bool:
-	c.connect_and_login("127.0.0.1", port, user, PASSWORD, true)
+	c.connect_and_login("127.0.0.1", port, user, PASSWORD, true, String(VOCATION.get(user, "")))
 	var ok: bool = await wait_until(func() -> bool: return not welcomes.is_empty() or not login_errors.is_empty(), 15.0)
 	if ok and welcomes.is_empty() and login_errors.has("name_taken"):
 		login_errors.clear()
@@ -115,7 +119,7 @@ func nearest_monster() -> Dictionary:
 	var bd := INF
 	var me: Vector3 = c.predicted_position()
 	for e: Dictionary in c.entities():
-		if int(e.kind) == Protocol.KIND_MONSTER:
+		if int(e.kind) == Protocol.KIND_MONSTER and float(_skip.get(int(e.id), -1.0)) < _now():
 			var d := (e.pos as Vector3).distance_to(me)
 			if d < bd:
 				bd = d
@@ -142,18 +146,22 @@ func friend_presence(n: String, online: bool) -> bool:
 func _alice() -> void:
 	check(await login("Alice"), "entra no servidor (cadastro/login)")
 	await wait_until(func() -> bool: return int(c.snaps) > 3, 5.0)
+	check(c.vocation == "archer" and is_equal_approx(c.move_speed, 4.6), "vocação: servidor confirmou arqueira (%s, %.1f m/s)" % [c.vocation, c.move_speed])
 	var start := server_pos()
 	_move = Vector2(1, 0)
 	await wait(1.0)
 	_move = Vector2.ZERO
 	await wait(0.6)
 	var moved := server_pos().distance_to(start)
-	check(moved > 0.5 and moved <= 4.2 * 1.3, "move: servidor confirmou %.2f m em ~1 s (máx. 5,46)" % moved)
+	check(moved > 0.5 and moved <= c.move_speed * 1.3, "move: servidor confirmou %.2f m em ~1 s (máx. %.2f com a velocidade da vocação)" % [moved, c.move_speed * 1.3])
 	check(c.predicted_position().distance_to(server_pos()) < 0.25, "predição local = posição do servidor após parar (erro %.3f m)" % c.predicted_position().distance_to(server_pos()))
 	check(await wait_until(func() -> bool: return not find_player("Bruno").is_empty(), 20.0), "vê o outro jogador (Bruno) replicado")
 	c.friend("request", "Bruno")
 	check(await wait_until(func() -> bool: return has_event(friend_events, "op", "accepted"), 15.0), "amizade: Bruno aceitou o pedido (evento em tempo real)")
 	check(await wait_until(func() -> bool: return friend_presence("Bruno", true), 5.0), "presença: Bruno aparece online")
+	check(await wait_until(func() -> bool: return String(find_player("Bruno").get("vocation", "")) == "warrior", 10.0), "vocação: vê o Bruno como guerreiro (entity_info)")
+	check(await wait_until(func() -> bool: return "light" in (find_player("Bruno").get("effects", []) as Array), 20.0), "luz: vê a Luz do Bruno (efeito replicado para os outros)")
+	check(has_event(events, "type", "light"), "luz: recebeu o evento da Luz do Bruno com a duração")
 	var lv0 := int(c.me.level)
 	var xp0 := int(c.me.xp)
 	c.action("blink", {"x": 0.0, "z": 0.0})
@@ -161,7 +169,12 @@ func _alice() -> void:
 	var killed: bool = await _hunt(30.0)
 	check(killed, "derrota um monstro do servidor (evento kill vindo do servidor)")
 	await wait(0.4)
-	check(killed and (int(c.me.xp) == xp0 + 3 or int(c.me.level) > lv0), "XP aplicado pelo servidor e replicado no snapshot (+3; antes %d/%d, depois %d/%d)" % [lv0, xp0, int(c.me.level), int(c.me.xp)])
+	var kill_xp := 0
+	for e: Dictionary in events:
+		if String(e.get("type", "")) == "kill":
+			kill_xp = int(e.get("xp", 0))
+			break
+	check(killed and (int(c.me.xp) == xp0 + kill_xp or int(c.me.level) > lv0), "XP aplicado pelo servidor e replicado no snapshot (+%d; antes %d/%d, depois %d/%d)" % [kill_xp, lv0, xp0, int(c.me.level), int(c.me.xp)])
 	c.chat("global", "pronto")
 	check(await wait_until(func() -> bool: return friend_presence("Bruno", false), 30.0), "presença: Bruno ficou offline ao cair")
 	friend_events = friend_events.filter(func(e: Dictionary) -> bool: return bool(e.get("online", false)) == false)
@@ -169,6 +182,26 @@ func _alice() -> void:
 	await _speedhack()
 	c.logout()
 	await wait(0.6)
+
+
+var _seen_events := 0
+## Monstros sem linha de tiro (árvore/rio no meio): ignorados por alguns segundos.
+var _skip := {}
+
+
+func _now() -> float:
+	return Time.get_ticks_msec() / 1000.0
+
+
+## Houve recusa `reason` desde a última consulta?
+func _refused_recent(reason: String) -> bool:
+	var hit := false
+	for i in range(_seen_events, events.size()):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "refused" and String(e.get("reason", "")) == reason:
+			hit = true
+	_seen_events = events.size()
+	return hit
 
 
 func _refused(act: String, reason: String) -> bool:
@@ -189,11 +222,21 @@ func _hunt(timeout: float) -> bool:
 		if not m.is_empty():
 			var me: Vector3 = c.predicted_position()
 			var to: Vector3 = (m.pos as Vector3) - me
+			# sem linha de tiro (árvore/rio no meio): troca de alvo por 5 s
+			if _refused_recent("los"):
+				_skip[int(m.id)] = _now() + 5.0
 			_move = Vector2(to.x, to.z).normalized() if Vector2(to.x, to.z).length() > 4.0 else Vector2.ZERO
 			c.action("fire", {"target": int(m.id)})
 		await wait(0.45)
 		t += 0.45
 	_move = Vector2.ZERO
+	if not has_event(events, "type", "kill"):
+		var why := {}
+		for e: Dictionary in events:
+			var k := "%s/%s" % [String(e.get("type", "")), String(e.get("reason", ""))]
+			why[k] = int(why.get(k, 0)) + 1
+		var m := nearest_monster()
+		print("CHECK INFO %s: caça sem abate: eventos %s; hp %d; eu %s; monstro mais perto %s" % [role, str(why), int(c.me.get("hp", 0)), str(server_pos()), str(m)])
 	return has_event(events, "type", "kill")
 
 
@@ -218,8 +261,9 @@ func _speedhack() -> void:
 	_drain()
 	var elapsed := (Time.get_ticks_msec() - t0) / 1000.0
 	var moved := server_pos().distance_to(start)
-	var limit := 4.2 * elapsed + 4.2 * 0.25 + 0.3   # tempo real + orçamento de jitter (0,25 s)
-	check(moved <= limit, "anti-speedhack: 12× comandos por %.2f s moveram %.2f m (limite tempo real %.2f m; sem validação seriam %.1f m)" % [elapsed, moved, limit, 4.2 * 0.05 * 240])
+	var v: float = c.move_speed
+	var limit := v * elapsed + v * 0.25 + 0.3   # tempo real + orçamento de jitter (0,25 s)
+	check(moved <= limit, "anti-speedhack: 12× comandos por %.2f s moveram %.2f m (limite tempo real %.2f m; sem validação seriam %.1f m)" % [elapsed, moved, limit, v * 0.05 * 240])
 	c.set_process(true)
 
 
@@ -239,9 +283,12 @@ func _bruno() -> void:
 	check(await wait_until(func() -> bool: return not find_player("Alice").is_empty(), 20.0), "vê o outro jogador (Alice) replicado")
 	check(await wait_until(func() -> bool: return has_event(friend_events, "op", "request"), 20.0), "recebe pedido de amizade da Alice em tempo real")
 	c.friend("accept", "Alice")
+	check(c.vocation == "warrior" and is_equal_approx(c.move_speed, 4.0), "vocação: servidor confirmou guerreiro (%s, %.1f m/s)" % [c.vocation, c.move_speed])
+	c.action("light")
+	check(await wait_until(func() -> bool: return "light" in Protocol.effect_names(int(c.me.get("effects", 0))), 5.0), "luz: Luz (utevo vis lux) ligada pelo servidor")
 	check(await wait_until(func() -> bool: return friend_presence("Alice", true) or _friend_listed("Alice"), 5.0), "presença: Alice online na lista de amigos")
 	check(await wait_until(func() -> bool: return seen_damage, 40.0), "vê o dano no monstro (vida replicada pelo servidor)")
-	check(seen_projectile, "vê a bola de fogo da Alice (projétil replicado)")
+	check(seen_projectile, "vê a flecha da Alice (projétil replicado)")
 	check(await wait_until(func() -> bool: return _chat_from("Alice", "pronto"), 40.0), "chat global da Alice chegou")
 	await wait(1.0)
 	var before := {"pos": server_pos(), "level": int(c.me.level), "xp": int(c.me.xp), "hp": int(c.me.hp)}
@@ -293,6 +340,7 @@ func _relogin() -> void:
 	check(not saved.is_empty(), "estado anterior do Bruno registrado")
 	c.connect_and_login("127.0.0.1", port, "Bruno", PASSWORD, false)
 	check(await wait_until(func() -> bool: return not welcomes.is_empty(), 15.0), "login com senha após reiniciar o servidor")
+	check(String(welcomes[0].get("vocation", "")) == "warrior" if not welcomes.is_empty() else false, "persistência: vocação guerreiro sobreviveu ao reinício")
 	await wait_until(func() -> bool: return int(c.snaps) > 2, 5.0)
 	var p: Array = saved.get("pos", [0, 0, 0])
 	var sp := Vector3(float(p[0]), float(p[1]), float(p[2]))

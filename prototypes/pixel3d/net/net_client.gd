@@ -32,7 +32,10 @@ var state := "offline"   # offline, connecting, hello, auth, game
 var eid := 0
 var token := ""
 var display_name := ""
-var me: Dictionary = {}           # último bloco "me" do servidor (vida, mana, nível...)
+var me: Dictionary = {}
+## Vocação confirmada pelo servidor e a velocidade a pé dela (a predição usa a mesma).
+var vocation := "mage"
+var move_speed := 4.2           # último bloco "me" do servidor (vida, mana, nível...)
 var infos: Dictionary = {}        # id → info estática (nome, tipo)
 var friends: Dictionary = {}
 var rtt_ms := 0.0
@@ -73,8 +76,11 @@ func _init(config: Dictionary = {}) -> void:
 
 
 ## Conecta e faz login (ou cadastro, se `register`). O resultado chega por sinal.
-func connect_and_login(address: String, port_number: int, user: String, password: String, register := false) -> Error:
+## `vocation` (mage|warrior|archer) só vale para personagem novo; o servidor confirma no welcome.
+func connect_and_login(address: String, port_number: int, user: String, password: String, register := false, vocation := "") -> Error:
 	_login = {"type": Protocol.C_REGISTER if register else Protocol.C_LOGIN, "name": user, "pass": password}
+	if not vocation.is_empty():
+		_login["vocation"] = vocation
 	_want_resume = false
 	return _open(address, port_number)
 
@@ -272,7 +278,10 @@ func _handle(pkt: PackedByteArray) -> void:
 				if _want_resume and not token.is_empty():
 					_send_control(Protocol.C_RESUME, {"token": token})
 				elif not _login.is_empty():
-					_send_control(int(_login.type), {"name": _login.name, "pass": _login.pass})
+					var lm := {"name": _login.name, "pass": _login.pass}
+					if _login.has("vocation"):
+						lm["vocation"] = _login.vocation
+					_send_control(int(_login.type), lm)
 			elif msg.has("t"):
 				rtt_ms = (_clock - float(msg.t)) * 1000.0
 		Protocol.S_WELCOME:
@@ -309,6 +318,8 @@ func _on_welcome(msg: Dictionary) -> void:
 	state = "game"
 	eid = int(msg.get("eid", 0))
 	display_name = String(msg.get("name", ""))
+	vocation = String(msg.get("vocation", "mage"))
+	move_speed = float(msg.get("speed", (cfg.get("move", {}) as Dictionary).get("speed", 4.2)))
 	if msg.has("token"):
 		token = String(msg.token)
 	_retry_n = 0
@@ -367,10 +378,11 @@ func _on_snapshot(snap: Dictionary) -> void:
 ## mesmo fator que o servidor usa (move.slow_factor).
 func _move_cfg() -> Dictionary:
 	var mv: Dictionary = cfg.get("move", {})
-	if me.is_empty() or (int(me.get("effects", 0)) & (1 << Protocol.EFFECTS.find("slow"))) == 0:
+	var slowed := not me.is_empty() and (int(me.get("effects", 0)) & (1 << Protocol.EFFECTS.find("slow"))) != 0
+	if not slowed and is_equal_approx(move_speed, float(mv.get("speed", 4.2))):
 		return mv
 	var out := mv.duplicate()
-	out.speed = float(mv.get("speed", 4.2)) * float(mv.get("slow_factor", 0.55))
+	out.speed = move_speed * (float(mv.get("slow_factor", 0.55)) if slowed else 1.0)
 	return out
 
 
@@ -446,6 +458,7 @@ func entities() -> Array:
 		var k := clampf((render_t - float(a[0])) / span, 0.0, 1.0) if span > 0.0001 else 1.0
 		var info: Dictionary = infos.get(id, {})
 		out.append({"id": id, "kind": int(eb.kind), "sub": int(eb.sub), "name": String(info.get("name", "")),
+			"vocation": String(info.get("vocation", "")), "level": int(info.get("level", 0)),
 			"pos": (ea.pos as Vector3).lerp(eb.pos, k), "yaw": lerp_angle(float(ea.yaw), float(eb.yaw), k),
 			"hp": int(eb.hp), "max_hp": int(eb.max_hp), "effects": Protocol.effect_names(int(eb.effects))})
 	return out

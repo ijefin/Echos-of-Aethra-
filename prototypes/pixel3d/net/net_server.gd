@@ -18,6 +18,8 @@ const Log := preload("res://prototypes/pixel3d/net/net_log.gd")
 const ServerAI := preload("res://prototypes/pixel3d/net/server_ai.gd")
 
 const TUNING_PATH := "res://prototypes/pixel3d/data/first_adventure.json"
+const CLASSES_PATH := "res://prototypes/pixel3d/data/classes.json"
+const CORE_SKILLS_PATH := "res://prototypes/pixel3d/data/core_skills.json"
 const COLLISION_PATH := "res://prototypes/pixel3d/net/data/collision_surface.json"
 
 var cfg: Dictionary
@@ -54,7 +56,7 @@ func setup(config: Dictionary) -> void:
 			tuning = v
 	var floors: Dictionary = Collision.load_floors(COLLISION_PATH, float(cfg.get("world_half", 100.0)))
 	var col: RefCounted = floors[0]
-	world = World.new(cfg, tuning, col)
+	world = World.new(cfg, tuning, col, 7, Store.load_dict(CLASSES_PATH), Store.load_dict(CORE_SKILLS_PATH))
 	_floors = floors
 	if is_inside_tree():
 		_attach_ai()
@@ -315,6 +317,8 @@ func _auth(id: int, c: Dictionary, type: int, msg: Dictionary) -> void:
 	var key := ""
 	var name_s := String(msg.get("name", "")) if msg.get("name") is String else ""
 	var pass_s := String(msg.get("pass", "")) if msg.get("pass") is String else ""
+	# vocação pedida: só vale para personagem novo; o mundo valida contra classes.json
+	c["vocation"] = String(msg.get("vocation", "")).left(16) if msg.get("vocation") is String else ""
 	match type:
 		Protocol.C_REGISTER:
 			var r: Dictionary = accounts.register(name_s, pass_s, int(Time.get_unix_time_from_system()))
@@ -353,13 +357,14 @@ func _enter_world(id: int, c: Dictionary, key: String, resumed: bool) -> void:
 	else:
 		token = sessions.issue(key, id)
 	var display: String = accounts.display_name(key)
-	var eid: int = world.add_player(key, display, accounts.character(key))
+	var eid: int = world.add_player(key, display, accounts.character(key), String(c.get("vocation", "")))
 	c.stage = "game"
 	c.eid = eid
 	c.key = key
 	eid_peer[eid] = id
 	var welcome := {"eid": eid, "name": display, "resumed": resumed, "tick": int(world.tick),
-		"tick_rate": int(cfg.tick_rate), "character": world.character_data(eid)}
+		"tick_rate": int(cfg.tick_rate), "character": world.character_data(eid),
+		"vocation": String(world.players[eid].vocation), "speed": float(world.players[eid].speed)}
 	if not token.is_empty():
 		welcome["token"] = token
 	_send_control(id, Protocol.S_WELCOME, welcome)

@@ -69,6 +69,7 @@
     "fire_cooldown": 0.42,
     "fire_range": 10.4,
     "range_tolerance": 1.5,
+    "melee_range_tolerance": 0.6,
     "shot_speed": 13.0,
     "shot_life": 0.8,
     "shot_radius": 0.25,

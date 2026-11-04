@@ -52,6 +52,10 @@ const KIND_PROJECTILE := 3
 const EFFECTS := ["dodge", "blink", "windup", "hurt", "light", "dead", "casting", "ring", "slow"]
 
 const MONSTER_SUBKINDS := ["frog", "spider", "wolf"]
+## Subtipo dos projéteis (KIND_PROJECTILE). Acrescente no FIM.
+const PROJECTILE_SUBKINDS := ["fire", "web", "arrow", "pierce"]
+## Vocações (entity_info.vocation / welcome.vocation usam o id em texto; esta ordem é só referência).
+const VOCATIONS := ["mage", "warrior", "archer"]
 
 const FLAG_DODGE := 1
 

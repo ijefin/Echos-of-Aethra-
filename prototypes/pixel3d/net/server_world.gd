@@ -41,11 +41,12 @@ var ai: RefCounted = null
 var monster_shots: Dictionary = {}
 
 
-func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCounted, seed_value := 7) -> void:
+## `classes_data` = data/classes.json e `core_data` = data/core_skills.json (vazios = só o mago antigo).
+func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCounted, seed_value := 7, classes_data: Dictionary = {}, core_data: Dictionary = {}) -> void:
 	cfg = net_cfg
 	tuning = adventure_tuning
 	col = collision
-	combat = Combat.new(tuning, cfg.get("combat", {}), col)
+	combat = Combat.new(tuning, cfg.get("combat", {}), col, classes_data, core_data)
 	interest = Interest.new(cfg)
 	_mcfg = cfg.get("monsters", {})
 	_mv = cfg.get("move", {})
@@ -85,10 +86,14 @@ func _v3(a: Variant, fallback: Vector3) -> Vector3:
 # ------------------------------------------------------------------ jogadores
 
 ## Entra no mundo com os dados salvos (ou novos). Devolve o eid.
-func add_player(key: String, display: String, saved: Dictionary) -> int:
+## `vocation` só vale para personagem NOVO (sem vocação salva); validada contra classes.json.
+func add_player(key: String, display: String, saved: Dictionary, vocation := "") -> int:
 	var eid := _id()
 	var st := AdventureState.new(tuning)
-	st.restore(saved.get("progress", {}))
+	var progress: Dictionary = saved.get("progress", {})
+	st.restore(progress)
+	st.vocation = combat.vocation_id(progress.get("vocation", vocation) if progress.has("vocation") else vocation)
+	st.hp_mult = combat.hp_mult(st.vocation)
 	var spawn := _v3(cfg.get("spawn", []), NPC + Vector3(0, 0, 2.3))
 	var spread := float(cfg.get("spawn_spread_m", 1.5))
 	var fresh := spawn + Vector3(_rng.randf_range(-spread, spread), 0, _rng.randf_range(-spread, spread))
@@ -100,7 +105,9 @@ func add_player(key: String, display: String, saved: Dictionary) -> int:
 	var p := {
 		"eid": eid, "key": key, "name": display, "ms": ms, "state": st,
 		"hp": clampf(float(saved.get("hp", st.max_hp())), 1.0, float(st.max_hp())),
-		"mana": clampf(float(saved.get("mana", combat.max_mana(st.level))), 0.0, float(combat.max_mana(st.level))),
+		"mana": clampf(float(saved.get("mana", combat.max_mana(st.level, st.vocation))), 0.0, float(combat.max_mana(st.level, st.vocation))),
+		"vocation": st.vocation, "speed": combat.move_speed(st.vocation, float(_mv.get("speed", 4.2))),
+		"armor": combat.armor(st.vocation),
 		"potions": {"hp": int((saved.get("potions", {}) as Dictionary).get("hp", pots.get("start_hp", 3))),
 			"mana": int((saved.get("potions", {}) as Dictionary).get("mana", pots.get("start_mana", 3)))},
 		"cd": {}, "effects": {}, "invuln_until": 0.0, "last_hurt": -999.0,
@@ -148,97 +155,234 @@ func region_of(pos: Vector3) -> String:
 
 # ------------------------------------------------------------------ ações
 
-## Ação do jogador. act = {act: "fire"|"blink"|"ring"|"potion"|"light", target: eid, x, z, kind}.
+## Ação do jogador. act = {act, target: eid, x, z, kind}. Ações:
+##   "fire"   ataque básico da vocação (mago: bola de fogo; arqueiro: flecha; guerreiro: golpe em arco)
+##   "blink"  Q da vocação (mago: Eco; guerreiro: Investida; arqueiro: Salto Evasivo)
+##   "ring"   R da vocação (mago: Anel de Brasa; guerreiro: Redemoinho; arqueiro: Flecha Perfurante)
+##   "q"/"r"  sinônimos de blink/ring;  "potion" (kind hp|mana);  "light" (core skill Luz)
 ## Devolve "" se aceita, ou o motivo da recusa (o servidor não confia em nada do cliente).
 func player_action(eid: int, act: Dictionary) -> String:
 	if not players.has(eid):
 		return "no_player"
 	var p: Dictionary = players[eid]
 	var a := String(act.get("act", ""))
-	var me: Vector3 = p.ms.pos
 	match a:
-		"fire":
-			var err: String = combat.can_use(p, "fire", now)
-			if err != "":
-				return err
-			var aim: Variant = _aim_point(act, me)
-			if aim == null:
-				return "target"
-			var tgt: Vector3 = aim
-			err = combat.target_ok(me, tgt, combat.fire_range())
-			if err != "":
-				return err
-			combat.commit(p, "fire", now)
-			var dir := Vector3(tgt.x - me.x, 0, tgt.z - me.z)
-			if dir.length() < 0.05:
-				dir = Vector3(-sin(float(p.ms.yaw)), 0, -cos(float(p.ms.yaw)))
-			p.ms.yaw = atan2(-dir.x, -dir.z)
-			var cm: Dictionary = cfg.get("combat", {})
-			var jid := _id()
-			projectiles[jid] = {"eid": jid, "owner": eid, "pos": me + Vector3(0, 0.85, 0),
-				"vel": dir.normalized() * float(cm.get("shot_speed", 13.0)), "life": float(cm.get("shot_life", 0.8)),
-				"dmg": combat.fire_damage(p)}
-			_set_effect(p, "casting", 0.42)
-			return ""
-		"blink":
-			var err: String = combat.can_use(p, "blink", now)
-			if err != "":
-				return err
-			var dest: Variant = combat.blink_target(me, Vector3(float(act.get("x", me.x)), 0, float(act.get("z", me.z))), _radius)
-			if dest == null:
-				return "blocked"
-			combat.commit(p, "blink", now)
-			p.ms.pos = dest
-			p.ms.dodge_t = -1.0
-			(p.validator as RefCounted).reset_budget()
-			_set_effect(p, "blink", 0.32)
-			events.append({"to": -1, "type": "blink", "eid": eid, "from": [me.x, me.z], "at": [(dest as Vector3).x, (dest as Vector3).z]})
-			return ""
-		"ring":
-			var err: String = combat.can_use(p, "ring", now)
-			if err != "":
-				return err
-			combat.commit(p, "ring", now)
-			_set_effect(p, "ring", 0.4)
-			var r := float(tuning.get("ring_radius", 3.2))
-			for m: Dictionary in monsters.values():
-				if String(m.state) != "dead" and Vector2(m.pos.x - me.x, m.pos.z - me.z).length() <= r + float(_mcfg.get("radius", 0.45)):
-					_damage_monster(m, combat.ring_damage(p), eid)
-			return ""
+		"fire", "attack":
+			return _act_attack(p, act)
+		"blink", "q":
+			return _act_q(p, act)
+		"ring", "r":
+			return _act_r(p, act)
 		"potion":
-			var kind := String(act.get("kind", ""))
-			if kind not in ["hp", "mana"]:
-				return "kind"
-			if now < float((p.cd as Dictionary).get("potion", 0.0)):
-				return "cooldown"
-			if int(p.potions[kind]) <= 0:
-				return "empty"
-			var pot: Dictionary = tuning.get("potion", {})
-			if kind == "hp":
-				if float(p.hp) >= float(p.state.max_hp()):
-					return "full"
-				p.hp = minf(float(p.state.max_hp()), float(p.hp) + float(pot.get("hp_heal", 45)))
-			else:
-				var mm := float(combat.max_mana(p.state.level))
-				if float(p.mana) >= mm:
-					return "full"
-				p.mana = minf(mm, float(p.mana) + float(pot.get("mana_restore", 35)))
-			p.potions[kind] = int(p.potions[kind]) - 1
-			(p.cd as Dictionary)["potion"] = now + float(pot.get("cooldown", 1.0))
-			return ""
+			return _act_potion(p, act)
 		"light":
-			# core skill de luz ("utevo vis lux"): só liga o efeito genérico; o visual é do cliente
+			# core skill de luz ("utevo vis lux"): mana + recarga de core_skills.json; relançar renova.
 			var err: String = combat.can_use(p, "light", now)
 			if err != "":
 				return err
 			combat.commit(p, "light", now)
-			_set_effect(p, "light", float((cfg.get("combat", {}) as Dictionary).get("light_duration_s", 120.0)))
+			var dur: float = combat.light_duration()
+			_set_effect(p, "light", dur)
+			events.append({"to": -1, "type": "light", "eid": int(p.eid), "left": dur, "duration": dur, "at": [p.ms.pos.x, p.ms.pos.z]})
 			return ""
 	return "unknown"
 
 
+## Segundos restantes da Luz do jogador (0 = apagada). Vai no entity_info para quem chega depois.
+func light_left(p: Dictionary) -> float:
+	return maxf(0.0, float((p.effects as Dictionary).get("light", now)) - now)
+
+
+func _act_attack(p: Dictionary, act: Dictionary) -> String:
+	var err: String = combat.can_use(p, "fire", now)
+	if err != "":
+		return err
+	var me: Vector3 = p.ms.pos
+	var kind: String = combat.attack_kind(p)
+	var aim: Variant = _aim_point(act, me, combat.fire_range(p))
+	if aim == null:
+		return "target"
+	var tgt: Vector3 = aim
+	if kind == "melee":
+		# golpe em arco: alcance da espada (+ raio do monstro + tolerância de latência)
+		var reach: float = combat.fire_range(p)
+		var tol := float((cfg.get("combat", {}) as Dictionary).get("melee_range_tolerance", 0.6))
+		if int(act.get("target", 0)) != 0 and Vector2(tgt.x - me.x, tgt.z - me.z).length() > reach + float(_mcfg.get("radius", 0.45)) + tol:
+			return "range"
+		combat.commit(p, "fire", now)
+		var dir := _face(p, tgt)
+		var v: Dictionary = combat.voc(p)
+		var hits := _melee(p, dir, reach, float(v.get("melee_arc_deg", 130.0)), combat.fire_damage(p))
+		_set_effect(p, "casting", float(v.get("attack_t", 0.5)))
+		events.append({"to": -1, "type": "slash", "eid": int(p.eid), "dir": [dir.x, dir.y], "reach": reach, "arc": float(v.get("melee_arc_deg", 130.0)), "hits": hits, "at": [me.x, me.z]})
+		return ""
+	err = combat.target_ok(me, tgt, combat.fire_range(p))
+	if err != "":
+		return err
+	combat.commit(p, "fire", now)
+	_shoot(p, tgt, combat.fire_damage(p), false)
+	_set_effect(p, "casting", combat.cooldown("fire", p))
+	return ""
+
+
+## Q: Eco (mago), Investida (guerreiro), Salto Evasivo (arqueiro).
+func _act_q(p: Dictionary, act: Dictionary) -> String:
+	var err: String = combat.can_use(p, "blink", now)
+	if err != "":
+		return err
+	var me: Vector3 = p.ms.pos
+	var to := Vector3(float(act.get("x", me.x)), 0, float(act.get("z", me.z)))
+	if not is_finite(to.x) or not is_finite(to.z):
+		return "target"
+	match combat.q_id(p):
+		"charge", "leap":
+			var q: Dictionary = combat.skill_cfg(p, "q")
+			var d2 := Vector2(to.x - me.x, to.z - me.z)
+			var dir := d2.normalized() if d2.length() > 0.3 else Vector2(-sin(float(p.ms.yaw)), -cos(float(p.ms.yaw)))
+			var charge: bool = combat.q_id(p) == "charge"
+			if not charge:
+				dir = -dir   # salta PARA TRÁS em relação à mira
+			var path: Array[Vector2] = combat.dash_path(me, dir, float(q.get("distance", 5.0)), _radius)
+			if path.is_empty():
+				return "blocked"
+			combat.commit(p, "blink", now)
+			var end: Vector2 = path[path.size() - 1]
+			var hit_id := 0
+			if charge:
+				# o primeiro monstro no caminho leva o golpe e a investida para nele
+				for i in path.size():
+					for m: Dictionary in monsters.values():
+						if String(m.state) != "dead" and path[i].distance_to(Vector2(m.pos.x, m.pos.z)) <= 1.3:
+							hit_id = int(m.eid)
+							end = path[i]
+							break
+					if hit_id != 0:
+						break
+				if hit_id != 0:
+					_damage_monster(monsters[hit_id], combat.skill_damage(p, "q"), int(p.eid))
+			p.ms.pos = Vector3(end.x, col.ground_y(end.x, end.y), end.y)
+			p.ms.dodge_t = -1.0
+			p.ms.yaw = atan2(dir.x, dir.y) if not charge else atan2(-dir.x, -dir.y)
+			(p.validator as RefCounted).reset_budget()
+			var t := float(q.get("time", 0.3))
+			_set_effect(p, "dodge", t)   # visual de esquiva/investida para os outros
+			p.invuln_until = maxf(float(p.invuln_until), now + t)
+			events.append({"to": -1, "type": "dash", "eid": int(p.eid), "skill": combat.q_id(p), "from": [me.x, me.z],
+				"at": [end.x, end.y], "time": t, "hit": hit_id})
+			return ""
+	var dest: Variant = combat.blink_target(me, to, _radius)
+	if dest == null:
+		return "blocked"
+	combat.commit(p, "blink", now)
+	p.ms.pos = dest
+	p.ms.dodge_t = -1.0
+	(p.validator as RefCounted).reset_budget()
+	_set_effect(p, "blink", 0.32)
+	events.append({"to": -1, "type": "blink", "eid": int(p.eid), "from": [me.x, me.z], "at": [(dest as Vector3).x, (dest as Vector3).z]})
+	return ""
+
+
+## R: Anel de Brasa (mago), Redemoinho de Aço (guerreiro), Flecha Perfurante (arqueiro).
+func _act_r(p: Dictionary, act: Dictionary) -> String:
+	var err: String = combat.can_use(p, "ring", now)
+	if err != "":
+		return err
+	var me: Vector3 = p.ms.pos
+	match combat.r_id(p):
+		"whirl":
+			combat.commit(p, "ring", now)
+			var r: Dictionary = combat.skill_cfg(p, "r")
+			var hits := _melee(p, Vector2(-sin(float(p.ms.yaw)), -cos(float(p.ms.yaw))), float(r.get("radius", 2.6)), 360.0, combat.skill_damage(p, "r"))
+			_set_effect(p, "ring", 0.6)
+			events.append({"to": -1, "type": "whirl", "eid": int(p.eid), "radius": float(r.get("radius", 2.6)), "hits": hits, "at": [me.x, me.z]})
+			return ""
+		"pierce":
+			var sp: Dictionary = combat.shot_params(p, true)
+			var aim: Variant = _aim_point(act, me, float(sp.speed) * float(sp.life))
+			if aim == null:
+				return "target"
+			combat.commit(p, "ring", now)
+			_shoot(p, aim, combat.skill_damage(p, "r"), true)
+			_set_effect(p, "casting", 0.5)
+			return ""
+	combat.commit(p, "ring", now)
+	_set_effect(p, "ring", 0.4)
+	var rr := float(tuning.get("ring_radius", 3.2))
+	for m: Dictionary in monsters.values():
+		if String(m.state) != "dead" and Vector2(m.pos.x - me.x, m.pos.z - me.z).length() <= rr + float(_mcfg.get("radius", 0.45)):
+			_damage_monster(m, combat.ring_damage(p), int(p.eid))
+	return ""
+
+
+func _act_potion(p: Dictionary, act: Dictionary) -> String:
+	var kind := String(act.get("kind", ""))
+	if kind not in ["hp", "mana"]:
+		return "kind"
+	if now < float((p.cd as Dictionary).get("potion", 0.0)):
+		return "cooldown"
+	if int(p.potions[kind]) <= 0:
+		return "empty"
+	var pot: Dictionary = tuning.get("potion", {})
+	if kind == "hp":
+		if float(p.hp) >= float(p.state.max_hp()):
+			return "full"
+		p.hp = minf(float(p.state.max_hp()), float(p.hp) + float(pot.get("hp_heal", 45)))
+	else:
+		var mm := float(combat.max_mana(p.state.level, p))
+		if float(p.mana) >= mm:
+			return "full"
+		p.mana = minf(mm, float(p.mana) + float(pot.get("mana_restore", 35)))
+	p.potions[kind] = int(p.potions[kind]) - 1
+	(p.cd as Dictionary)["potion"] = now + float(pot.get("cooldown", 1.0))
+	return ""
+
+
+## Vira o jogador para `tgt` e devolve a direção XZ (unitária).
+func _face(p: Dictionary, tgt: Vector3) -> Vector2:
+	var me: Vector3 = p.ms.pos
+	var d := Vector2(tgt.x - me.x, tgt.z - me.z)
+	if d.length() < 0.05:
+		d = Vector2(-sin(float(p.ms.yaw)), -cos(float(p.ms.yaw)))
+	d = d.normalized()
+	p.ms.yaw = atan2(-d.x, -d.y)
+	return d
+
+
+## Golpe em setor (arco em graus; 360 = em volta): todos os monstros vivos no alcance
+## (+ raio do monstro), dentro do ângulo e com linha livre. Devolve quantos acertou.
+func _melee(p: Dictionary, dir: Vector2, reach: float, arc_deg: float, dmg: int) -> int:
+	var me: Vector3 = p.ms.pos
+	var a := Vector2(me.x, me.z)
+	var hits := 0
+	for m: Dictionary in monsters.values():
+		if String(m.state) == "dead":
+			continue
+		var to := Vector2(m.pos.x, m.pos.z) - a
+		if to.length() > reach + float(_mcfg.get("radius", 0.45)):
+			continue
+		if arc_deg < 359.0 and to.length() > 0.2 and rad_to_deg(absf(dir.angle_to(to.normalized()))) > arc_deg * 0.5:
+			continue
+		if not col.segment_clear(a, Vector2(m.pos.x, m.pos.z), 0.0):
+			continue
+		_damage_monster(m, dmg, int(p.eid))
+		hits += 1
+	return hits
+
+
+## Projétil do jogador (bola de fogo, flecha, flecha perfurante).
+func _shoot(p: Dictionary, tgt: Vector3, dmg: int, pierce: bool) -> void:
+	var me: Vector3 = p.ms.pos
+	var d := _face(p, tgt)
+	var sp: Dictionary = combat.shot_params(p, pierce)
+	var jid := _id()
+	var sub := maxi(0, Protocol.PROJECTILE_SUBKINDS.find(String(sp.name)))
+	projectiles[jid] = {"eid": jid, "owner": int(p.eid), "pos": me + Vector3(0, 0.85, 0),
+		"vel": Vector3(d.x, 0, d.y) * float(sp.speed), "life": float(sp.life), "dmg": dmg,
+		"pierce": pierce, "hit": [], "name": String(sp.name), "sub": sub}
+
+
 ## Ponto de mira: entidade alvo (posição do SERVIDOR, não a do cliente) ou ponto no chão.
-func _aim_point(act: Dictionary, me: Vector3) -> Variant:
+func _aim_point(act: Dictionary, me: Vector3, max_range: float) -> Variant:
 	var tid := int(act.get("target", 0))
 	if tid != 0:
 		if monsters.has(tid) and String(monsters[tid].state) != "dead":
@@ -252,8 +396,8 @@ func _aim_point(act: Dictionary, me: Vector3) -> Variant:
 	if not is_finite(t.x) or not is_finite(t.z):
 		return null
 	var d := Vector2(t.x - me.x, t.z - me.z)
-	if d.length() > combat.fire_range():   # ponto no chão longe: atira na direção até o alcance
-		d = d.normalized() * combat.fire_range()
+	if d.length() > max_range:   # ponto no chão longe: atira na direção até o alcance
+		d = d.normalized() * max_range
 	return Vector3(me.x + d.x, 0, me.z + d.y)
 
 
@@ -305,7 +449,7 @@ func _step_player(p: Dictionary, dt: float) -> void:
 	if float(p.ms.dodge_t) >= 0.0:
 		_set_effect(p, "dodge", 0.06)
 	var st: RefCounted = p.state
-	p.mana = minf(float(combat.max_mana(st.level)), float(p.mana) + float(tuning.get("mana_regen_per_second", 2.5)) * dt)
+	p.mana = minf(float(combat.max_mana(st.level, p)), float(p.mana) + float(tuning.get("mana_regen_per_second", 2.5)) * dt)
 	if now - float(p.last_hurt) > float(tuning.get("regen_delay", 5.0)):
 		p.hp = minf(float(st.max_hp()), float(p.hp) + float(tuning.get("regen_per_second", 4.0)) * dt)
 	for e: String in (p.effects as Dictionary).keys():
@@ -315,10 +459,13 @@ func _step_player(p: Dictionary, dt: float) -> void:
 
 ## Parâmetros de movimento do jogador agora (lento da teia reduz a velocidade a pé).
 func _move_cfg(p: Dictionary) -> Dictionary:
-	if not (p.effects as Dictionary).has("slow"):
+	var speed := float(p.get("speed", _mv.get("speed", 4.2)))   # velocidade da vocação
+	if not (p.effects as Dictionary).has("slow") and is_equal_approx(speed, float(_mv.get("speed", 4.2))):
 		return _mv
 	var mv := _mv.duplicate()
-	mv.speed = float(_mv.speed) * float(p.get("slow_factor", _mv.get("slow_factor", 0.55)))
+	mv.speed = speed
+	if (p.effects as Dictionary).has("slow"):
+		mv.speed = speed * float(p.get("slow_factor", _mv.get("slow_factor", 0.55)))
 	return mv
 
 
@@ -349,6 +496,12 @@ func _step_projectiles(dt: float) -> void:
 			var b := Vector2(to.x, to.z)
 			var closest := Geometry2D.get_closest_point_to_segment(mp, a, b)
 			if closest.distance_to(mp) <= mr + sr:
+				if bool(j.get("pierce", false)):
+					# perfurante: atravessa monstros, cada um leva o golpe uma vez
+					if not (j.hit as Array).has(int(m.eid)):
+						(j.hit as Array).append(int(m.eid))
+						_damage_monster(m, int(j.dmg), int(j.owner))
+					continue
 				_damage_monster(m, int(j.dmg), int(j.owner))
 				hit = true
 				break
@@ -406,7 +559,7 @@ func _damage_monster(m: Dictionary, amount: int, by: int) -> void:
 		events.append({"to": by, "type": "kill", "target": int(m.eid), "name": String(m.name), "xp": int(m.xp), "at": [m.pos.x, m.pos.z]})
 		if st.level > old_level:
 			p.hp = float(st.max_hp())
-			p.mana = float(combat.max_mana(st.level))
+			p.mana = float(combat.max_mana(st.level, p))
 			events.append({"to": by, "type": "level", "from": old_level, "level": st.level})
 
 
@@ -497,6 +650,7 @@ func damage_player(eid: int, amount: int, source: String) -> bool:
 	var p: Dictionary = players.get(eid, {})
 	if p.is_empty() or float(p.hp) <= 0.0 or now < float(p.invuln_until) or float(p.ms.dodge_t) >= 0.0:
 		return false
+	amount = maxi(1, roundi(float(amount) * (1.0 - float(p.get("armor", 0.0)))))   # armadura da vocação
 	p.hp = maxf(0.0, float(p.hp) - float(amount))
 	p.last_hurt = now
 	p.invuln_until = now + float((cfg.get("combat", {}) as Dictionary).get("hurt_invulnerable_s", 0.75))
@@ -537,7 +691,7 @@ func snapshot_for(eid: int) -> Dictionary:
 	var st: RefCounted = p.state
 	var cd: Dictionary = p.cd
 	var me := {"pos": p.ms.pos, "dodge_t": p.ms.dodge_t, "dodge_cd": p.ms.dodge_cd, "dodge_dir": p.ms.dodge_dir,
-		"hp": roundi(float(p.hp)), "max_hp": st.max_hp(), "mana": floori(float(p.mana)), "max_mana": combat.max_mana(st.level),
+		"hp": roundi(float(p.hp)), "max_hp": st.max_hp(), "mana": floori(float(p.mana)), "max_mana": combat.max_mana(st.level, p),
 		"level": st.level, "xp": st.xp, "xp_req": st.xp_required(),
 		"pot_hp": p.potions.hp, "pot_mana": p.potions.mana, "effects": _player_effects(p)}
 	for k: String in ["fire", "blink", "ring", "potion"]:
@@ -562,12 +716,12 @@ func entity_state(id: int) -> Dictionary:
 	if projectiles.has(id):
 		var j: Dictionary = projectiles[id]
 		var v: Vector3 = j.vel
-		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "sub": 0, "pos": j.pos, "yaw": atan2(-v.x, -v.z),
+		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "sub": int(j.get("sub", 0)), "pos": j.pos, "yaw": atan2(-v.x, -v.z),
 			"hp": 0, "max_hp": 0, "effects": 0}
 	if monster_shots.has(id):
 		var s: Dictionary = monster_shots[id]
 		var sv: Vector3 = s.vel
-		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "sub": 1, "pos": s.pos, "yaw": atan2(-sv.x, -sv.z),
+		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "sub": Protocol.PROJECTILE_SUBKINDS.find("web"), "pos": s.pos, "yaw": atan2(-sv.x, -sv.z),
 			"hp": 0, "max_hp": 0, "effects": 0}
 	return {}
 
@@ -575,12 +729,14 @@ func entity_state(id: int) -> Dictionary:
 ## Informação estática enviada (confiável) quando a entidade entra na área de interesse.
 func entity_info(id: int) -> Dictionary:
 	if players.has(id):
-		return {"id": id, "kind": Protocol.KIND_PLAYER, "name": String(players[id].name), "level": int(players[id].state.level)}
+		var pl: Dictionary = players[id]
+		return {"id": id, "kind": Protocol.KIND_PLAYER, "name": String(pl.name), "level": int(pl.state.level),
+			"vocation": String(pl.vocation), "light_left": light_left(pl)}
 	if monsters.has(id):
 		return {"id": id, "kind": Protocol.KIND_MONSTER, "name": String(monsters[id].name), "monster": String(monsters[id].kind),
 			"level": int(monsters[id].level)}
 	if projectiles.has(id):
-		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "name": "fire", "owner": int(projectiles[id].owner)}
+		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "name": String(projectiles[id].get("name", "fire")), "owner": int(projectiles[id].owner)}
 	if monster_shots.has(id):
 		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "name": "web", "owner": 0}
 	return {}
