@@ -9,6 +9,9 @@ var stage := "available"
 var lit: Array[int] = []
 var cave_kills: Dictionary = {}
 var _paid_deaths: Dictionary = {}
+## Vocação escolhida (mage / warrior / archer) e multiplicador de vida dela (classes.json).
+var vocation := "mage"
+var hp_mult := 1.0
 
 func _init(tuning: Dictionary) -> void:
 	config = tuning
@@ -18,7 +21,7 @@ func xp_required() -> int:
 	return int(config.xp_first) + (level - 1) * int(config.xp_step)
 
 func max_hp() -> int:
-	return int(config.player_hp) + (level - 1) * int(config.hp_per_level)
+	return int(round((int(config.player_hp) + (level - 1) * int(config.hp_per_level)) * hp_mult))
 
 func has_skill(id: String) -> bool:
 	return level >= int(config.get(id + "_level", 1))
@@ -83,11 +86,12 @@ func has_reward() -> bool:
 	return stage in ["claimed", "complete"]
 
 func snapshot() -> Dictionary:
-	return {"version": 1, "level": level, "xp": xp, "stage": stage, "lit": lit.duplicate(), "cave_kills": cave_kills.duplicate()}
+	return {"version": 1, "vocation": vocation, "level": level, "xp": xp, "stage": stage, "lit": lit.duplicate(), "cave_kills": cave_kills.duplicate()}
 
 ## Validate local save values and reconstruct consistent terminal quest states.
 func restore(data: Dictionary) -> void:
 	level = clampi(int(data.get("level", 1)), 1, int(config.max_level))
+	vocation = String(data.get("vocation", vocation))
 	xp = clampi(int(data.get("xp", 0)), 0, xp_required() - 1)
 	var saved_stage := String(data.get("stage", "available"))
 	stage = saved_stage if saved_stage in ["available", "active", "claimed", "complete"] else "available"

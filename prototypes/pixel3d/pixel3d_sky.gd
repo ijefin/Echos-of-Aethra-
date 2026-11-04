@@ -51,7 +51,8 @@ func build(root: Node3D, sun_light: DirectionalLight3D, environment: Environment
 	sun.shadow_opacity = 0.82
 	moon.shadow_opacity = 0.62
 	root.add_child(moon)
-	RenderingServer.global_shader_parameter_add(&"sun_dir", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3.DOWN)
+	if not Engine.has_meta("aethra_globals"):  # marcado pelo demo depois do 1º build
+		RenderingServer.global_shader_parameter_add(&"sun_dir", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3.DOWN)
 	shaft_mat = ShaderMaterial.new()
 	shaft_mat.shader = load("res://prototypes/pixel3d/shaders/sun_shaft.gdshader")
 	var quad := QuadMesh.new()

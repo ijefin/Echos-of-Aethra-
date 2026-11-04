@@ -15,7 +15,7 @@ const MUTED := Color(0.7, 0.68, 0.62)
 const GOLD := Color(1.0, 0.82, 0.38)
 const HP_COL := Color(0.78, 0.2, 0.18)
 const MP_COL := Color(0.25, 0.48, 0.9)
-const PANELS := ["help", "quest", "char", "bag"]
+const PANELS := ["help", "quest", "char", "bag", "vocation"]
 
 var adventure
 var panel := ""
@@ -145,6 +145,8 @@ func _draw() -> void:
 			_char_panel()
 		"bag":
 			_bag_panel()
+		"vocation":
+			_vocation_panel()
 
 
 func _bar(r: Rect2, ratio: float, color: Color, value: String) -> void:
@@ -157,12 +159,14 @@ func _bar(r: Rect2, ratio: float, color: Color, value: String) -> void:
 
 ## Slot: {key, icon, cd (0..1), locked_level, count}
 func _slots(state, demo) -> Array:
-	var blink_cd: float = clampf(demo._blink_cd / maxf(0.01, float(adventure.config.blink_cooldown)), 0, 1)
-	var ring_cd: float = clampf(adventure.ring_cd / maxf(0.01, float(adventure.config.ring_cooldown)), 0, 1)
+	var voc: Dictionary = demo._voc.cfg
+	var blink_cd: float = clampf(demo._blink_cd / maxf(0.01, float(voc.q.cooldown)), 0, 1)
+	var ring_cd: float = clampf(adventure.ring_cd / maxf(0.01, float(voc.r.cooldown)), 0, 1)
+	var attack_icon := {"fireball": "fire", "melee": "sword", "arrow": "bow"}.get(String(voc.attack), "fire") as String
 	return [
-		{"key": "Clique", "icon": "fire", "cd": 0.0, "lock": 0, "cost": adventure.cost("fire")},
-		{"key": "Q", "icon": "eco", "cd": blink_cd, "lock": 0 if state.has_skill("blink") else int(adventure.config.blink_level), "cost": adventure.cost("blink")},
-		{"key": "R", "icon": "ring", "cd": ring_cd, "lock": 0 if state.has_skill("ring") else int(adventure.config.ring_level), "cost": adventure.cost("ring")},
+		{"key": "Clique", "icon": attack_icon, "cd": 0.0, "lock": 0, "cost": adventure.cost("fire")},
+		{"key": "Q", "icon": String(voc.q.icon), "cd": blink_cd, "lock": 0 if state.has_skill("blink") else int(adventure.config.blink_level), "cost": adventure.cost("blink")},
+		{"key": "R", "icon": String(voc.r.icon), "cd": ring_cd, "lock": 0 if state.has_skill("ring") else int(adventure.config.ring_level), "cost": adventure.cost("ring")},
 		{"key": "Espaço", "icon": "dodge", "cd": clampf(demo._dodge_cd_left() if demo.has_method("_dodge_cd_left") else 0.0, 0, 1), "lock": 0},
 		{"key": "1", "icon": "hp_potion", "cd": adventure.potion_cd_ratio(), "lock": 0, "count": int(adventure.potions.hp)},
 		{"key": "2", "icon": "mp_potion", "cd": adventure.potion_cd_ratio(), "lock": 0, "count": int(adventure.potions.mana)},
@@ -186,6 +190,26 @@ func _slot(r: Rect2, s: Dictionary) -> void:
 		"ring":
 			draw_arc(c, 11 * k, 0, TAU, 24, Color(1.0, 0.5, 0.15) * tint, 4 * k)
 			draw_arc(c, 5 * k, 0, TAU, 16, Color(1.0, 0.8, 0.4) * tint, 2 * k)
+		"sword":
+			draw_line(c + Vector2(-8, 8) * k, c + Vector2(8, -8) * k, Color(0.85, 0.88, 0.95) * tint, 3 * k)
+			draw_line(c + Vector2(-9, 3) * k, c + Vector2(-3, 9) * k, Color(0.75, 0.6, 0.3) * tint, 3 * k)
+		"bow":
+			draw_arc(c + Vector2(4, 0) * k, 11 * k, PI * 0.62, PI * 1.38, 12, Color(0.7, 0.48, 0.25) * tint, 3 * k)
+			draw_line(c + Vector2(-4.5, -10) * k, c + Vector2(-4.5, 10) * k, Color(0.92, 0.9, 0.82) * tint, 1.2 * k)
+			draw_line(c + Vector2(-9, 0) * k, c + Vector2(10, 0) * k, Color(0.85, 0.82, 0.75) * tint, 1.8 * k)
+		"charge":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-10, -6) * k, c + Vector2(6, -6) * k, c + Vector2(11, 0) * k, c + Vector2(6, 6) * k, c + Vector2(-10, 6) * k, c + Vector2(-5, 0) * k]), Color(0.95, 0.75, 0.35) * tint)
+		"whirl":
+			draw_arc(c, 10 * k, 0.3, TAU - 0.3, 20, Color(0.85, 0.9, 1.0) * tint, 3 * k)
+			draw_arc(c, 5 * k, 1.5, TAU + 1.0, 14, Color(0.6, 0.7, 0.9) * tint, 2 * k)
+		"leap":
+			draw_arc(c + Vector2(0, 6) * k, 9 * k, PI * 1.05, PI * 1.95, 12, Color(0.55, 0.9, 0.6) * tint, 3 * k)
+			draw_circle(c + Vector2(-8, 5) * k, 2.5 * k, Color(0.55, 0.9, 0.6) * tint)
+		"pierce":
+			draw_line(c + Vector2(-11, 0) * k, c + Vector2(9, 0) * k, Color(0.7, 0.9, 1.0) * tint, 2.5 * k)
+			draw_colored_polygon(PackedVector2Array([c + Vector2(12, 0) * k, c + Vector2(6, -4) * k, c + Vector2(6, 4) * k]), Color(0.85, 0.95, 1.0) * tint)
+			for x: float in [-4.0, 2.0]:
+				draw_arc(c + Vector2(x, 0) * k, 5 * k, -0.9, 0.9, 6, Color(0.6, 0.85, 1.0, 0.7 * tint.a), 1.5 * k)
 		"dodge":
 			for o: float in [-5.0, 3.0]:
 				draw_polyline(PackedVector2Array([c + Vector2(o - 3, -7) * k, c + Vector2(o + 4, 0) * k, c + Vector2(o - 3, 7) * k]), Color(0.92, 0.92, 0.88) * tint, 2.5 * k)
@@ -261,7 +285,7 @@ func _help_panel() -> void:
 	var y := _title(r, "ATALHOS", "H")
 	var cols := [
 		["MOVIMENTO E COMBATE", [["W A S D", "andar"], ["Clique", "bola de fogo (mira no mouse)"], ["Q · Botão dir.", "Eco de Aethra (teleporte)"], ["Espaço", "esquiva"], ["R", "Anel de Brasa"], ["1 · 2", "poção de vida · de mana"], ["3", "Luz — utevo vis lux"]]],
-		["MUNDO E JANELAS", [["E", "interagir / falar"], ["I", "bolsa"], ["J", "missões"], ["C", "personagem"], ["H · F1", "atalhos"], ["Roda", "zoom"], ["N", "+3 horas"], ["L", "luz da arma"], ["Esc", "fechar janela"]]],
+		["MUNDO E JANELAS", [["E", "interagir / falar"], ["I", "bolsa"], ["J", "missões"], ["C", "personagem"], ["H · F1", "atalhos"], ["Roda", "zoom"], ["N", "+3 horas"], ["L", "luz da arma"], ["F2", "vocação"], ["Esc", "fechar janela"]]],
 	]
 	for ci in cols.size():
 		var cx := r.position.x + _px(24) + ci * r.size.x * 0.5
@@ -291,9 +315,10 @@ func _char_panel() -> void:
 	var r := _panel_rect(420, 300)
 	var y := _title(r, "PERSONAGEM", "C")
 	var st = adventure.state
-	var rows := [["Classe", "Mago de Fogo"], ["Nível", "%d" % st.level], ["Experiência", "%d / %d" % [st.xp, st.xp_required()]],
+	var voc: Dictionary = adventure.demo._voc.cfg
+	var rows := [["Vocação", String(voc.name)], ["Nível", "%d" % st.level], ["Experiência", "%d / %d" % [st.xp, st.xp_required()]],
 		["Vida", "%d / %d" % [ceili(adventure.hp), st.max_hp()]], ["Mana", "%d / %d" % [floori(adventure.mana), adventure.max_mana()]],
-		["Dano do fogo", "%d" % adventure.basic_damage()]]
+		[String(voc.attack_label), "%d" % adventure.basic_damage()], ["Armadura", "%d%%" % roundi(float(voc.armor) * 100.0)]]
 	for row: Array in rows:
 		_text(String(row[0]), Vector2(r.position.x + _px(22), y), 12, MUTED)
 		_text(String(row[1]), Vector2(r.position.x, y), 12, CREAM, true, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(22))
@@ -315,3 +340,84 @@ func _bag_panel() -> void:
 	y += _px(22)
 	_text("•  Poção de vida  ×%d" % int(adventure.potions.hp), Vector2(r.position.x + _px(22), y), 12, CREAM)
 	_text("•  Poção de mana  ×%d" % int(adventure.potions.mana), Vector2(r.position.x + _px(22), y + _px(20)), 12, CREAM)
+
+
+
+# ------------------------------------------------------------------ vocação
+
+## Retângulos dos 3 cartões (para clique). Calculados no desenho.
+var _voc_cards: Array[Rect2] = []
+
+
+func _vocation_panel() -> void:
+	var data: Dictionary = adventure.demo._voc.all
+	var order: Array = data.order
+	var r := _panel_rect(760, 380)
+	var y := _title(r, "ESCOLHA SUA VOCAÇÃO", "F2")
+	_voc_cards.clear()
+	var w := (r.size.x - _px(24) * 2 - _px(14) * (order.size() - 1)) / order.size()
+	for i in order.size():
+		var id := String(order[i])
+		var v: Dictionary = data.classes[id]
+		var card := Rect2(r.position.x + _px(24) + i * (w + _px(14)), y - _px(14), w, r.end.y - y - _px(10))
+		_voc_cards.append(card)
+		var current: bool = id == adventure.demo._voc.id
+		_frame(card, Color(0.09, 0.08, 0.06, 0.92) if current else Color(0.05, 0.055, 0.075, 0.85))
+		if current:
+			draw_rect(card, GOLD, false, 2.0)
+		var cx := card.position.x + _px(14)
+		var cy := card.position.y + _px(26)
+		_keycap(Vector2(cx, cy), "%d" % (i + 1))
+		_text(String(v.name).to_upper(), Vector2(cx + _px(36), cy), 14, GOLD if current else CREAM, true)
+		cy += _px(26)
+		cy = _wrap(String(v.role), Vector2(cx, cy), card.size.x - _px(28), 11, MUTED)
+		cy += _px(12)
+		var stats: Dictionary = v.stats
+		for key: String in ["vida", "mana", "alcance", "mobilidade"]:
+			_text(key.capitalize(), Vector2(cx, cy), 11, CREAM)
+			var bx := cx + _px(84)
+			for p in 5:
+				var col := GOLD if p < int(stats.get(key, 0)) else Color(0.25, 0.23, 0.2)
+				draw_rect(Rect2(bx + p * _px(16), cy - _px(9), _px(12), _px(8)), col)
+			cy += _px(20)
+		cy += _px(6)
+		_text("Q  " + String(v.q.name), Vector2(cx, cy), 11, CREAM)
+		cy += _px(18)
+		_text("R  " + String(v.r.name), Vector2(cx, cy), 11, CREAM)
+
+
+## Texto com quebra de linha simples; devolve o y seguinte.
+func _wrap(t: String, pos: Vector2, width: float, size_pt: int, color: Color) -> float:
+	var line := ""
+	var y := pos.y
+	for word in t.split(" "):
+		var test := word if line.is_empty() else line + " " + word
+		if _font.get_string_size(test, HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(size_pt * _ui)).x > width and not line.is_empty():
+			_text(line, Vector2(pos.x, y), size_pt, color)
+			y += _px(size_pt + 5)
+			line = word
+		else:
+			line = test
+	if not line.is_empty():
+		_text(line, Vector2(pos.x, y), size_pt, color)
+		y += _px(size_pt + 5)
+	return y
+
+
+## Tecla 1..3 com o painel aberto: escolhe a vocação (true = consumiu a tecla).
+func vocation_key(index: int) -> bool:
+	if panel != "vocation":
+		return false
+	var order: Array = adventure.demo._voc.all.order
+	if index >= 0 and index < order.size():
+		adventure.choose_vocation(String(order[index]))
+	return true
+
+
+func vocation_click(pos: Vector2) -> bool:
+	if panel != "vocation":
+		return false
+	for i in _voc_cards.size():
+		if _voc_cards[i].has_point(pos):
+			return vocation_key(i)
+	return true

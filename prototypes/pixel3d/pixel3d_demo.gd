@@ -35,6 +35,7 @@ const Camps := preload("res://prototypes/pixel3d/pixel3d_camps.gd")
 const Adventure := preload("res://prototypes/pixel3d/pixel3d_adventure.gd")
 const AmbienceAudio := preload("res://prototypes/pixel3d/pixel3d_ambience_audio.gd")
 const WorldLabels := preload("res://prototypes/pixel3d/world_labels_overlay.gd")
+const Vocations := preload("res://prototypes/pixel3d/vocations.gd")
 const HALF := 60.0             # meio lado do mapa (u)
 const HELP := "WASD andar · clique/segurar: fogo · Espaço: esquiva · E: interagir · Q: Eco · R: Anel · I: bolsa"
 ## Paletas de copa por bioma (verde, outono, florada, violeta, dourada).
@@ -124,6 +125,16 @@ var _blink_to := Vector3.ZERO
 var _blink_dir := Vector3.FORWARD
 var _blinked := false
 var _dissolve := 0.0
+## Vocação jogada (mage / warrior / archer) e sua lógica (vocations.gd).
+var _class := "mage"
+var _voc
+var _speed := SPEED
+## Investida/salto: parâmetros do "dash" atual (a esquiva comum usa os valores DODGE_*).
+var _dash_speed := DODGE_SPEED
+var _dash_len := DODGE_T
+var _dash_anim := "Dodge_Forward"
+var _dash_kind := ""
+var _once_t := 0.0
 
 
 func _ready() -> void:
@@ -156,13 +167,22 @@ func _ready() -> void:
 	cloud.seamless = true
 	cloud.width = 256
 	cloud.height = 256
-	RenderingServer.global_shader_parameter_add(&"cloud_noise", RenderingServer.GLOBAL_VAR_TYPE_SAMPLER2D, cloud)
-	RenderingServer.global_shader_parameter_add(&"player_world", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3.ZERO)
+	# (a cena é recarregada ao trocar de vocação: os globais já existem na 2ª vez)
+	if not Engine.has_meta("aethra_globals"):
+		RenderingServer.global_shader_parameter_add(&"cloud_noise", RenderingServer.GLOBAL_VAR_TYPE_SAMPLER2D, cloud)
+		RenderingServer.global_shader_parameter_add(&"player_world", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3.ZERO)
+	else:
+		RenderingServer.global_shader_parameter_set(&"cloud_noise", cloud)
 	_ghost_shader = load(SH + "ghost.gdshader")
+	_class = _pick_class(args)
+	_voc = Vocations.new()
+	_voc.setup(self, _class)
+	_speed = float(_voc.cfg.speed)
 	_build_view()
 	_build_world()
 	_build_player()
 	_build_flames()
+	Engine.set_meta("aethra_globals", true)  # globais de shader já criados (sobrevive ao reload)
 	for mi in _model.find_children("*", "MeshInstance3D", true, false):
 		if (mi as MeshInstance3D).material_override is ShaderMaterial:
 			_char_mats.append((mi as MeshInstance3D).material_override)
@@ -183,6 +203,10 @@ func _ready() -> void:
 		_audio.build(self)
 	get_viewport().size_changed.connect(_fit)
 	_fit()
+	if _adventure != null and _adventure.needs_vocation and not _capture:
+		_adventure.hud.panel = "vocation"  # primeira vez: escolher a vocação
+	if args.has("panel") and _adventure != null:  # print de painel (ex.: --panel=vocation)
+		_adventure.hud.panel = String(args.panel)
 	if args.has("light") and _adventure != null:  # print/teste: começa com a core skill Luz ativa
 		_adventure.mana = 999.0
 		_adventure.core.cast("light")
@@ -582,6 +606,11 @@ func _build_player() -> void:
 	_build_contact_shadow()
 	_model = Node3D.new()
 	_player.add_child(_model)
+	if not _voc.is_mage():
+		_voc.build_model(_model)
+		_play("Idle", 1.0)
+		_model.rotation.y = PI
+		return
 	var mage := (load(MAGE_GLB) as PackedScene).instantiate() as Node3D
 	_model.add_child(mage)
 	mage.rotation.y = PI  # o glTF olha para +Z; o resto do código assume -Z
@@ -826,23 +855,27 @@ func _unhandled_input(event: InputEvent) -> void:
 				if _adventure != null:
 					_adventure.chat.open_input()
 			KEY_1:
-				if _adventure != null:
+				if _adventure != null and not _adventure.hud.vocation_key(0):
 					_adventure.drink("hp")
 			KEY_2:
-				if _adventure != null:
+				if _adventure != null and not _adventure.hud.vocation_key(1):
 					_adventure.drink("mana")
 			KEY_3:
-				if _adventure != null:
+				if _adventure != null and not _adventure.hud.vocation_key(2):
 					_adventure.core.cast("light")
 			KEY_R:
 				if _adventure != null:
 					_adventure.cast_ring()
 			KEY_F:
-				_set_pyro(not _pyro)
+				if _voc.is_mage():
+					_set_pyro(not _pyro)
+			KEY_F2:
+				if _adventure != null:
+					_adventure.hud.toggle("vocation")
 			KEY_SPACE:
 				_start_dodge()
 			KEY_Q:
-				_start_blink()
+				_skill_q()
 			KEY_N:
 				_sky.skip(3.0)
 			KEY_L:
@@ -852,9 +885,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
-				_start_attack()
+				if _adventure == null or not _adventure.hud.vocation_click(event.position):
+					_start_attack()
 			MOUSE_BUTTON_RIGHT:
-				_start_blink()
+				_skill_q()
 			MOUSE_BUTTON_WHEEL_UP when not _capture:
 				_px = clampf(_px / 1.15, PX_MIN, PX_MAX)
 				_fit()
@@ -931,24 +965,26 @@ func _physics_process(delta: float) -> void:
 	if _capture_walk:
 		input = Vector2.RIGHT
 	if _auto and fmod(_t + 0.8, 2.6) < delta:
-		_start_blink()
+		_skill_q()
 	_blink_cd = maxf(0.0, _blink_cd - delta)
-	var target := Vector3(input.x, 0, input.y) * SPEED
+	var target := Vector3(input.x, 0, input.y) * _speed
 	if _blink_t >= 0.0:
 		_update_blink(delta)
 	elif _dodge_t >= 0.0:
 		_dodge_t += delta
-		var k := _dodge_t / DODGE_T
-		_player.velocity = _dodge_dir * DODGE_SPEED * (1.0 - k * 0.55)
+		var k := _dodge_t / _dash_len
+		var vy := _player.velocity.y
+		_player.velocity = _dodge_dir * _dash_speed * (1.0 - k * (0.55 if _dash_kind.is_empty() else 0.2))
+		_player.velocity.y = vy
 		_ghost_t += delta
 		if _ghost_t >= 0.045:
 			_ghost_t = 0.0
 			_ghost(_player.global_position, 0.55, 0.26)
-		if _dodge_t >= DODGE_T:
-			_dodge_t = -1.0
+		if _voc.dash_tick(_dash_kind) or _dodge_t >= _dash_len:
+			_end_dash()
 	else:
 		var slow: float = (0.35 if _attack_t >= 0.0 else 1.0) * (_adventure.enemies.player_speed_factor() if _adventure != null else 1.0)
-		var rate := SPEED / (ACCEL_T if input != Vector2.ZERO else FRICTION_T)
+		var rate := _speed / (ACCEL_T if input != Vector2.ZERO else FRICTION_T)
 		var horizontal := Vector3(_player.velocity.x, 0, _player.velocity.z).move_toward(target * slow, rate * delta)
 		_player.velocity.x = horizontal.x
 		_player.velocity.z = horizontal.z
@@ -987,9 +1023,10 @@ func _physics_process(delta: float) -> void:
 	_aura_light.light_energy = 0.0
 	var profile: Dictionary = WEAPON_LIGHTS[_weapon_glow]
 	var strength := pulse * (1.2 if _pyro else 1.0) * (1.0 - _dissolve)
-	_crystal.set_shader_parameter("emission_energy", float(profile.emission) * strength)
-	_crystal_light.light_energy = float(profile.energy) * strength
-	_crystal_light.omni_range = float(profile.range)
+	if _crystal != null:
+		_crystal.set_shader_parameter("emission_energy", float(profile.emission) * strength)
+		_crystal_light.light_energy = float(profile.energy) * strength
+		_crystal_light.omni_range = float(profile.range)
 	for mat in _char_mats:
 		mat.set_shader_parameter("readability", minf(1.0, _sky.night * 0.45 + (_adventure.core.readability_boost() * _sky.night if _adventure != null else 0.0)))
 	if _adventure != null:
@@ -1008,21 +1045,24 @@ func _animate(delta: float, _input: Vector2) -> void:
 	_model.rotation.y = lerp_angle(_model.rotation.y, yaw, 1.0 - exp(-delta * 16.0))
 	if _attack_t >= 0.0:
 		_attack_t += delta
-		var a := _attack_t / ATTACK_T
-		if a >= 0.45 and not _fired:
+		var a := _attack_t / float(_voc.cfg.attack_t)
+		if a >= float(_voc.cfg.attack_hit) and not _fired:
 			_fired = true
-			_fireball()
+			_voc.primary()
 		if a >= 1.0:
 			_attack_t = -1.0
 	# animação do pacote por estado
 	if _blink_t >= 0.0:
 		_play("Spellcast_Raise", 1.6)
 	elif _dodge_t >= 0.0:
-		_play("Dodge_Forward", _anim_len("Dodge_Forward") / (DODGE_T * 1.6))
+		_play(_dash_anim, _anim_len(_dash_anim) / (_dash_len * 1.6))
 	elif _attack_t >= 0.0:
-		_play("Spellcast_Shoot", _anim_len("Spellcast_Shoot") / (ATTACK_T * 1.4))
+		var atk := String(_voc.cfg.attack_anim)
+		_play(atk, _anim_len(atk) / (float(_voc.cfg.attack_t) * 1.4))
+	elif _once_t > 0.0:
+		_once_t -= delta
 	elif moving:
-		_play("Running_A", clampf(speed / SPEED, 0.5, 1.3))
+		_play("Running_A", clampf(speed / _speed, 0.5, 1.3))
 	else:
 		_play("Idle", 1.0)
 
@@ -1106,9 +1146,21 @@ func _update_projectiles(delta: float) -> void:
 			pr.erase("from")
 		var to := n.global_position + vel * delta
 		var q := PhysicsRayQueryParameters3D.create(from, to)
-		q.exclude = [_player.get_rid()]
+		var skip: Array[RID] = [_player.get_rid()]
+		if pr.has("hit"):
+			for r: RID in pr.hit:
+				skip.append(r)
+		q.exclude = skip
 		q.collision_mask = 1 | 8  # cenário e inimigos; margens d'água ficam de fora
 		var hit := space.intersect_ray(q)
+		# flecha perfurante: atravessa inimigos (cada um só uma vez) e segue até o cenário
+		if not hit.is_empty() and bool(pr.get("pierce", false)) and String(hit.collider.get_meta("kind", "")) == "enemy":
+			if _adventure != null:
+				_adventure.hit(hit.collider, int(pr.dmg))
+			_burst(hit.position)
+			(pr.hit as Array).append((hit.collider as CollisionObject3D).get_rid())
+			n.global_position = hit.position + vel.normalized() * 0.05
+			continue
 		var impact_pos := Vector3.INF
 		var collider: Object = null
 		if not hit.is_empty():
@@ -1117,7 +1169,7 @@ func _update_projectiles(delta: float) -> void:
 		elif to.y <= (_adventure.ground_height() if _adventure != null else 0.0) + 0.04:
 			impact_pos = Vector3(to.x, _adventure.ground_height() if _adventure != null else 0.0, to.z)
 		if impact_pos != Vector3.INF:
-			_impact(impact_pos, collider)
+			_impact(impact_pos, collider, pr)
 			n.queue_free()
 			_projectiles.remove_at(i)
 			continue
@@ -1126,9 +1178,12 @@ func _update_projectiles(delta: float) -> void:
 
 ## Impacto da bola de fogo: faíscas sempre; árvore balança e solta folhas; chão fica
 ## chamuscado (marca que esfria e some); na água vira respingo.
-func _impact(pos: Vector3, collider: Object) -> void:
-	if _adventure != null and _adventure.hit(collider):
+func _impact(pos: Vector3, collider: Object, pr: Dictionary = {}) -> void:
+	if _adventure != null and _adventure.hit(collider, int(pr.get("dmg", -1))):
 		_burst(pos)
+		return
+	if String(pr.get("kind", "")) == "arrow":
+		_ghost_spark(pos)  # flecha: só um estalo, sem chamuscado
 		return
 	var kind := String(collider.get_meta("kind", "")) if collider != null else ""
 	var on_water := Dressing.water_dist(Vector2(pos.x, pos.z)) < 0.0 and pos.y < 0.3
@@ -1381,3 +1436,84 @@ func _shockwave(pos: Vector3, radius := 1.76) -> void:
 	tw.tween_property(ring, "scale", Vector3(radius / 0.55, 0.15, radius / 0.55), 0.38).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	tw.tween_method(func(a: float) -> void: m.set_shader_parameter("alpha", a), 1.0, 0.0, 0.38)
 	tw.chain().tween_callback(ring.queue_free)
+
+
+# ------------------------------------------------------------------ vocações (vocations.gd)
+
+## Vocação: --class=… > escolha feita nesta sessão > save > Mago.
+func _pick_class(args: Dictionary) -> String:
+	if args.has("class"):
+		return String(args["class"])
+	if Engine.has_meta("aethra_class"):
+		return String(Engine.get_meta("aethra_class"))
+	var path := "user://pixel3d-first-adventure-v1.json"
+	if not args.has("no_save") and not args.has("shot") and FileAccess.file_exists(path):
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if data is Dictionary and (data as Dictionary).has("vocation"):
+			return String(data.vocation)
+	return "mage"
+
+
+## Q: Mago = Eco (teleporte); Guerreiro/Arqueiro = habilidade da vocação.
+func _skill_q() -> void:
+	if _voc.is_mage():
+		_start_blink()
+	else:
+		_voc.cast_q()
+
+
+## Investida/salto reaproveitam a esquiva (mesmo estado, invulnerável enquanto dura).
+func _begin_dash(dir: Vector3, speed: float, length: float, anim: String, kind: String) -> void:
+	_dodge_dir = Vector3(dir.x, 0, dir.z).normalized()
+	_dash_speed = speed
+	_dash_len = length
+	_dash_anim = anim
+	_dash_kind = kind
+	_dodge_t = 0.0
+	_attack_t = -1.0
+	_anim_cur = ""
+
+
+func _end_dash() -> void:
+	_dodge_t = -1.0
+	_dash_speed = DODGE_SPEED
+	_dash_len = DODGE_T
+	_dash_anim = "Dodge_Forward"
+	_dash_kind = ""
+
+
+## Toca uma animação "de uma vez" (golpe giratório etc.) sem ser cortada pelo Idle/Run.
+func _play_once(anim_name: String, speed: float) -> void:
+	_play(anim_name, speed, true)
+	_once_t = _anim_len(anim_name) / maxf(speed, 0.01)
+
+
+## Faísca pequena e curta (golpe de espada, flecha no cenário).
+func _ghost_spark(pos: Vector3) -> void:
+	var g := GPUParticles3D.new()
+	g.amount = 8
+	g.lifetime = 0.25
+	g.one_shot = true
+	g.explosiveness = 1.0
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3.UP
+	pm.spread = 180.0
+	pm.initial_velocity_min = 1.5
+	pm.initial_velocity_max = 3.0
+	pm.gravity = Vector3(0, -6, 0)
+	pm.scale_curve = _curve([Vector2(0, 1.0), Vector2(1, 0.0)])
+	pm.color_ramp = _ramp([Color(1, 1, 0.9, 1), Color(1, 0.85, 0.5, 0.0)])
+	g.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.08, 0.08)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	q.material = m
+	g.draw_pass_1 = q
+	_vp.add_child(g)
+	g.global_position = pos
+	g.emitting = true
+	get_tree().create_timer(0.6).timeout.connect(g.queue_free)

@@ -18,6 +18,8 @@ var state
 var world
 var enemies
 var hud
+## Save antigo/novo sem vocação: o jogo abre a escolha de vocação.
+var needs_vocation := false
 ## Core skills (todas as classes): luz etc.
 var core
 var inventory
@@ -70,9 +72,15 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(save_path))
 		if data is Dictionary:
 			state.restore(data)
-	inventory = ItemInventory.new(ItemInventory.load_db(), "fire_mage")
-	inventory.give(["fire_staff", "apprentice_robe", "mage_hat"])
-	for id in ["fire_staff", "apprentice_robe", "mage_hat"]:
+			needs_vocation = not (data as Dictionary).has("vocation") and not Engine.has_meta("aethra_class")
+	elif _persist and not Engine.has_meta("aethra_class"):
+		needs_vocation = true
+	var voc: Dictionary = demo._voc.cfg
+	state.vocation = demo._voc.id
+	state.hp_mult = float(voc.hp_mult)
+	inventory = ItemInventory.new(ItemInventory.load_db(), String(voc.item_class))
+	inventory.give(voc.start_items)
+	for id: String in voc.start_items:
 		inventory.equip(id)
 	if state.has_reward():
 		_equip_reward()
@@ -112,11 +120,11 @@ func _check_stairs() -> void:
 
 
 func max_mana() -> int:
-	return int(config.mana_base) + (state.level - 1) * int(config.mana_per_level)
+	return int(round((int(config.mana_base) + (state.level - 1) * int(config.mana_per_level)) * float(demo._voc.cfg.mana_mult)))
 
 
 func cost(skill: String) -> int:
-	return int(config.mana_cost.get(skill, 0))
+	return int(demo._voc.cfg.costs.get(skill, config.mana_cost.get(skill, 0)))
 
 
 ## Gasta mana da habilidade; sem mana suficiente, avisa (barra pisca) e recusa.
@@ -212,7 +220,7 @@ func basic_damage() -> int:
 	# Starter weapon is the visual baseline; the quest pendant adds its actual stat bonus.
 	var necklace := String(inventory.equipped.get("neck", ""))
 	var bonus := int(inventory.item(necklace).get("stats", {}).get("spell_power", 0))
-	return int(config.basic_damage) + state.level - 1 + bonus
+	return int(round((int(config.basic_damage) + state.level - 1 + bonus) * float(demo._voc.cfg.damage_mult)))
 
 func on_enemy_killed(id: String, kind: String, cave: bool, at: Vector3) -> void:
 	var old_level: int = state.level
@@ -226,7 +234,8 @@ func on_enemy_killed(id: String, kind: String, cave: bool, at: Vector3) -> void:
 		mana = max_mana()
 		demo._shockwave(demo._player.global_position)
 		demo._burst(demo._player.global_position + Vector3(0, 1.2, 0))
-		var unlocked := "Nova habilidade: Eco de Aethra" if state.level == 2 else ("Nova habilidade: Anel de Brasa" if state.level == 3 else "")
+		var voc: Dictionary = demo._voc.cfg
+		var unlocked := ("Nova habilidade: " + String(voc.q.name)) if state.level == int(config.blink_level) else (("Nova habilidade: " + String(voc.r.name)) if state.level == int(config.ring_level) else "")
 		demo.world_labels.announce("Você subiu do nível %d para o nível %d." % [old_level, state.level], unlocked)
 		chat.post("Servidor", "Você subiu do nível %d para o nível %d." % [old_level, state.level], Color(1.0, 0.82, 0.38))
 	_save()
@@ -234,6 +243,7 @@ func on_enemy_killed(id: String, kind: String, cave: bool, at: Vector3) -> void:
 func take_damage(amount: int, source := "") -> void:
 	if _invulnerable > 0 or demo._blink_t >= 0 or demo._dodge_t >= 0:
 		return
+	amount = maxi(1, int(round(amount * (1.0 - float(demo._voc.cfg.armor)))))  # armadura da vocação
 	hp = maxf(0, hp - amount)
 	_hurt_time = 0.0
 	chat.post("Servidor", "Você perdeu %d de vida por um ataque de %s." % [amount, source] if not source.is_empty() else "Você perdeu %d de vida." % amount, Color(1.0, 0.55, 0.5))
@@ -266,6 +276,14 @@ func warp(to: Vector3, cave: bool) -> void:
 	demo._update_camera(1.0)
 	_invulnerable = 1.0
 
+## Escolha de vocação (painel F2 / primeira vez): grava e recarrega a cena com o novo corpo.
+func choose_vocation(id: String) -> void:
+	state.vocation = id
+	Engine.set_meta("aethra_class", id)
+	_save()
+	demo.get_tree().reload_current_scene()
+
+
 func ground_height() -> float:
 	return World.ROOM.y if in_cave else 0.0
 
@@ -285,8 +303,8 @@ func ignite(index: int) -> void:
 		demo._burst(World.ROOM + World.TORCHES[index] + Vector3(0, 1.7, 0))
 	_save()
 
-func hit(collider: Object) -> bool:
-	if enemies.hit(collider, basic_damage()):
+func hit(collider: Object, amount := -1) -> bool:
+	if enemies.hit(collider, basic_damage() if amount < 0 else amount):
 		return true
 	if collider != null and String(collider.get_meta("kind", "")) == "quest_torch":
 		ignite(int(collider.get_meta("torch_index")))
@@ -294,6 +312,9 @@ func hit(collider: Object) -> bool:
 	return false
 
 func cast_ring() -> void:
+	if not demo._voc.is_mage():
+		demo._voc.cast_r()
+		return
 	if not state.has_skill("ring") or ring_cd > 0:
 		return
 	if not spend("ring"):

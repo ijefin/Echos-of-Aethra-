@@ -114,7 +114,9 @@
 			"name": "Colar de Brasa",
 			"slot": "neck",
 			"classes": [
-				"fire_mage"
+				"fire_mage",
+				"warrior",
+				"archer"
 			],
 			"stats": {
 				"spell_power": 3,
@@ -294,6 +296,91 @@
 				"max_resource": 25,
 				"resource_regen": 1.5,
 				"spell_power": 4
+			}
+		},
+		"iron_sword": {
+			"name": "Espada de Ferro",
+			"slot": "weapon",
+			"rarity": "common",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"attack_power": 4,
+				"STR": 2
+			}
+		},
+		"round_shield": {
+			"name": "Escudo Redondo",
+			"slot": "shield",
+			"rarity": "common",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 4,
+				"block": 0.1
+			}
+		},
+		"knight_helm": {
+			"name": "Elmo de Sentinela",
+			"slot": "head",
+			"rarity": "common",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 2,
+				"VIT": 1
+			}
+		},
+		"chain_mail": {
+			"name": "Cota de Malha",
+			"slot": "chest",
+			"rarity": "common",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 5,
+				"VIT": 2
+			}
+		},
+		"hunting_bow": {
+			"name": "Arco de Caça",
+			"slot": "weapon",
+			"rarity": "common",
+			"classes": [
+				"archer"
+			],
+			"stats": {
+				"attack_power": 3,
+				"AGI": 2
+			}
+		},
+		"leather_hood": {
+			"name": "Capuz de Couro",
+			"slot": "head",
+			"rarity": "common",
+			"classes": [
+				"archer"
+			],
+			"stats": {
+				"AGI": 1,
+				"resist": 1
+			}
+		},
+		"leather_vest": {
+			"name": "Colete de Couro",
+			"slot": "chest",
+			"rarity": "common",
+			"classes": [
+				"archer"
+			],
+			"stats": {
+				"armor": 2,
+				"AGI": 2,
+				"move_speed": 4
 			}
 		}
 	},
