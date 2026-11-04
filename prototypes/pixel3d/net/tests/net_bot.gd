@@ -1,0 +1,318 @@
+# PROTOTYPE - NOT FOR PRODUCTION
+extends SceneTree
+## Cliente headless roteirizado para o teste de sessão (tools/net_session_test.ps1).
+##   godot --headless --path . -s res://prototypes/pixel3d/net/tests/net_bot.gd -- --role=alice|bruno|relogin --port=17777 [--state=arquivo.json]
+## Imprime "CHECK PASS|FAIL <papel>: <item>" e "BOT_DONE <papel> <falhas>".
+
+const NetClient := preload("res://prototypes/pixel3d/net/net_client.gd")
+const NetConfig := preload("res://prototypes/pixel3d/net/net_config.gd")
+const Protocol := preload("res://prototypes/pixel3d/net/net_protocol.gd")
+
+const PASSWORD := "segredo-teste-1"
+
+var c: Node
+var role := ""
+var port := 17777
+var state_path := ""
+var fails := 0
+var events: Array = []
+var friend_events: Array = []
+var chats: Array = []
+var welcomes: Array = []
+var login_errors: Array = []
+var disconnects: Array = []
+var seen_damage := false
+var seen_projectile := false
+var _move := Vector2.ZERO
+
+
+func check(cond: bool, what: String) -> void:
+	if not cond:
+		fails += 1
+	print("CHECK %s %s: %s" % ["PASS" if cond else "FAIL", role, what])
+
+
+func _initialize() -> void:
+	Engine.max_fps = 60
+	var args := NetConfig.cmdline_args()
+	role = String(args.get("role", "alice"))
+	port = int(args.get("port", 17777))
+	state_path = String(args.get("state", ""))
+	c = NetClient.new()
+	root.add_child(c)
+	c.logged_in.connect(func(w: Dictionary) -> void: welcomes.append(w))
+	c.login_failed.connect(func(code: String) -> void: login_errors.append(code))
+	c.event_received.connect(func(e: Dictionary) -> void: events.append(e))
+	c.friend_event.connect(func(e: Dictionary) -> void: friend_events.append(e))
+	c.chat_received.connect(func(m: Dictionary) -> void: chats.append(m))
+	c.disconnected.connect(func(r: String) -> void: disconnects.append(r))
+	_run.call_deferred()
+
+
+func _process(_delta: float) -> bool:
+	if c != null and c.is_in_game():
+		c.set_move(_move)
+		for e: Dictionary in c.entities():
+			if int(e.kind) == Protocol.KIND_MONSTER and int(e.hp) < int(e.max_hp):
+				seen_damage = true
+			if int(e.kind) == Protocol.KIND_PROJECTILE:
+				seen_projectile = true
+	return false
+
+
+func wait(seconds: float) -> void:
+	await create_timer(seconds).timeout
+
+
+func wait_until(cond: Callable, timeout: float) -> bool:
+	var end := Time.get_ticks_msec() + int(timeout * 1000.0)
+	while Time.get_ticks_msec() < end:
+		if cond.call():
+			return true
+		await process_frame
+	return bool(cond.call())
+
+
+func finish() -> void:
+	print("BOT_DONE %s %d" % [role, fails])
+	quit(0 if fails == 0 else 1)
+
+
+func _run() -> void:
+	match role:
+		"alice": await _alice()
+		"bruno": await _bruno()
+		"relogin": await _relogin()
+	finish()
+
+
+# ------------------------------------------------------------------ utilidades
+
+func login(user: String) -> bool:
+	c.connect_and_login("127.0.0.1", port, user, PASSWORD, true)
+	var ok: bool = await wait_until(func() -> bool: return not welcomes.is_empty() or not login_errors.is_empty(), 15.0)
+	if ok and welcomes.is_empty() and login_errors.has("name_taken"):
+		login_errors.clear()
+		c.drop_connection()
+		c.connect_and_login("127.0.0.1", port, user, PASSWORD, false)
+		ok = await wait_until(func() -> bool: return not welcomes.is_empty() or not login_errors.is_empty(), 15.0)
+	return ok and not welcomes.is_empty()
+
+
+func server_pos() -> Vector3:
+	return c.me.get("pos", Vector3.ZERO)
+
+
+func find_player(n: String) -> Dictionary:
+	for e: Dictionary in c.entities():
+		if int(e.kind) == Protocol.KIND_PLAYER and String(e.name) == n:
+			return e
+	return {}
+
+
+func nearest_monster() -> Dictionary:
+	var best := {}
+	var bd := INF
+	var me: Vector3 = c.predicted_position()
+	for e: Dictionary in c.entities():
+		if int(e.kind) == Protocol.KIND_MONSTER:
+			var d := (e.pos as Vector3).distance_to(me)
+			if d < bd:
+				bd = d
+				best = e
+	return best
+
+
+func has_event(list: Array, key: String, value: Variant) -> bool:
+	for e: Dictionary in list:
+		if e.get(key) == value:
+			return true
+	return false
+
+
+func friend_presence(n: String, online: bool) -> bool:
+	for e: Dictionary in friend_events:
+		if String(e.get("name", "")) == n and String(e.get("op", "")) in ["presence", "accepted"] and bool(e.get("online", false)) == online:
+			return true
+	return false
+
+
+# ------------------------------------------------------------------ Alice
+
+func _alice() -> void:
+	check(await login("Alice"), "entra no servidor (cadastro/login)")
+	await wait_until(func() -> bool: return int(c.snaps) > 3, 5.0)
+	var start := server_pos()
+	_move = Vector2(1, 0)
+	await wait(1.0)
+	_move = Vector2.ZERO
+	await wait(0.6)
+	var moved := server_pos().distance_to(start)
+	check(moved > 0.5 and moved <= 4.2 * 1.3, "move: servidor confirmou %.2f m em ~1 s (máx. 5,46)" % moved)
+	check(c.predicted_position().distance_to(server_pos()) < 0.25, "predição local = posição do servidor após parar (erro %.3f m)" % c.predicted_position().distance_to(server_pos()))
+	check(await wait_until(func() -> bool: return not find_player("Bruno").is_empty(), 20.0), "vê o outro jogador (Bruno) replicado")
+	c.friend("request", "Bruno")
+	check(await wait_until(func() -> bool: return has_event(friend_events, "op", "accepted"), 15.0), "amizade: Bruno aceitou o pedido (evento em tempo real)")
+	check(await wait_until(func() -> bool: return friend_presence("Bruno", true), 5.0), "presença: Bruno aparece online")
+	var lv0 := int(c.me.level)
+	var xp0 := int(c.me.xp)
+	c.action("blink", {"x": 0.0, "z": 0.0})
+	check(await wait_until(func() -> bool: return _refused("blink", "level"), 5.0), "servidor recusa Eco no nível 1 (validação de nível)")
+	var killed: bool = await _hunt(30.0)
+	check(killed, "derrota um monstro do servidor (evento kill vindo do servidor)")
+	await wait(0.4)
+	check(killed and (int(c.me.xp) == xp0 + 3 or int(c.me.level) > lv0), "XP aplicado pelo servidor e replicado no snapshot (+3; antes %d/%d, depois %d/%d)" % [lv0, xp0, int(c.me.level), int(c.me.xp)])
+	c.chat("global", "pronto")
+	check(await wait_until(func() -> bool: return friend_presence("Bruno", false), 30.0), "presença: Bruno ficou offline ao cair")
+	friend_events = friend_events.filter(func(e: Dictionary) -> bool: return bool(e.get("online", false)) == false)
+	check(await wait_until(func() -> bool: return friend_presence("Bruno", true), 30.0), "presença: Bruno voltou online após reconectar")
+	await _speedhack()
+	c.logout()
+	await wait(0.6)
+
+
+func _refused(act: String, reason: String) -> bool:
+	for e: Dictionary in events:
+		if String(e.get("type", "")) == "refused" and String(e.get("act", "")) == act and String(e.get("reason", "")) == reason:
+			return true
+	return false
+
+
+## Atira no monstro mais próximo até o servidor anunciar o abate.
+func _hunt(timeout: float) -> bool:
+	var t := 0.0
+	while t < timeout:
+		if has_event(events, "type", "kill"):
+			_move = Vector2.ZERO
+			return true
+		var m := nearest_monster()
+		if not m.is_empty():
+			var me: Vector3 = c.predicted_position()
+			var to: Vector3 = (m.pos as Vector3) - me
+			_move = Vector2(to.x, to.z).normalized() if Vector2(to.x, to.z).length() > 4.0 else Vector2.ZERO
+			c.action("fire", {"target": int(m.id)})
+		await wait(0.45)
+		t += 0.45
+	_move = Vector2.ZERO
+	return has_event(events, "type", "kill")
+
+
+## Manda comandos de movimento em excesso (12× por tick) direto no socket.
+func _speedhack() -> void:
+	await wait(0.5)
+	var start := server_pos()
+	var t0 := Time.get_ticks_msec()
+	var seq: int = c._seq + 1
+	c.set_process(false)   # o cliente normal para de mandar; só o trapaceiro fala
+	for i in 20:
+		for k in 3:
+			var cmds: Array = []
+			for j in 4:
+				cmds.append({"seq": seq, "dir": Vector2(-1, 0), "flags": 0})
+				seq += 1
+			c.send_raw(Protocol.encode_input(cmds), false)
+		c.peer.poll()
+		await wait(0.05)
+		_drain()
+	await wait(0.6)
+	_drain()
+	var elapsed := (Time.get_ticks_msec() - t0) / 1000.0
+	var moved := server_pos().distance_to(start)
+	var limit := 4.2 * elapsed + 4.2 * 0.25 + 0.3   # tempo real + orçamento de jitter (0,25 s)
+	check(moved <= limit, "anti-speedhack: 12× comandos por %.2f s moveram %.2f m (limite tempo real %.2f m; sem validação seriam %.1f m)" % [elapsed, moved, limit, 4.2 * 0.05 * 240])
+	c.set_process(true)
+
+
+func _drain() -> void:
+	c.peer.poll()
+	while c.peer.get_available_packet_count() > 0:
+		c._handle(c.peer.get_packet())
+
+
+# ------------------------------------------------------------------ Bruno
+
+func _bruno() -> void:
+	check(await login("Bruno"), "entra no servidor (cadastro/login)")
+	_move = Vector2(-1, 0.3)
+	await wait(0.5)
+	_move = Vector2.ZERO
+	check(await wait_until(func() -> bool: return not find_player("Alice").is_empty(), 20.0), "vê o outro jogador (Alice) replicado")
+	check(await wait_until(func() -> bool: return has_event(friend_events, "op", "request"), 20.0), "recebe pedido de amizade da Alice em tempo real")
+	c.friend("accept", "Alice")
+	check(await wait_until(func() -> bool: return friend_presence("Alice", true) or _friend_listed("Alice"), 5.0), "presença: Alice online na lista de amigos")
+	check(await wait_until(func() -> bool: return seen_damage, 40.0), "vê o dano no monstro (vida replicada pelo servidor)")
+	check(seen_projectile, "vê a bola de fogo da Alice (projétil replicado)")
+	check(await wait_until(func() -> bool: return _chat_from("Alice", "pronto"), 40.0), "chat global da Alice chegou")
+	await wait(1.0)
+	var before := {"pos": server_pos(), "level": int(c.me.level), "xp": int(c.me.xp), "hp": int(c.me.hp)}
+	var tok: String = c.token
+	c.drop_connection()
+	await wait(3.0)
+	welcomes.clear()
+	c.resume()
+	check(await wait_until(func() -> bool: return not welcomes.is_empty(), 15.0) and bool(welcomes[0].get("resumed", false)), "reconecta por token (RESUME, sem senha)")
+	await wait_until(func() -> bool: return int(c.snaps) > 2, 3.0)
+	await wait(0.5)
+	var after_pos := server_pos()
+	check(after_pos.distance_to(before.pos) < 0.05 and int(c.me.level) == int(before.level) and int(c.me.xp) == int(before.xp), "volta no mesmo estado (pos %s → %s, nível %d, xp %d)" % [str(before.pos), str(after_pos), int(c.me.level), int(c.me.xp)])
+	check(c.token == tok, "token preservado no cliente após RESUME")
+	if not state_path.is_empty():
+		var f := FileAccess.open(state_path, FileAccess.WRITE)
+		f.store_string(JSON.stringify({"pos": [after_pos.x, after_pos.y, after_pos.z], "level": int(c.me.level), "xp": int(c.me.xp)}))
+		f.close()
+	await wait(6.0)   # Alice confere a presença online
+	disconnects.clear()
+	var big := PackedByteArray([Protocol.VERSION, Protocol.C_CHAT])
+	big.resize(2000)
+	c.send_raw(big, true)
+	check(await wait_until(func() -> bool: return not disconnects.is_empty() or has_event(events, "type", "kicked"), 8.0), "servidor derruba quem manda pacote gigante (2000 B)")
+
+
+func _friend_listed(n: String) -> bool:
+	for f: Dictionary in (c.friends.get("friends", []) as Array):
+		if String(f.name) == n and bool(f.online):
+			return true
+	return false
+
+
+func _chat_from(who: String, text: String) -> bool:
+	for m: Dictionary in chats:
+		if String(m.get("from", "")) == who and String(m.get("text", "")) == text:
+			return true
+	return false
+
+
+# ------------------------------------------------------------------ depois de reiniciar o servidor
+
+func _relogin() -> void:
+	var saved := {}
+	if FileAccess.file_exists(state_path):
+		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(state_path))
+		if v is Dictionary:
+			saved = v
+	check(not saved.is_empty(), "estado anterior do Bruno registrado")
+	c.connect_and_login("127.0.0.1", port, "Bruno", PASSWORD, false)
+	check(await wait_until(func() -> bool: return not welcomes.is_empty(), 15.0), "login com senha após reiniciar o servidor")
+	await wait_until(func() -> bool: return int(c.snaps) > 2, 5.0)
+	var p: Array = saved.get("pos", [0, 0, 0])
+	var sp := Vector3(float(p[0]), float(p[1]), float(p[2]))
+	check(server_pos().distance_to(sp) < 0.05 and int(c.me.xp) == int(saved.get("xp", -1)) and int(c.me.level) == int(saved.get("level", -1)),
+		"persistência: mesmo personagem, posição e XP após reiniciar (%s ~ %s)" % [str(server_pos()), str(sp)])
+	check(_friend_listed("Alice") or _friend_in_list("Alice"), "persistência: amizade com Alice sobreviveu ao reinício")
+	welcomes.clear()
+	login_errors.clear()
+	var c2: Node = NetClient.new()
+	root.add_child(c2)
+	var errs: Array = []
+	c2.login_failed.connect(func(code: String) -> void: errs.append(code))
+	c2.connect_and_login("127.0.0.1", port, "Bruno", "senha-errada", false)
+	check(await wait_until(func() -> bool: return errs.has("auth"), 10.0), "senha errada é recusada")
+	c.logout()
+	await wait(0.6)
+
+
+func _friend_in_list(n: String) -> bool:
+	for f: Dictionary in (c.friends.get("friends", []) as Array):
+		if String(f.name) == n:
+			return true
+	return false

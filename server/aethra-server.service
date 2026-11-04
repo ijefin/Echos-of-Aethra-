@@ -1,0 +1,28 @@
+# Alternativa sem Docker (systemd). Instalação descrita em server/README.md.
+[Unit]
+Description=Ecos de Aethra - servidor dedicado (Godot headless, UDP)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aethra
+Group=aethra
+EnvironmentFile=/etc/aethra/aethra.env
+Environment=XDG_DATA_HOME=/var/lib/aethra/.godot-user
+WorkingDirectory=/opt/aethra/app
+ExecStart=/opt/aethra/godot --headless --path /opt/aethra/app -s res://prototypes/pixel3d/net/server_main.gd
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+# endurecimento
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/aethra
+CPUQuota=100%
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

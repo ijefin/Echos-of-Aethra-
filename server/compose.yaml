@@ -1,0 +1,26 @@
+# Projeto compose separado (não mexe em outras stacks da máquina).
+#   cd server && cp .env.example .env && docker compose up -d --build
+services:
+  aethra:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    image: aethra-server:local
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${AETHRA_PORT:-7777}:${AETHRA_PORT:-7777}/udp"
+    volumes:
+      - ${AETHRA_HOST_DATA:-/var/lib/aethra}:/data
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # 2 vCPU / 8 GB no alvo: o servidor usa bem menos; teto para não disputar com o resto.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
