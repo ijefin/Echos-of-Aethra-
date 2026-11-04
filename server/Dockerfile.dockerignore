@@ -3,5 +3,8 @@
 !project.godot
 !prototypes/pixel3d/first_adventure_state.gd
 !prototypes/pixel3d/data/first_adventure.json
+!prototypes/pixel3d/data/classes.json
+!prototypes/pixel3d/data/core_skills.json
+!prototypes/pixel3d/ai/
 !prototypes/pixel3d/net/
 prototypes/pixel3d/net/tests/

@@ -18,6 +18,9 @@ WORKDIR /app
 COPY project.godot /app/project.godot
 COPY prototypes/pixel3d/first_adventure_state.gd /app/prototypes/pixel3d/first_adventure_state.gd
 COPY prototypes/pixel3d/data/first_adventure.json /app/prototypes/pixel3d/data/first_adventure.json
+COPY prototypes/pixel3d/data/classes.json /app/prototypes/pixel3d/data/classes.json
+COPY prototypes/pixel3d/data/core_skills.json /app/prototypes/pixel3d/data/core_skills.json
+COPY prototypes/pixel3d/ai/ /app/prototypes/pixel3d/ai/
 COPY prototypes/pixel3d/net/ /app/prototypes/pixel3d/net/
 RUN chown -R aethra:aethra /app
 
