@@ -50,13 +50,16 @@ S1=$(start_server server1)
 A=$(bot alice)
 sleep 0.3
 B=$(bot bruno)
+Q=$(bot quester)   # Quinn: missões 1 e 2 online, segredo, RESUME, equipamento
 wait_pids 150 "$A" "$B"
+wait_pids 480 "$Q"
 kill "$S1" 2>/dev/null   # queda brusca: só vale o que já foi salvo
 sleep 1
 echo "== fase 2: servidor reiniciado + relogin do Bruno =="
 S2=$(start_server server2)
 R=$(bot relogin)
-wait_pids 60 "$R"
+Q2=$(bot quester2)
+wait_pids 60 "$R" "$Q2"
 kill "$S2" 2>/dev/null
 sleep 0.5
 
@@ -65,15 +68,15 @@ for f in server1 server2; do
 	grep -E "\[(INFO|WARN|ERROR)\]" "$WORK/$f.out.log" "$WORK/$f.err.log" 2>/dev/null | sed 's/^[^:]*://; s/^/  /'
 done
 echo "--- verificação ---"
-cat "$WORK"/bot-alice.out.log "$WORK"/bot-bruno.out.log "$WORK"/bot-relogin.out.log 2>/dev/null | grep -E "^(CHECK|BOT_DONE) " | tee "$WORK/summary.txt"
+cat "$WORK"/bot-alice.out.log "$WORK"/bot-bruno.out.log "$WORK"/bot-quester.out.log "$WORK"/bot-relogin.out.log "$WORK"/bot-quester2.out.log 2>/dev/null | grep -E "^(CHECK|BOT_DONE) " | tee "$WORK/summary.txt"
 ERRS=$(cat "$WORK"/*.err.log 2>/dev/null | grep -cE "SCRIPT ERROR|Parse Error")
 PASS=$(grep -c "^CHECK PASS" "$WORK/summary.txt")
 FAIL=$(grep -c "^CHECK FAIL" "$WORK/summary.txt")
 DONE=$(grep -c "^BOT_DONE" "$WORK/summary.txt")
 if [ "$ERRS" -gt 0 ]; then echo "--- erros de script ---"; cat "$WORK"/*.err.log | grep -A2 -E "SCRIPT ERROR|Parse Error" | head -30; fi
-if [ "$FAIL" -eq 0 ] && [ "$DONE" -eq 3 ] && [ "$PASS" -gt 0 ] && [ "$ERRS" -eq 0 ]; then
-	echo "NET_SESSION_TEST: OK ($PASS PASS, $FAIL FAIL, $DONE/3 bots concluíram, $ERRS erros de script)"
+if [ "$FAIL" -eq 0 ] && [ "$DONE" -eq 5 ] && [ "$PASS" -gt 0 ] && [ "$ERRS" -eq 0 ]; then
+	echo "NET_SESSION_TEST: OK ($PASS PASS, $FAIL FAIL, $DONE/5 bots concluíram, $ERRS erros de script)"
 	rm -rf "$WORK"; exit 0
 fi
-echo "NET_SESSION_TEST: FAIL ($PASS PASS, $FAIL FAIL, $DONE/3 bots concluíram, $ERRS erros de script) — logs em $WORK"
+echo "NET_SESSION_TEST: FAIL ($PASS PASS, $FAIL FAIL, $DONE/5 bots concluíram, $ERRS erros de script) — logs em $WORK"
 exit 1

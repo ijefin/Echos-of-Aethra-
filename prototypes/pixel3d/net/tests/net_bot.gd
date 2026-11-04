@@ -84,13 +84,15 @@ func _run() -> void:
 		"bruno": await _bruno()
 		"relogin": await _relogin()
 		"buddy": await _buddy()
+		"quester": await _quester()
+		"quester2": await _quester_after_restart()
 	finish()
 
 
 # ------------------------------------------------------------------ utilidades
 
 ## Vocação de cada bot (personagem novo): Alice arqueira, Bruno guerreiro.
-const VOCATION := {"Alice": "archer", "Bruno": "warrior", "Bia": "warrior"}
+const VOCATION := {"Alice": "archer", "Bruno": "warrior", "Bia": "warrior", "Quinn": "archer"}
 
 
 func login(user: String) -> bool:
@@ -466,6 +468,240 @@ func _bfs(col: RefCounted, a: Vector2, b: Vector2) -> Array[Vector2]:
 		out.push_front(center.call(k2))
 		k2 = prev[k2]
 	return out
+
+
+# ------------------------------------------------------------------ Quinn: missões online
+
+const QUESTS_PATH := "res://prototypes/pixel3d/data/quests.json"
+const TUNING_PATH := "res://prototypes/pixel3d/data/first_adventure.json"
+const SECRET := "segredo_charco_juncos"
+const SECRET_AT := Vector3(40, 0, 86.4)    # dentro do anel, perto do marco (40, 88)
+const CHARCO := Vector3(24, 0, 78)
+const ESTRADA := Vector3(-80, 0, 40)
+var _qd: Dictionary = {}
+var _tuning: Dictionary = {}
+var _last_potion := 0.0
+var _hunt_kind := ""
+var _hunt_near := Vector3.INF
+
+
+func _npc(id: String) -> Vector3:
+	var a: Array = _qd.npcs[id].pos
+	return Vector3(float(a[0]), 0, float(a[1]))
+
+
+## XP total acumulado (todas as faixas de nível), para medir recompensas.
+func total_xp() -> int:
+	var t := int(c.me.get("xp", 0))
+	for l in range(1, int(c.me.get("level", 1))):
+		t += int(_tuning.xp_first) + (l - 1) * int(_tuning.xp_step)
+	return t
+
+
+func content_since(n0: int, what: String) -> Array:
+	var out: Array = []
+	for i in range(n0, events.size()):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "content" and String(e.get("what", "")) == what:
+			out.append(e)
+	return out
+
+
+func refused_since(n0: int, act: String, reason: String) -> bool:
+	for i in range(n0, events.size()):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "refused" and String(e.get("act", "")) == act and String(e.get("reason", "")) == reason:
+			return true
+	return false
+
+
+## Pede "interagir" e espera o evento de conteúdo `what` (ou a recusa).
+func interact(target: String, what: String, timeout := 5.0) -> Dictionary:
+	var n0 := events.size()
+	c.action("interact", {"target": target})
+	await wait_until(func() -> bool: return not content_since(n0, what).is_empty() or refused_since(n0, "interact", "range") or refused_since(n0, "interact", "claimed") or refused_since(n0, "interact", "target"), timeout)
+	var got := content_since(n0, what)
+	return got[0] if not got.is_empty() else {}
+
+
+func quest_state() -> Dictionary:
+	for i in range(events.size() - 1, -1, -1):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "content":
+			return (e.get("state", {}) as Dictionary).get("quests", {})
+	return (welcomes[0].get("content", {}) as Dictionary).get("quests", {}) if not welcomes.is_empty() else {}
+
+
+func quest_step(id: String) -> int:
+	var act: Dictionary = quest_state().get("active", {})
+	return int((act.get(id, {"step": -1}) as Dictionary).step)
+
+
+## Caça monstros do tipo `kind` perto de `near` até `cond` ficar verdadeira.
+func hunt_until(kind: String, near: Vector3, cond: Callable, timeout: float) -> bool:
+	_hunt_kind = kind
+	_hunt_near = near
+	var end := _now() + timeout
+	while _now() < end:
+		if cond.call():
+			break
+		var m := _hunt_target()
+		if not m.is_empty():
+			var me: Vector3 = c.predicted_position()
+			var to: Vector3 = (m.pos as Vector3) - me
+			if _refused_recent("los"):
+				_skip[int(m.id)] = _now() + 4.0
+			_move = Vector2(to.x, to.z).normalized() if Vector2(to.x, to.z).length() > 9.0 else Vector2.ZERO
+			c.action("fire", {"target": int(m.id)})
+		elif near != Vector3.INF and c.predicted_position().distance_to(near) > 6.0:
+			var d := near - c.predicted_position()
+			_move = Vector2(d.x, d.z).normalized()
+		else:
+			_move = Vector2.ZERO
+		await wait(0.45)
+	_move = Vector2.ZERO
+	_hunt_kind = ""
+	return bool(cond.call())
+
+
+func _hunt_target() -> Dictionary:
+	var best := {}
+	var bd := INF
+	var me: Vector3 = c.predicted_position()
+	for e: Dictionary in c.entities():
+		if int(e.kind) != Protocol.KIND_MONSTER or float(_skip.get(int(e.id), -1.0)) >= _now():
+			continue
+		if not _hunt_kind.is_empty() and String(Protocol.MONSTER_SUBKINDS[clampi(int(e.sub), 0, Protocol.MONSTER_SUBKINDS.size() - 1)]) != _hunt_kind:
+			continue
+		if _hunt_near != Vector3.INF and (e.pos as Vector3).distance_to(_hunt_near) > 14.0:
+			continue
+		var d := (e.pos as Vector3).distance_to(me)
+		if d < bd:
+			bd = d
+			best = e
+	return best
+
+
+## Bebe poção de vida abaixo de 45 % (as caçadas de nível 3–4 batem forte).
+func _guard_hp() -> void:
+	while c != null:
+		if c.is_in_game() and int(c.me.get("max_hp", 0)) > 0 and int(c.me.hp) < int(c.me.max_hp) * 0.45 and int(c.me.get("pot_hp", 0)) > 0 and _now() - _last_potion > 1.2:
+			_last_potion = _now()
+			c.action("potion", {"kind": "hp"})
+		await wait(0.2)
+
+
+func _my_damage(n0: int) -> Array:
+	var out: Array = []
+	for i in range(n0, events.size()):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "damage" and int(e.get("by", 0)) == int(c.eid):
+			out.append(int(e.amount))
+	return out
+
+
+func _quester() -> void:
+	_qd = JSON.parse_string(FileAccess.get_file_as_string(QUESTS_PATH))
+	_tuning = JSON.parse_string(FileAccess.get_file_as_string(TUNING_PATH))
+	check(await login("Quinn"), "entra no servidor (cadastro/login)")
+	await wait_until(func() -> bool: return int(c.snaps) > 3, 5.0)
+	_guard_hp()
+	check(((welcomes[0].get("content", {}) as Dictionary).get("quests", {}) as Dictionary).has("done"), "welcome traz o diário do servidor")
+	# 1) nível 2 (a Sálvia só passa a missão a partir dele)
+	check(await hunt_until("", Vector3.INF, func() -> bool: return int(c.me.level) >= 2, 60.0), "sobe ao nível 2 caçando perto da chegada (nível %d)" % int(c.me.level))
+	# 2) aceitar a missão 1 com a Sálvia
+	check(await _go_to(_npc("salvia") + Vector3(0, 0, 1.6), 70.0, func() -> bool: return server_pos().distance_to(_npc("salvia")) < 3.0), "anda até a Sálvia (servidor em %s)" % str(server_pos()))
+	var acc: Dictionary = await interact("npc:salvia", "talk")
+	check(String(acc.get("event", "")) == "accept" and String(acc.get("quest", "")) == "coaxar", "missão 1 aceita pelo servidor (%s)" % str(acc.get("event", "")))
+	# 3) 5 sapos do Charco
+	check(await hunt_until("frog", CHARCO, func() -> bool: return quest_step("coaxar") >= 1, 120.0), "abates do servidor fecham o passo (5 sapos do Charco)")
+	# 4) entrega e recompensa
+	await _go_to(_npc("salvia") + Vector3(0, 0, 1.6), 40.0, func() -> bool: return server_pos().distance_to(_npc("salvia")) < 3.0)
+	await wait(0.5)
+	var xp0 := total_xp()
+	var pots0 := int(c.me.pot_hp)
+	var done: Dictionary = await interact("npc:salvia", "talk")
+	check(String(done.get("event", "")) == "complete", "missão 1 concluída no servidor")
+	check(int((done.get("reward", {}) as Dictionary).get("xp", 0)) == 25, "recompensa: 25 de XP no resumo do servidor")
+	await wait(1.2)   # vários snapshots depois
+	check(total_xp() - xp0 == 25, "XP da missão fica no snapshot (não é sobrescrito): +%d" % (total_xp() - xp0))
+	check(int(c.me.pot_hp) == pots0 + 3, "recompensa: +3 poções de vida no snapshot (%d → %d)" % [pots0, int(c.me.pot_hp)])
+	# 5) segredo: uma vez só, inclusive depois de reconectar
+	check(await _go_to(SECRET_AT, 50.0, func() -> bool: return Vector2(server_pos().x - 40.0, server_pos().z - 88.0).length() < 3.2), "anda até o marco da Ilhota dos Juncos (%s)" % str(server_pos()))
+	var mm0 := int(c.me.max_mana)
+	var sec: Dictionary = await interact("secret:" + SECRET, "secret")
+	check(not sec.is_empty(), "segredo revelado pelo servidor")
+	await wait(0.6)
+	check(int(c.me.max_mana) == mm0 + 15, "segredo: +15 de mana máxima (%d → %d)" % [mm0, int(c.me.max_mana)])
+	var n0 := events.size()
+	await interact("secret:" + SECRET, "secret", 3.0)
+	check(refused_since(n0, "interact", "claimed"), "segredo: segunda vez recusada (claimed)")
+	c.drop_connection()
+	await wait(2.0)
+	welcomes.clear()
+	c.resume()
+	check(await wait_until(func() -> bool: return not welcomes.is_empty(), 15.0), "reconecta por token (RESUME)")
+	await wait_until(func() -> bool: return int(c.snaps) > 2, 3.0)
+	await wait(0.5)
+	n0 = events.size()
+	await interact("secret:" + SECRET, "secret", 3.0)
+	check(refused_since(n0, "interact", "claimed") and int(c.me.max_mana) == mm0 + 15, "segredo: depois de reconectar continua uma vez só (mana máx. %d)" % int(c.me.max_mana))
+	# 6) missão 2: Estrada Velha → arma da missão
+	await _quest_two()
+	c.logout()
+	await wait(0.6)
+
+
+func _quest_two() -> void:
+	if int(c.me.level) < 3:
+		await hunt_until("frog", CHARCO, func() -> bool: return int(c.me.level) >= 3, 60.0)
+	await _go_to(_npc("rook") + Vector3(1.6, 0, 0), 90.0, func() -> bool: return server_pos().distance_to(_npc("rook")) < 3.0)
+	var acc: Dictionary = await interact("npc:rook", "talk")
+	check(String(acc.get("quest", "")) == "fios_estrada" and String(acc.get("event", "")) == "accept", "missão 2 aceita com o Rook (%s, nível %d)" % [str(acc.get("event", "")), int(c.me.level)])
+	check(await _go_to(ESTRADA, 40.0, func() -> bool: return quest_step("fios_estrada") >= 1), "chegada à Estrada Velha confirmada pelo servidor (passo %d)" % quest_step("fios_estrada"))
+	check(await hunt_until("spider", ESTRADA, func() -> bool: return quest_step("fios_estrada") >= 2, 150.0), "4 aranhas da Estrada Velha (passo %d)" % quest_step("fios_estrada"))
+	var badge := Vector3(-82.5, 0, 47.5)
+	await _go_to(badge, 30.0, func() -> bool: return server_pos().distance_to(badge) < 1.5)
+	var picked: Dictionary = await interact("pickup", "quest")
+	check(not picked.is_empty() and quest_step("fios_estrada") >= 3, "insígnia pega no servidor (passo %d)" % quest_step("fios_estrada"))
+	await _go_to(_npc("rook") + Vector3(1.6, 0, 0), 60.0, func() -> bool: return server_pos().distance_to(_npc("rook")) < 3.0)
+	var done: Dictionary = await interact("npc:rook", "talk")
+	var rw: Dictionary = done.get("reward", {})
+	check(String(done.get("event", "")) == "complete" and String(rw.get("item", "")) == "yew_bow", "missão 2 concluída: Arco de Teixo (%s)" % str(rw.get("item", "")))
+	check(String(((done.get("state", {}) as Dictionary).get("equipped", {}) as Dictionary).get("weapon", "")) == "yew_bow", "arco da missão vestido no servidor")
+	# dano autoritativo: o mesmo alvo com o arco novo e com o inicial
+	var n0 := events.size()
+	await hunt_until("", Vector3.INF, func() -> bool: return not _my_damage(n0).is_empty(), 30.0)
+	var with_yew: Array = _my_damage(n0)
+	var n1 := events.size()
+	c.action("equip", {"item": "hunting_bow"})
+	var eq: bool = await wait_until(func() -> bool: return not content_since(n1, "equip").is_empty(), 5.0)
+	var n2 := events.size()
+	await hunt_until("", Vector3.INF, func() -> bool: return not _my_damage(n2).is_empty(), 30.0)
+	var with_hunting: Array = _my_damage(n2)
+	check(eq and not with_yew.is_empty() and not with_hunting.is_empty() and int(with_yew[0]) > int(with_hunting[0]),
+		"equipar muda o dano autoritativo (Arco de Teixo %s > arco inicial %s)" % [str(with_yew), str(with_hunting)])
+	var n3 := events.size()
+	c.action("equip", {"item": "guard_sword"})
+	check(await wait_until(func() -> bool: return refused_since(n3, "equip", "equip"), 5.0), "equipar espada de guerreiro na arqueira: recusado")
+	c.action("equip", {"item": "yew_bow"})
+	await wait(0.5)
+
+
+## Depois de reiniciar o servidor: missões, segredo e arma voltam do save.
+func _quester_after_restart() -> void:
+	c.connect_and_login("127.0.0.1", port, "Quinn", PASSWORD, false)
+	check(await wait_until(func() -> bool: return not welcomes.is_empty(), 15.0), "login com senha após reiniciar o servidor")
+	if welcomes.is_empty():
+		return
+	var cs: Dictionary = welcomes[0].get("content", {})
+	var qs: Dictionary = cs.get("quests", {})
+	check("coaxar" in (qs.get("done", []) as Array), "persistência: missão 1 concluída sobreviveu ao reinício")
+	check(SECRET in (qs.get("secrets", []) as Array), "persistência: segredo revelado sobreviveu ao reinício")
+	check(String((cs.get("equipped", {}) as Dictionary).get("weapon", "")) == "yew_bow" or not ("fios_estrada" in (qs.get("done", []) as Array)),
+		"persistência: arma da missão continua vestida")
+	c.logout()
+	await wait(0.6)
 
 
 func _friend_in_list(n: String) -> bool:
