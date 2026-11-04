@@ -15,8 +15,11 @@ const TextRules := preload("res://prototypes/pixel3d/net/text_rules.gd")
 const Store := preload("res://prototypes/pixel3d/net/json_store.gd")
 const Collision := preload("res://prototypes/pixel3d/net/world_collision.gd")
 const Log := preload("res://prototypes/pixel3d/net/net_log.gd")
+const ServerAI := preload("res://prototypes/pixel3d/net/server_ai.gd")
 
 const TUNING_PATH := "res://prototypes/pixel3d/data/first_adventure.json"
+const CLASSES_PATH := "res://prototypes/pixel3d/data/classes.json"
+const CORE_SKILLS_PATH := "res://prototypes/pixel3d/data/core_skills.json"
 const COLLISION_PATH := "res://prototypes/pixel3d/net/data/collision_surface.json"
 
 var cfg: Dictionary
@@ -39,6 +42,7 @@ var _clock := 0.0
 var _stats := {"in": 0, "out": 0, "in_bytes": 0, "out_bytes": 0, "kicks": 0}
 var _stats_acc := 0.0
 var _data_path := ""
+var _floors: Dictionary = {}
 
 
 func setup(config: Dictionary) -> void:
@@ -50,15 +54,31 @@ func setup(config: Dictionary) -> void:
 		var v: Variant = JSON.parse_string(f.get_as_text())
 		if v is Dictionary:
 			tuning = v
-	var col: RefCounted = Collision.load_file(COLLISION_PATH, float(cfg.get("world_half", 60.0)))
-	world = World.new(cfg, tuning, col)
+	var floors: Dictionary = Collision.load_floors(COLLISION_PATH, float(cfg.get("world_half", 100.0)))
+	var col: RefCounted = floors[0]
+	world = World.new(cfg, tuning, col, 7, Store.load_dict(CLASSES_PATH), Store.load_dict(CORE_SKILLS_PATH))
+	_floors = floors
+	if is_inside_tree():
+		_attach_ai()
 	_data_path = String(cfg.get("data_dir", "user://aethra-server")).path_join("accounts.json")
 	accounts = Accounts.new(cfg, Store.load_dict(_data_path))
 	friends = Friends.new(accounts)
 	sessions = Sessions.new(float(cfg.get("reconnect_grace_s", 120.0)))
 	limiter = Limiter.new(cfg.get("rate_limits", {}), float(cfg.get("abuse_score_kick", 40)), float(cfg.get("abuse_decay_per_second", 2.0)))
-	logger.write("info", "mundo: %d monstros, %d obstáculos; contas: %d; dados em %s" % [
-		world.monsters.size(), col.circles.size() + col.boxes.size(), accounts.accounts().size(), ProjectSettings.globalize_path(_data_path)])
+	logger.write("info", "mundo: %d monstros, %d obstáculos na superfície, %d andares; contas: %d; dados em %s" % [
+		world.monsters.size(), col.count(), floors.size(), accounts.accounts().size(), ProjectSettings.globalize_path(_data_path)])
+
+
+## IA real do jogo num World3D headless com a colisão exportada. Precisa do nó na árvore:
+## o setup() roda no _initialize do server_main (antes disso), então liga no 1º quadro.
+func _attach_ai() -> void:
+	if world.ai != null or not bool(cfg.get("server_ai", true)):
+		return
+	var holder := Node3D.new()
+	holder.name = "AI"
+	add_child(holder)
+	world.attach_ai(ServerAI.new(holder, _floors))
+	logger.write("info", "IA real dos monstros ligada (%d monstros, enemy_director)" % world.monsters.size())
 
 
 ## Abre a porta UDP. Devolve OK ou o erro.
@@ -78,6 +98,8 @@ func start() -> Error:
 func _process(delta: float) -> void:
 	if peer == null:
 		return
+	if world.ai == null and bool(cfg.get("server_ai", true)):
+		_attach_ai()
 	_clock += delta
 	peer.poll()
 	while peer.get_available_packet_count() > 0:
@@ -295,6 +317,8 @@ func _auth(id: int, c: Dictionary, type: int, msg: Dictionary) -> void:
 	var key := ""
 	var name_s := String(msg.get("name", "")) if msg.get("name") is String else ""
 	var pass_s := String(msg.get("pass", "")) if msg.get("pass") is String else ""
+	# vocação pedida: só vale para personagem novo; o mundo valida contra classes.json
+	c["vocation"] = String(msg.get("vocation", "")).left(16) if msg.get("vocation") is String else ""
 	match type:
 		Protocol.C_REGISTER:
 			var r: Dictionary = accounts.register(name_s, pass_s, int(Time.get_unix_time_from_system()))
@@ -333,13 +357,14 @@ func _enter_world(id: int, c: Dictionary, key: String, resumed: bool) -> void:
 	else:
 		token = sessions.issue(key, id)
 	var display: String = accounts.display_name(key)
-	var eid: int = world.add_player(key, display, accounts.character(key))
+	var eid: int = world.add_player(key, display, accounts.character(key), String(c.get("vocation", "")))
 	c.stage = "game"
 	c.eid = eid
 	c.key = key
 	eid_peer[eid] = id
 	var welcome := {"eid": eid, "name": display, "resumed": resumed, "tick": int(world.tick),
-		"tick_rate": int(cfg.tick_rate), "character": world.character_data(eid)}
+		"tick_rate": int(cfg.tick_rate), "character": world.character_data(eid),
+		"vocation": String(world.players[eid].vocation), "speed": float(world.players[eid].speed)}
 	if not token.is_empty():
 		welcome["token"] = token
 	_send_control(id, Protocol.S_WELCOME, welcome)
