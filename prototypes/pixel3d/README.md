@@ -6,15 +6,17 @@
 - **Vocações:** Mago, Guerreiro, Arqueiro (`data/classes.json`, `vocations.gd`). Escolha na primeira vez ou com **F2**.
 - **Combate:** clique = ataque básico da vocação · **Q** / botão direito e **R** = habilidades (desbloqueiam nos níveis 2 e 3) · **Espaço** esquiva · **1/2** poções · **3** = core skill Luz (utevo vis lux).
 - **Mundo:** 200×200 m, 5 regiões, caçadas por nível, 4 segredos, ciclo de 27 min (20 dia + 7 noite).
-- **Conteúdo:** missão da Nessa + cadeia Sálvia → Rook → Bran (`data/quests.json`, `quests.gd`). **J** diário · **I** bolsa (grade estilo Tibia: arrastar ao slot ou duplo clique veste; arma vestida tinge o modelo; online o servidor decide) · **C** personagem · **H** atalhos · **E** interagir.
+- **Conteúdo:** missão da Nessa + cadeia Sálvia → Rook → Bran (`data/quests.json`, `quests.gd`). **J** diário · **I** bolsa (grade estilo Tibia: arrastar ao slot ou duplo clique veste; arrastar do slot até a grade ou duplo clique no slot desequipa, bolsa cheia recusa com o slot tremendo; arma vestida tinge o modelo; online o servidor decide) · **C** personagem · **H** atalhos · **E** interagir.
+- **Ouro e troca com a Nessa:** moedas caem dos monstros (mais nas caçadas de nível alto) e vêm das missões; ficam na 1ª célula da bolsa. Falar com a Nessa fora do aceite/entrega da missão abre a troca (poções à venda; ela compra o que não está vestido, preço pela raridade); duplo clique compra/vende, afastar fecha. Preços e moedas em `data/shop.json`, regras em `economy.gd`.
+- **Online (entre jogadores):** arrastar um item da bolsa para o chão larga (todos veem o saquinho com o nome por 60 s; **E** pega); arrastar até outro jogador perto abre a troca para os dois (duplo clique põe/tira da oferta, ✓ confirma, ✕ cancela; mudar a oferta desfaz as confirmações; afastar cancela).
 - **Monstros:** IA com estados, A*, aggro com linha de visão (`ai/`, parâmetros em `data/first_adventure.json` → `enemy`).
 - **Rede:** servidor autoritativo em `net/` (ver `server/README.md`); ligação do cliente em andamento.
 
 ### Flags úteis
-`--class=mage|warrior|archer` · `--hour=H` · `--at=x,z` · `--zoom=N` · `--light` · `--panel=vocation` · `--quest=id:passo` · `--level=N` · `--talk=npc` · `--secret=id` · `--give=id,id` · `--equip=id,id` · `--no_save` · `--mute` · `--shot=res://... --shot_delay=S`
+`--class=mage|warrior|archer` · `--hour=H` · `--at=x,z` · `--zoom=N` · `--light` · `--panel=vocation` · `--quest=id:passo` · `--level=N` · `--talk=npc` · `--secret=id` · `--give=id,id` · `--equip=id,id` · `--gold=N` · `--panel=bag|shop` · `--no_save` · `--mute` · `--shot=res://... --shot_delay=S`
 
 ### Testes (headless)
-`godot --headless --path . -s res://prototypes/pixel3d/tools/<teste>.gd -- --no_save --mute`, com `<teste>` = `test_mage_combat`, `test_enemy_ai`, `test_world_reach`, `test_day_night`, `test_core_light`, `test_vocations`, `test_quests`, `test_floors`, `test_equip`. Rede: `tests/unit/net/*.gd` e `bash tools/net_session_test.sh`. Print da investida deslizando com 2 clientes: `bash tools/net_dash_shot.sh`.
+`godot --headless --path . -s res://prototypes/pixel3d/tools/<teste>.gd -- --no_save --mute`, com `<teste>` = `test_mage_combat`, `test_enemy_ai`, `test_world_reach`, `test_day_night`, `test_core_light`, `test_vocations`, `test_quests`, `test_floors`, `test_equip`, `test_shop`. Rede: `tests/unit/net/*.gd`, `bash tools/net_session_test.sh` e só a economia online `bash tools/net_trade_test.sh` (~1 min). Print da investida deslizando com 2 clientes: `bash tools/net_dash_shot.sh`; item largado visto pelo outro cliente: `bash tools/net_drop_shot.sh`.
 
 ## Hipótese
 Um mundo 3D renderizado em baixa resolução (~430×240, escala inteira), com luz em
