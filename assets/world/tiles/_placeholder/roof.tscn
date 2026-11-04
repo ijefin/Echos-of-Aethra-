@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_icia7"]
+albedo_color = Color(0.7, 0.25, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_dheux"]
+material = SubResource("StandardMaterial3D_icia7")
+size = Vector3(2.4, 0.3, 2.4)
+
+[node name="Roof" type="Node3D" unique_id=1183338672]
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=891697340]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+mesh = SubResource("BoxMesh_dheux")

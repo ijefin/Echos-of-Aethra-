@@ -1,0 +1,46 @@
+{
+	"cell_size": [
+		2.0,
+		2.0,
+		2.0
+	],
+	"kit": "_placeholder",
+	"pieces": [
+		{
+			"collision": "none",
+			"id": "grass",
+			"scene": "res://assets/world/tiles/_placeholder/grass.tscn"
+		},
+		{
+			"collision": "none",
+			"id": "road",
+			"scene": "res://assets/world/tiles/_placeholder/road.tscn"
+		},
+		{
+			"collision": "none",
+			"id": "plaza",
+			"scene": "res://assets/world/tiles/_placeholder/plaza.tscn"
+		},
+		{
+			"collision": "none",
+			"id": "floor_wood",
+			"scene": "res://assets/world/tiles/_placeholder/floor_wood.tscn"
+		},
+		{
+			"collision": "box",
+			"id": "wall",
+			"scene": "res://assets/world/tiles/_placeholder/wall.tscn"
+		},
+		{
+			"collision": "none",
+			"id": "door",
+			"scene": "res://assets/world/tiles/_placeholder/door.tscn"
+		},
+		{
+			"collision": "none",
+			"id": "roof",
+			"scene": "res://assets/world/tiles/_placeholder/roof.tscn"
+		}
+	],
+	"scale": 1.0
+}

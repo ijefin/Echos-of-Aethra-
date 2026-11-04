@@ -1,0 +1,12 @@
+{
+	"load_radius": 70.0,
+	"unload_radius": 90.0,
+	"regions": {
+		"sample_village": {
+			"scene": "res://src/world/regions/sample_village.tscn",
+			"origin": [0, 0, 0],
+			"bounds_center": [0, 0, 0],
+			"bounds_size": [100, 40, 100]
+		}
+	}
+}
