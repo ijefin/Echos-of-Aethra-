@@ -866,7 +866,7 @@ func _trader() -> void:
 	check(not s1.is_empty() and not s2.is_empty() and gold() == earned and not bag().has("leather_hood"), "vende capuz e colete à Nessa: %d moedas (servidor)" % gold())
 	var pots := int(c.me.get("pot_hp", 0))
 	var b: Dictionary = await content_act("buy", {"kind": "hp"}, "buy")
-	await wait(0.4)
+	await wait_until(func() -> bool: return int(c.me.get("pot_hp", 0)) == pots + 1, 3.0)   # snapshot pode vir depois do evento
 	check(not b.is_empty() and gold() == earned - int(b.get("price", 0)) and int(c.me.pot_hp) == pots + 1, "compra uma poção de vida: ouro %d, poções %d → %d" % [gold(), pots, int(c.me.pot_hp)])
 	# --- troca 1: arco inicial ↔ elmo do Teo
 	await content_act("unequip", {"slot": "weapon"}, "unequip")
@@ -897,9 +897,10 @@ func _trader() -> void:
 	c.action("trade_ask", {"target": teo})
 	check(await wait_until(func() -> bool: return (last_trade().get("theirs", []) as Array).has("knight_helm"), 20.0), "troca 2 aberta: o Teo oferece o elmo de volta")
 	c.action("trade_ok")
-	check(await wait_until(func() -> bool:
-		var cl := trade_since(n0, "close")
-		return not cl.is_empty() and String(cl[0].get("reason", "")) == "range", 30.0), "o Teo se afastou: servidor cancelou a troca (range)")
+	await wait_until(func() -> bool: return not trade_since(n0, "close").is_empty(), 30.0)
+	var cl0 := trade_since(n0, "close")
+	var why := String(cl0[0].get("reason", "")) if not cl0.is_empty() else "nenhum"
+	check(why == "range", "o Teo se afastou: servidor cancelou a troca (motivo %s)" % why)
 	await wait(0.3)
 	check(not bag().has("knight_helm"), "troca cancelada: nada mudou na bolsa")
 	c.logout()
@@ -940,16 +941,13 @@ func _partner() -> void:
 	check(await wait_until(func() -> bool: return not trade_since(n1, "open").is_empty(), 40.0), "recebe o segundo pedido de troca")
 	c.action("trade_add", {"item": "knight_helm"})
 	await wait_until(func() -> bool: return bool(last_trade().get("their_ok", false)), 15.0)
-	var from := server_pos()
-	var away := (from - _tara_pos())
-	away.y = 0.0
-	if away.length() < 0.1:
-		away = Vector3(1, 0, 0)
-	_move = Vector2(away.x, away.z).normalized()
-	check(await wait_until(func() -> bool:
-		var cl := trade_since(n1, "close")
-		return not cl.is_empty() and String(cl[0].get("reason", "")) == "range", 8.0), "se afastou: troca cancelada (range)")
+	# anda pela estrada a leste do acampamento (caminho BFS na colisão, sem esbarrar no rio)
+	var goal := StairsRef.NPC + Vector3(11, 0, -3)
+	await _go_to(goal, 15.0, func() -> bool: return not trade_since(n1, "close").is_empty())
 	_move = Vector2.ZERO
+	var cl1 := trade_since(n1, "close")
+	var why := String(cl1[0].get("reason", "")) if not cl1.is_empty() else "nenhum"
+	check(why == "range", "se afastou %.1f m da Tara: troca cancelada (motivo %s)" % [server_pos().distance_to(_tara_pos()), why])
 	await wait(0.3)
 	check(bag().has("knight_helm"), "troca cancelada: o elmo continua com o Teo")
 	c.logout()

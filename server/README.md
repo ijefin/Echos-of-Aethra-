@@ -155,7 +155,7 @@ Sem `--connect`, o jogo roda offline como sempre: nada da rede é criado.
 "$G" --headless --path . -s res://tests/unit/net/dash_motion_test.gd        # DASH_MOTION: OK (9)
 "$G" --headless --path . -s res://tests/unit/net/server_economy_test.gd     # SERVER_ECONOMY: OK (58)
 bash tools/net_unit_tests.sh          # todos os tests/unit/net/*_test.gd de uma vez
-bash tools/net_session_test.sh        # 1 servidor + 7 bots (~6 min)
+bash tools/net_session_test.sh        # 1 servidor + 7 bots: 94 PASS (~6 min)
 bash tools/net_trade_test.sh          # só Tara + Teo: loja, troca concluída, chão, troca cancelada: 28 PASS
 bash tools/net_game_client_test.sh    # servidor + bot + CLIENTE REAL do jogo (--connect): 34 PASS
 bash tools/net_drop_shot.sh           # 2 clientes em janela; item largado pela Ana visto pelo Davi
