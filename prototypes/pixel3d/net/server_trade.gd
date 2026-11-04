@@ -7,7 +7,8 @@ extends RefCounted
 ## lista. Qualquer um perto (`ground_take_m` + folga, mesmo andar) pega com {"act": "take", "gid"}.
 ##
 ## Troca: {"act": "trade_ask", "target": eid} abre a troca para os dois (perto, vivos, livres).
-## Cada um põe/tira itens da bolsa ("trade_add"/"trade_remove", "item"); qualquer mudança
+## Cada um põe/tira itens da bolsa ("trade_add"/"trade_remove", "item") e define quanto ouro e
+## quantas poções entram ("trade_set", what = gold|hp|mana, n = total oferecido); qualquer mudança
 ## desfaz as confirmações. Com os dois "trade_ok", o servidor confere tudo de novo (itens ainda
 ## na bolsa, espaço) e troca de uma vez. Afastar além de `trade_break_m`, mudar de andar,
 ## morrer, sair ou "trade_cancel" fecham a troca para os dois.
@@ -17,7 +18,7 @@ var world: RefCounted
 var shop: Dictionary
 ## gid → {gid, item, pos: Vector3, floor, until, by}
 var ground: Dictionary = {}
-## eid → {with: eid, offer: Array[String], ok: bool}
+## eid → {with: eid, offer: Array[String], gold: int, pots: {hp, mana}, ok: bool}
 var trades: Dictionary = {}
 
 
@@ -142,6 +143,8 @@ func _send_state(eid: int, op: String) -> void:
 	var oname := String((world.players.get(other, {}) as Dictionary).get("name", ""))
 	world.events.append({"to": eid, "type": "trade", "op": op, "with": other, "name": oname,
 		"mine": (tr.offer as Array).duplicate(), "theirs": (ot.get("offer", []) as Array).duplicate(),
+		"my_gold": int(tr.gold), "their_gold": int(ot.get("gold", 0)),
+		"my_pots": (tr.pots as Dictionary).duplicate(), "their_pots": (ot.get("pots", {}) as Dictionary).duplicate(),
 		"my_ok": bool(tr.ok), "their_ok": bool(ot.get("ok", false))})
 
 
@@ -161,8 +164,8 @@ func ask(p: Dictionary, target: int) -> String:
 		return "range"
 	var empty_a: Array[String] = []
 	var empty_b: Array[String] = []
-	trades[me] = {"with": target, "offer": empty_a, "ok": false}
-	trades[target] = {"with": me, "offer": empty_b, "ok": false}
+	trades[me] = {"with": target, "offer": empty_a, "gold": 0, "pots": {"hp": 0, "mana": 0}, "ok": false}
+	trades[target] = {"with": me, "offer": empty_b, "gold": 0, "pots": {"hp": 0, "mana": 0}, "ok": false}
 	_send_state(me, "open")
 	_send_state(target, "open")
 	return ""
@@ -185,6 +188,31 @@ func offer(p: Dictionary, id: String, add: bool) -> String:
 		if not (id in off):
 			return "item"
 		off.erase(id)
+	tr.ok = false
+	trades[int(tr.with)].ok = false
+	_send_state(me, "state")
+	_send_state(int(tr.with), "state")
+	return ""
+
+
+## Quanto ouro ou poções ("gold" | "hp" | "mana") entram na sua oferta (total, não soma).
+## Recusas: no_trade, what, gold (mais do que tem), potion (mais do que tem).
+func set_amount(p: Dictionary, what: String, n: int) -> String:
+	var me := int(p.eid)
+	if not trades.has(me):
+		return "no_trade"
+	var tr: Dictionary = trades[me]
+	n = maxi(0, n)
+	if what == "gold":
+		if n > int(p.get("gold", 0)):
+			return "gold"
+		tr.gold = n
+	elif what in ["hp", "mana"]:
+		if n > int((p.get("potions", {}) as Dictionary).get(what, 0)):
+			return "potion"
+		tr.pots[what] = n
+	else:
+		return "what"
 	tr.ok = false
 	trades[int(tr.with)].ok = false
 	_send_state(me, "state")
@@ -243,6 +271,17 @@ func _swap(a: int, b: int) -> void:
 	if not _has_all(_bag(pa), oa) or not _has_all(_bag(pb), ob):
 		close(a, "item")
 		return
+	var ga := int(trades[a].gold)
+	var gb := int(trades[b].gold)
+	var ka: Dictionary = (trades[a].pots as Dictionary).duplicate()
+	var kb: Dictionary = (trades[b].pots as Dictionary).duplicate()
+	if int(pa.get("gold", 0)) < ga or int(pb.get("gold", 0)) < gb:
+		close(a, "gold")   # gastou o ouro na loja depois de oferecer
+		return
+	for k: String in ["hp", "mana"]:
+		if int(pa.potions.get(k, 0)) < int(ka.get(k, 0)) or int(pb.potions.get(k, 0)) < int(kb.get(k, 0)):
+			close(a, "potion")   # bebeu a poção depois de oferecer
+			return
 	if _bag(pa).size() - oa.size() + ob.size() > _cap(pa) or _bag(pb).size() - ob.size() + oa.size() > _cap(pb):
 		close(a, "full")
 		return
@@ -255,12 +294,17 @@ func _swap(a: int, b: int) -> void:
 		_bag(pa).append(String(id))
 	for id: Variant in oa:
 		_bag(pb).append(String(id))
+	pa.gold = int(pa.get("gold", 0)) - ga + gb
+	pb.gold = int(pb.get("gold", 0)) - gb + ga
+	for k: String in ["hp", "mana"]:
+		pa.potions[k] = int(pa.potions.get(k, 0)) - int(ka.get(k, 0)) + int(kb.get(k, 0))
+		pb.potions[k] = int(pb.potions.get(k, 0)) - int(kb.get(k, 0)) + int(ka.get(k, 0))
 	trades.erase(a)
 	trades.erase(b)
-	_bag_event(pa, {"what": "trade", "gave": oa, "got": ob, "with": String(pb.name)})
-	_bag_event(pb, {"what": "trade", "gave": ob, "got": oa, "with": String(pa.name)})
-	world.events.append({"to": a, "type": "trade", "op": "done", "gave": oa, "got": ob})
-	world.events.append({"to": b, "type": "trade", "op": "done", "gave": ob, "got": oa})
+	_bag_event(pa, {"what": "trade", "gave": oa, "got": ob, "gold_gave": ga, "gold_got": gb, "pots_gave": ka, "pots_got": kb, "with": String(pb.name)})
+	_bag_event(pb, {"what": "trade", "gave": ob, "got": oa, "gold_gave": gb, "gold_got": ga, "pots_gave": kb, "pots_got": ka, "with": String(pa.name)})
+	world.events.append({"to": a, "type": "trade", "op": "done", "gave": oa, "got": ob, "gold_got": gb, "pots_got": kb})
+	world.events.append({"to": b, "type": "trade", "op": "done", "gave": ob, "got": oa, "gold_got": ga, "pots_got": ka})
 
 
 # ------------------------------------------------------------------ passo

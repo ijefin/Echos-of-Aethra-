@@ -211,7 +211,7 @@ func region_of(pos: Vector3) -> String:
 ##   "q"/"r"  sinônimos de blink/ring;  "potion" (kind hp|mana);  "light" (core skill Luz)
 ##   "interact" (target) · "equip" (item) · "unequip" (slot) · "buy" (kind) · "sell" (item)
 ##   "drop" (item) · "take" (gid) · "trade_ask" (target) · "trade_add"/"trade_remove" (item)
-##   "trade_ok" · "trade_cancel"
+##   "trade_set" (what gold|hp|mana, n) · "trade_ok" · "trade_cancel"
 ## Devolve "" se aceita, ou o motivo da recusa (o servidor não confia em nada do cliente).
 ## Se a ação mudou o que aparece no modelo (arma/escudo/cabeça/peito), avisa quem está perto
 ## (evento "gear") para os outros clientes redesenharem o personagem.
@@ -275,6 +275,8 @@ func _player_action(p: Dictionary, act: Dictionary) -> String:
 			return trade.ask(p, int(act.get("target", 0)))
 		"trade_add", "trade_remove":
 			return trade.offer(p, String(act.get("item", "")), a == "trade_add")
+		"trade_set":
+			return trade.set_amount(p, String(act.get("what", "")), int(act.get("n", 0)))
 		"trade_ok":
 			return trade.confirm(p)
 		"trade_cancel":

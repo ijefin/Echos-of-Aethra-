@@ -45,6 +45,9 @@ class FakeOnline:
 	func ground_near(_p: Vector3) -> int:
 		return 0
 
+	func trade_set(what: String, n: int) -> void:
+		asked.append("trade_set:%s=%d" % [what, n])
+
 
 func run() -> void:
 	Engine.set_meta("aethra_class", "mage")
@@ -124,6 +127,20 @@ func run() -> void:
 	check(hud.shop_sell("iron_sword") and fake.asked.back() == "sell:iron_sword" and "iron_sword" in a.inventory.items, "online: venda só pede ao servidor")
 	hud.shop_refused()
 	check(hud._reject_fx.has("sell:iron_sword"), "online: recusa do servidor treme a célula")
+	# --- troca entre jogadores: ouro e poções na oferta (o HUD só pede; o servidor valida)
+	a.gold = 25
+	a.potions = {"hp": 2, "mana": 0}
+	hud.trade = {"op": "state", "name": "Bia", "mine": [], "theirs": [], "my_gold": 0, "my_pots": {"hp": 0, "mana": 0}}
+	check(hud.trade_amount("gold", true) and fake.asked.back() == "trade_set:gold=10", "troca: clique no ouro oferece 10 moedas")
+	hud.trade.my_gold = 20
+	check(hud.trade_amount("gold", true) and fake.asked.back() == "trade_set:gold=25", "troca: mais um clique oferece o resto (25 de 25)")
+	hud.trade.my_gold = 25
+	hud._reject_fx.clear()
+	check(not hud.trade_amount("gold", true) and hud._reject_fx.has("trade:src:gold"), "troca: sem mais ouro a fonte treme")
+	check(hud.trade_amount("gold", false) and fake.asked.back() == "trade_set:gold=15", "troca: tirar devolve 10 moedas")
+	check(hud.trade_amount("hp", true) and fake.asked.back() == "trade_set:hp=1", "troca: clique na poção de vida oferece 1")
+	check(not hud.trade_amount("mana", true) and hud._reject_fx.has("trade:src:mana"), "troca: sem poção de mana a fonte treme")
+	hud.trade = {}
 	a.online = null
 	print("TEST_SHOP: %s (%d PASS, %d FAIL)" % ["OK" if fails == 0 else "FAIL", passes, fails])
 	quit(0 if fails == 0 else 1)
