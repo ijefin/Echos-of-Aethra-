@@ -183,6 +183,9 @@ func _ready() -> void:
 		_audio.build(self)
 	get_viewport().size_changed.connect(_fit)
 	_fit()
+	if args.has("light") and _adventure != null:  # print/teste: começa com a core skill Luz ativa
+		_adventure.mana = 999.0
+		_adventure.core.cast("light")
 	if args.has("shot"):
 		await get_tree().create_timer(float(args.get("shot_delay", 4.0))).timeout
 		await RenderingServer.frame_post_draw
@@ -828,6 +831,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_2:
 				if _adventure != null:
 					_adventure.drink("mana")
+			KEY_3:
+				if _adventure != null:
+					_adventure.core.cast("light")
 			KEY_R:
 				if _adventure != null:
 					_adventure.cast_ring()
@@ -985,7 +991,7 @@ func _physics_process(delta: float) -> void:
 	_crystal_light.light_energy = float(profile.energy) * strength
 	_crystal_light.omni_range = float(profile.range)
 	for mat in _char_mats:
-		mat.set_shader_parameter("readability", _sky.night * 0.45)
+		mat.set_shader_parameter("readability", minf(1.0, _sky.night * 0.45 + (_adventure.core.readability_boost() * _sky.night if _adventure != null else 0.0)))
 	if _adventure != null:
 		_adventure.update(delta, _t)
 

@@ -5,6 +5,7 @@ const State := preload("res://prototypes/pixel3d/first_adventure_state.gd")
 const World := preload("res://prototypes/pixel3d/adventure_world.gd")
 const Enemies := preload("res://prototypes/pixel3d/adventure_enemies.gd")
 const Hud := preload("res://prototypes/pixel3d/adventure_hud.gd")
+const CoreSkills := preload("res://prototypes/pixel3d/core_skills.gd")
 const Chat := preload("res://prototypes/pixel3d/adventure_chat.gd")
 const Dressing := preload("res://prototypes/pixel3d/pixel3d_dressing.gd")
 const BUBBLE_TIME := 10.0
@@ -17,6 +18,8 @@ var state
 var world
 var enemies
 var hud
+## Core skills (todas as classes): luz etc.
+var core
 var inventory
 var hp := 60.0
 var mana := 40.0
@@ -82,6 +85,8 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	enemies.build(self)
 	hud = Hud.new()
 	hud.build(self)
+	core = CoreSkills.new()
+	core.build(self)
 	chat = Chat.new()
 	chat.build(self, hud.get_parent())
 	chat.post("Servidor", "Bem-vindo a Aethra.")
@@ -416,6 +421,7 @@ func objective() -> String:
 func update(delta: float, t: float) -> void:
 	notice_time = maxf(0, notice_time - delta)
 	ring_cd = maxf(0, ring_cd - delta)
+	core.update(delta)
 	_potion_cd = maxf(0, _potion_cd - delta)
 	_update_bubbles(delta)
 	_stair_cd = maxf(0.0, _stair_cd - delta)

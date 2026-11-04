@@ -1,0 +1,19 @@
+{
+  "_doc": "Core skills: habilidades básicas compartilhadas por todas as classes. Tempos em segundos.",
+  "order": ["light"],
+  "skills": {
+    "light": {
+      "name": "Luz",
+      "words": "utevo vis lux",
+      "key": "3",
+      "mana": 20,
+      "duration": 300.0,
+      "cooldown": 6.0,
+      "warn_last": 20.0,
+      "light_range": 10.0,
+      "light_energy": 1.5,
+      "light_color": [1.0, 0.9, 0.68],
+      "readability": 0.55
+    }
+  }
+}

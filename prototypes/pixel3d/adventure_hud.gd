@@ -166,6 +166,7 @@ func _slots(state, demo) -> Array:
 		{"key": "Espaço", "icon": "dodge", "cd": clampf(demo._dodge_cd_left() if demo.has_method("_dodge_cd_left") else 0.0, 0, 1), "lock": 0},
 		{"key": "1", "icon": "hp_potion", "cd": adventure.potion_cd_ratio(), "lock": 0, "count": int(adventure.potions.hp)},
 		{"key": "2", "icon": "mp_potion", "cd": adventure.potion_cd_ratio(), "lock": 0, "count": int(adventure.potions.mana)},
+		{"key": "3", "icon": "light", "cd": adventure.core.cooldown_ratio("light"), "lock": 0, "cost": int(adventure.core.skill("light").mana), "active": adventure.core.remaining("light") / float(adventure.core.skill("light").duration), "left": adventure.core.remaining("light")},
 	]
 
 
@@ -188,6 +189,12 @@ func _slot(r: Rect2, s: Dictionary) -> void:
 		"dodge":
 			for o: float in [-5.0, 3.0]:
 				draw_polyline(PackedVector2Array([c + Vector2(o - 3, -7) * k, c + Vector2(o + 4, 0) * k, c + Vector2(o - 3, 7) * k]), Color(0.92, 0.92, 0.88) * tint, 2.5 * k)
+		"light":
+			# sol pequeno: núcleo + 8 raios
+			for i in 8:
+				var a := TAU * float(i) / 8.0
+				draw_line(c + Vector2(cos(a), sin(a)) * 7 * k, c + Vector2(cos(a), sin(a)) * 11 * k, Color(1.0, 0.88, 0.5) * tint, 2 * k)
+			draw_circle(c, 5.5 * k, Color(1.0, 0.95, 0.75) * tint)
 		"hp_potion", "mp_potion":
 			var col := Color(0.86, 0.18, 0.2) if s.icon == "hp_potion" else Color(0.25, 0.5, 0.95)
 			draw_rect(Rect2(c + Vector2(-2.5, -11) * k, Vector2(5, 6) * k), Color(0.75, 0.7, 0.6) * tint)
@@ -204,6 +211,12 @@ func _slot(r: Rect2, s: Dictionary) -> void:
 			pts.append(c + Vector2(cos(a), sin(a)) * r.size.x * 0.75)
 		draw_set_transform(Vector2.ZERO)
 		draw_colored_polygon(_clip_square(pts, r), Color(0, 0, 0, 0.62))
+	# efeito ativo: moldura dourada que se esgota + minutos restantes
+	if float(s.get("active", 0.0)) > 0.0:
+		var act := float(s.active)
+		draw_arc(c, r.size.x * 0.47, -PI * 0.5, -PI * 0.5 + TAU * act, 32, Color(1.0, 0.85, 0.4, 0.95), _px(1.5))
+		var left := int(ceil(float(s.left)))
+		_text("%d:%02d" % [left / 60, left % 60], Vector2(r.position.x, r.end.y - _px(3)), 10, Color(1.0, 0.9, 0.6), true, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(3))
 	if int(s.get("lock", 0)) > 0:
 		draw_rect(r, Color(0, 0, 0, 0.45))
 		_text("nív %d" % int(s.lock), Vector2(r.position.x, c.y + _px(4)), 10, CREAM, true, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
@@ -247,7 +260,7 @@ func _help_panel() -> void:
 	var r := _panel_rect(640, 380)
 	var y := _title(r, "ATALHOS", "H")
 	var cols := [
-		["MOVIMENTO E COMBATE", [["W A S D", "andar"], ["Clique", "bola de fogo (mira no mouse)"], ["Q · Botão dir.", "Eco de Aethra (teleporte)"], ["Espaço", "esquiva"], ["R", "Anel de Brasa"], ["1 · 2", "poção de vida · de mana"]]],
+		["MOVIMENTO E COMBATE", [["W A S D", "andar"], ["Clique", "bola de fogo (mira no mouse)"], ["Q · Botão dir.", "Eco de Aethra (teleporte)"], ["Espaço", "esquiva"], ["R", "Anel de Brasa"], ["1 · 2", "poção de vida · de mana"], ["3", "Luz — utevo vis lux"]]],
 		["MUNDO E JANELAS", [["E", "interagir / falar"], ["I", "bolsa"], ["J", "missões"], ["C", "personagem"], ["H · F1", "atalhos"], ["Roda", "zoom"], ["N", "+3 horas"], ["L", "luz da arma"], ["Esc", "fechar janela"]]],
 	]
 	for ci in cols.size():
