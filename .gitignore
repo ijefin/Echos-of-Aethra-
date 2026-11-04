@@ -187,3 +187,12 @@ $RECYCLE.BIN/
 # FBX do KayKit: o Godot ignora (.gdignore) e o jogo usa só os glTF (~95 MB)
 assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Characters/fbx/
 assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/fbx/
+# KayKit Dungeon Remastered / Medieval Hexagon: só glTF/GLB + texturas entram no repo
+assets/third_party/kaykit_dungeon_remastered/**/*.fbx
+assets/third_party/kaykit_dungeon_remastered/**/*.obj
+assets/third_party/kaykit_dungeon_remastered/**/*.mtl
+assets/third_party/kaykit_dungeon_remastered/**/*.pdf
+assets/third_party/kaykit_medieval_hexagon/**/*.fbx
+assets/third_party/kaykit_medieval_hexagon/**/*.obj
+assets/third_party/kaykit_medieval_hexagon/**/*.mtl
+assets/third_party/kaykit_medieval_hexagon/**/*.pdf
