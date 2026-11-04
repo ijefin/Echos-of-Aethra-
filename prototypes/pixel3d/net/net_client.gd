@@ -25,6 +25,8 @@ const Collision := preload("res://prototypes/pixel3d/net/world_collision.gd")
 
 var cfg: Dictionary
 var col: RefCounted
+## Colisão por andar ({0: superfície, -1: gruta}), igual à do servidor.
+var floors: Dictionary = {}
 var peer: ENetMultiplayerPeer
 var host := "127.0.0.1"
 var port := 7777
@@ -72,7 +74,8 @@ var _kicked := false
 
 func _init(config: Dictionary = {}) -> void:
 	cfg = config if not config.is_empty() else NetConfig.load_config()
-	col = Collision.load_file("res://prototypes/pixel3d/net/data/collision_surface.json", float(cfg.get("world_half", 100.0)))
+	floors = Collision.load_floors("res://prototypes/pixel3d/net/data/collision_surface.json", float(cfg.get("world_half", 100.0)))
+	col = floors[0]
 
 
 ## Conecta e faz login (ou cadastro, se `register`). O resultado chega por sinal.
@@ -253,7 +256,7 @@ func _input_tick(dt: float) -> void:
 	var cmd := {"seq": _seq, "dir": _move_dir, "flags": Protocol.FLAG_DODGE if _dodge_req else 0}
 	_dodge_req = false
 	_prev_pos = predicted.pos
-	Motion.step(predicted, cmd.dir, int(cmd.flags), dt, col, _move_cfg(), float(cfg.get("player_radius", 0.28)))
+	Motion.step(predicted, cmd.dir, int(cmd.flags), dt, col_at((predicted.pos as Vector3).y), _move_cfg(), float(cfg.get("player_radius", 0.28)))
 	_pending.append(cmd)
 	if _pending.size() > 64:
 		_pending.pop_front()
@@ -374,6 +377,11 @@ func _on_snapshot(snap: Dictionary) -> void:
 			entity_left.emit(id)
 
 
+## Colisão do andar da altura `y` (superfície 0, gruta -1): a mesma que o servidor usa.
+func col_at(y: float) -> RefCounted:
+	return floors.get(-1 if y < -4.0 else 0, col)
+
+
 ## Movimento para a predição: com o bit "slow" do servidor (teia) a velocidade cai pelo
 ## mesmo fator que o servidor usa (move.slow_factor).
 func _move_cfg() -> Dictionary:
@@ -398,7 +406,7 @@ func _reconcile(ack: int, server_me: Dictionary) -> void:
 	s.yaw = float(predicted.get("yaw", 0.0))
 	var dt := 1.0 / float(cfg.get("input_rate", 20))
 	for c: Dictionary in _pending:
-		Motion.step(s, c.dir, int(c.flags), dt, col, _move_cfg(), float(cfg.get("player_radius", 0.28)))
+		Motion.step(s, c.dir, int(c.flags), dt, col_at((s.pos as Vector3).y), _move_cfg(), float(cfg.get("player_radius", 0.28)))
 	var after: Vector3 = s.pos
 	var err := before.distance_to(after)
 	predicted = s

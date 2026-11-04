@@ -356,6 +356,7 @@ func _relogin() -> void:
 	c2.login_failed.connect(func(code: String) -> void: errs.append(code))
 	c2.connect_and_login("127.0.0.1", port, "Bruno", "senha-errada", false)
 	check(await wait_until(func() -> bool: return errs.has("auth"), 10.0), "senha errada é recusada")
+	await _cave_round_trip()
 	c.logout()
 	await wait(0.6)
 
@@ -384,6 +385,87 @@ func _buddy() -> void:
 	check(_chat_from("Tester", "pronto"), "chat local do Tester chegou")
 	c.logout()
 	await wait(0.6)
+
+
+# ------------------------------------------------------------------ gruta (andar -1)
+
+const STAIRS_DOWN := Vector3(-38, 0, -31.3)
+const STAIRS_UP := Vector3(-38, -8, -28.6)
+
+
+## Desce pela boca da Gruta das Raízes e sobe pela escada de pedra (o servidor decide).
+func _cave_round_trip() -> void:
+	var down_ok: bool = await _go_to(STAIRS_DOWN, 40.0, func() -> bool: return server_pos().y < -4.0)
+	check(down_ok, "gruta: desceu pela boca (andar -1, y %.1f)" % server_pos().y)
+	if not down_ok:
+		return
+	var sees_guardian := await wait_until(func() -> bool:
+		for e: Dictionary in c.entities():
+			if int(e.kind) == Protocol.KIND_MONSTER and (e.pos as Vector3).y < -4.0:
+				return true
+		return false, 5.0)
+	check(sees_guardian, "gruta: vê os monstros do andar -1")
+	var up_ok: bool = await _go_to(STAIRS_UP, 20.0, func() -> bool: return server_pos().y > -1.0)
+	check(up_ok, "gruta: subiu pela escada de pedra (y %.1f)" % server_pos().y)
+
+
+## Caminho em grade (0,5 m, BFS) na colisão do andar atual até `goal`; segue os pontos
+## até `done` ficar verdadeiro.
+func _go_to(goal: Vector3, timeout: float, done: Callable) -> bool:
+	var me := server_pos()
+	var col: RefCounted = c.col_at(me.y)
+	var path := _bfs(col, Vector2(me.x, me.z), Vector2(goal.x, goal.z))
+	path.append(Vector2(goal.x, goal.z))
+	var i := 0
+	var end := Time.get_ticks_msec() + int(timeout * 1000.0)
+	while Time.get_ticks_msec() < end:
+		if done.call():
+			_move = Vector2.ZERO
+			return true
+		var p: Vector3 = c.predicted_position()
+		var here := Vector2(p.x, p.z)
+		while i < path.size() - 1 and here.distance_to(path[i]) < 0.4:
+			i += 1
+		var d := path[i] - here
+		_move = d.normalized() if d.length() > 0.05 else Vector2.ZERO
+		await process_frame
+	_move = Vector2.ZERO
+	return bool(done.call())
+
+
+func _bfs(col: RefCounted, a: Vector2, b: Vector2) -> Array[Vector2]:
+	const CELL := 0.5
+	var lo := Vector2(minf(a.x, b.x), minf(a.y, b.y)) - Vector2(15, 15)
+	var nx := int((absf(a.x - b.x) + 30.0) / CELL) + 1
+	var nz := int((absf(a.y - b.y) + 30.0) / CELL) + 1
+	var cell := func(p: Vector2) -> Vector2i: return Vector2i(clampi(int((p.x - lo.x) / CELL), 0, nx - 1), clampi(int((p.y - lo.y) / CELL), 0, nz - 1))
+	var center := func(k: Vector2i) -> Vector2: return lo + (Vector2(k) + Vector2(0.5, 0.5)) * CELL
+	var start: Vector2i = cell.call(a)
+	var goal: Vector2i = cell.call(b)
+	var prev := {start: start}
+	var queue: Array[Vector2i] = [start]
+	var head := 0
+	while head < queue.size():
+		var k := queue[head]
+		head += 1
+		if k == goal:
+			break
+		for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n := k + d
+			if n.x < 0 or n.y < 0 or n.x >= nx or n.y >= nz or prev.has(n):
+				continue
+			if n != goal and col.blocked(center.call(n), 0.32):
+				continue
+			prev[n] = k
+			queue.append(n)
+	var out: Array[Vector2] = []
+	if not prev.has(goal):
+		return out
+	var k2 := goal
+	while k2 != start:
+		out.push_front(center.call(k2))
+		k2 = prev[k2]
+	return out
 
 
 func _friend_in_list(n: String) -> bool:

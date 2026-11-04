@@ -15,6 +15,7 @@ const NetGame := preload("res://prototypes/pixel3d/net/net_game.gd")
 const Protocol := preload("res://prototypes/pixel3d/net/net_protocol.gd")
 const Vocations := preload("res://prototypes/pixel3d/vocations.gd")
 const Enemies := preload("res://prototypes/pixel3d/adventure_enemies.gd")
+const AdvWorld := preload("res://prototypes/pixel3d/adventure_world.gd")
 
 ## canal do servidor → aba do chat
 const CHAT_TAB := {"local": "Local", "global": "Servidor", "server": "Servidor", "private": "Grupo"}
@@ -105,6 +106,9 @@ func physics(delta: float, input: Vector2) -> void:
 		_dodge_sent = false
 	net.send_move(input, dodge)
 	var np: Vector3 = net.local_position()
+	var cave := np.y < -4.0
+	if cave != bool(adventure.in_cave):
+		adventure.warp(np, cave)   # escada/gruta decidida pelo servidor: troca o andar visível
 	var v: Vector3 = (np - demo._player.global_position) / maxf(delta, 0.001)
 	v.y = 0.0
 	demo._player.velocity = v
@@ -135,6 +139,9 @@ func update(delta: float) -> void:
 
 ## Ataque básico: o servidor valida alcance, visão, recarga e mana e cria o projétil/golpe.
 func attack(target: Vector3, node: Node) -> void:
+	if node != null and String(node.get_meta("kind", "")) == "quest_torch":
+		net.client.action("torch", {"index": int(node.get_meta("torch_index", -1))})
+		return
 	net.fire_at(_net_id(node), target)
 
 
@@ -245,6 +252,15 @@ func _on_event(ev: Dictionary) -> void:
 					demo._ghost(Vector3(float(fr[0]), 0, float(fr[1])), 0.5, 0.3)
 		"whirl":
 			demo._shockwave(_pos_of(int(ev.get("eid", 0)), at), float(ev.get("radius", 2.6)))
+		"torch":
+			var lit: Array = ev.get("lit", [])
+			adventure.state.lit.assign(lit)
+			var room: Vector3 = AdvWorld.ROOM
+			if bool(ev.get("ok", false)):
+				demo._burst(room + (AdvWorld.TORCHES[int(ev.get("index", 0))] as Vector3) + Vector3(0, 1.7, 0))
+			else:
+				for t: Vector3 in AdvWorld.TORCHES:   # ordem errada: todas apagam
+					demo._burst(room + t + Vector3(0, 1.7, 0))
 		"light":
 			if int(ev.get("eid", 0)) == my_id():
 				_light_left = float(ev.get("left", 0.0))

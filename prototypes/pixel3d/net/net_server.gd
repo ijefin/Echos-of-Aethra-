@@ -56,7 +56,7 @@ func setup(config: Dictionary) -> void:
 			tuning = v
 	var floors: Dictionary = Collision.load_floors(COLLISION_PATH, float(cfg.get("world_half", 100.0)))
 	var col: RefCounted = floors[0]
-	world = World.new(cfg, tuning, col, 7, Store.load_dict(CLASSES_PATH), Store.load_dict(CORE_SKILLS_PATH))
+	world = World.new(cfg, tuning, col, 7, Store.load_dict(CLASSES_PATH), Store.load_dict(CORE_SKILLS_PATH), floors)
 	_floors = floors
 	if is_inside_tree():
 		_attach_ai()
