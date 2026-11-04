@@ -55,13 +55,15 @@
   "spawn_spread_m": 1.5,
   "respawn": [-14.0, 0.0, -22.7],
   "world_half": 100.0,
+  "server_ai": true,
   "player_radius": 0.28,
 
   "move": {
     "speed": 4.2,
     "dodge_speed": 11.0,
     "dodge_time": 0.24,
-    "dodge_cooldown": 0.8
+    "dodge_cooldown": 0.8,
+    "slow_factor": 0.55
   },
   "combat": {
     "fire_cooldown": 0.42,

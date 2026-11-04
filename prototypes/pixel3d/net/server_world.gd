@@ -4,8 +4,9 @@ extends RefCounted
 ## projéteis, dano, XP e recompensas. O transporte (net_server.gd) chama `step(dt)` a
 ## taxa fixa, entrega comandos/ações e lê `events` + `snapshot_for()`.
 ##
-## A IA de monstro aqui é MÍNIMA (aggro → perseguir → preparar → golpe → voltar) e
-## isolada em `_monster_ai()`, para ser trocada pela IA nova quando ela for portada.
+## IA dos monstros: com `attach_ai(ServerAI)` (servidor dedicado) roda a IA real do jogo
+## (`ai/enemy_director.gd`) num World3D headless; sem ela (testes puros) fica a IA MÍNIMA
+## de `_monster_ai()` (aggro → perseguir → preparar → golpe → voltar).
 
 const Protocol := preload("res://prototypes/pixel3d/net/net_protocol.gd")
 const Motion := preload("res://prototypes/pixel3d/net/player_motion.gd")
@@ -34,6 +35,10 @@ var _rng := RandomNumberGenerator.new()
 var _mcfg: Dictionary
 var _mv: Dictionary
 var _radius := 0.35
+## Adaptador da IA real (net/server_ai.gd) ou null.
+var ai: RefCounted = null
+## Projéteis de monstro (teia) em voo: eid → dicionário do director.projectiles.
+var monster_shots: Dictionary = {}
 
 
 func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCounted, seed_value := 7) -> void:
@@ -48,8 +53,22 @@ func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCoun
 	_rng.seed = seed_value
 	var i := 0
 	for e: Dictionary in tuning.get("field_enemies", []):
-		spawn_monster("field%d" % i, String(e.kind), Vector3(float(e.x), 0, float(e.z)))
+		spawn_monster("field%d" % i, String(e.kind), Vector3(float(e.x), 0, float(e.z)), int(e.get("level", 1)))
 		i += 1
+	# matilhas de lobos (mesmos pontos do cliente: enemy.wolf.spawns [x, z])
+	var wolves: Array = ((tuning.get("enemy", {}) as Dictionary).get("wolf", {}) as Dictionary).get("spawns", [])
+	for w_i in wolves.size():
+		var w: Array = wolves[w_i]
+		spawn_monster("wolf%d" % w_i, "wolf", Vector3(float(w[0]), 0, float(w[1])), int(w[2]) if w.size() > 2 else 1)
+
+
+## Liga a IA real (ServerAI). Chamar uma vez, logo depois de criar o mundo.
+func attach_ai(adapter: RefCounted) -> void:
+	ai = adapter
+	ai.world = self
+	ai.npc = NPC
+	for m: Dictionary in monsters.values():
+		ai.add_monster(m, m.cfg)
 
 
 func _id() -> int:
@@ -249,9 +268,28 @@ func step(dt: float) -> void:
 	tick += 1
 	for p: Dictionary in players.values():
 		_step_player(p, dt)
-	for m: Dictionary in monsters.values():
-		_monster_ai(m, dt)
+	if ai != null:
+		for m: Dictionary in monsters.values():
+			_monster_respawn_tick(m)
+		ai.step(dt)
+		for m: Dictionary in monsters.values():
+			if String(m.state) != "dead":
+				ai.sync_monster(m)
+				m.state = "windup" if bool(m.get("winding", false)) else "live"
+		_sync_monster_shots()
+	else:
+		for m: Dictionary in monsters.values():
+			_monster_ai(m, dt)
 	_step_projectiles(dt)
+
+
+func _sync_monster_shots() -> void:
+	var alive := {}
+	for s: Dictionary in ai.shots():
+		if not s.has("eid"):
+			s["eid"] = _id()
+		alive[int(s.eid)] = s
+	monster_shots = alive
 
 
 func _step_player(p: Dictionary, dt: float) -> void:
@@ -261,7 +299,7 @@ func _step_player(p: Dictionary, dt: float) -> void:
 			continue
 		var before: Vector3 = p.ms.pos
 		var trial := Motion.copy(p.ms)
-		Motion.step(trial, c.dir, int(c.flags), v.cmd_dt, col, _mv, _radius)
+		Motion.step(trial, c.dir, int(c.flags), v.cmd_dt, col, _move_cfg(p), _radius)
 		if v.check_step(before, trial.pos):
 			p.ms = trial
 	if float(p.ms.dodge_t) >= 0.0:
@@ -273,6 +311,24 @@ func _step_player(p: Dictionary, dt: float) -> void:
 	for e: String in (p.effects as Dictionary).keys():
 		if now >= float(p.effects[e]):
 			(p.effects as Dictionary).erase(e)
+
+
+## Parâmetros de movimento do jogador agora (lento da teia reduz a velocidade a pé).
+func _move_cfg(p: Dictionary) -> Dictionary:
+	if not (p.effects as Dictionary).has("slow"):
+		return _mv
+	var mv := _mv.duplicate()
+	mv.speed = float(_mv.speed) * float(p.get("slow_factor", _mv.get("slow_factor", 0.55)))
+	return mv
+
+
+## Lento replicado (bit "slow" no snapshot; o cliente aplica move.slow_factor na predição).
+func slow_player(eid: int, factor: float, seconds: float) -> void:
+	var p: Dictionary = players.get(eid, {})
+	if p.is_empty():
+		return
+	p.slow_factor = clampf(factor, 0.2, 1.0)
+	_set_effect(p, "slow", seconds)
 
 
 func _step_projectiles(dt: float) -> void:
@@ -305,7 +361,7 @@ func _step_projectiles(dt: float) -> void:
 
 # ------------------------------------------------------------------ monstros
 
-func spawn_monster(key: String, kind: String, at: Vector3) -> int:
+func spawn_monster(key: String, kind: String, at: Vector3, level := 1) -> int:
 	var def: Dictionary = (tuning.get("enemy", {}) as Dictionary).get(kind, {})
 	if def.is_empty():
 		return 0
@@ -314,7 +370,10 @@ func spawn_monster(key: String, kind: String, at: Vector3) -> int:
 		"name": String(def.get("name", kind)), "home": at, "pos": at, "yaw": 0.0,
 		"hp": int(def.get("hp", 16)), "max_hp": int(def.get("hp", 16)), "speed": float(def.get("speed", 1.5)),
 		"damage": int(def.get("damage", 6)), "windup": float(def.get("windup", 0.6)), "xp": int(def.get("xp", 1)),
-		"state": "idle", "target": 0, "t": 0.0, "next_attack": 0.0, "respawn_at": 0.0}
+		"state": "idle", "target": 0, "t": 0.0, "next_attack": 0.0, "respawn_at": 0.0,
+		"level": maxi(1, level), "cfg": def}
+	if ai != null:
+		ai.add_monster(monsters[eid], def)
 	return eid
 
 
@@ -323,12 +382,17 @@ func _damage_monster(m: Dictionary, amount: int, by: int) -> void:
 		return
 	m.hp = maxi(0, int(m.hp) - amount)
 	events.append({"to": -1, "type": "damage", "target": int(m.eid), "amount": amount, "by": by, "at": [m.pos.x, m.pos.z]})
-	if players.has(by) and int(m.target) == 0:
+	if ai != null:
+		if int(m.hp) > 0:
+			ai.on_damaged(m, by)
+	elif players.has(by) and int(m.target) == 0:
 		m.target = by
 		m.state = "chase"
 	if int(m.hp) > 0:
 		return
 	m.state = "dead"
+	if ai != null:
+		ai.on_killed(m)
 	m.target = 0
 	m.respawn_at = now + float(_mcfg.get("respawn_s", 15.0))
 	if not players.has(by):
@@ -359,16 +423,24 @@ func _nearest_player(at: Vector3, radius: float) -> int:
 	return best
 
 
-## IA mínima e substituível. Estados: idle, chase, windup, return, dead.
+## Morto → renasce em casa depois de `respawn_s`.
+func _monster_respawn_tick(m: Dictionary) -> void:
+	if String(m.state) != "dead" or now < float(m.respawn_at):
+		return
+	m.pos = m.home
+	m.hp = int(m.max_hp)
+	m.state = "idle"
+	for p: Dictionary in players.values():
+		(p.state as RefCounted).respawn_enemy(String(m.key))
+	if ai != null:
+		ai.on_respawn(m)
+
+
+## IA mínima (sem física; só para os testes puros). Estados: idle, chase, windup, return, dead.
 func _monster_ai(m: Dictionary, dt: float) -> void:
 	var state := String(m.state)
 	if state == "dead":
-		if now >= float(m.respawn_at):
-			m.pos = m.home
-			m.hp = int(m.max_hp)
-			m.state = "idle"
-			for p: Dictionary in players.values():
-				(p.state as RefCounted).respawn_enemy(String(m.key))
+		_monster_respawn_tick(m)
 		return
 	var home: Vector3 = m.home
 	var pos: Vector3 = m.pos
@@ -420,10 +492,11 @@ func _monster_move(m: Dictionary, to: Vector3, dt: float) -> void:
 	m.yaw = atan2(-d.x, -d.y)
 
 
-func damage_player(eid: int, amount: int, source: String) -> void:
+## Dano autoritativo no jogador. Devolve se pegou (esquiva/invulnerável/morto = não).
+func damage_player(eid: int, amount: int, source: String) -> bool:
 	var p: Dictionary = players.get(eid, {})
-	if p.is_empty() or now < float(p.invuln_until) or float(p.ms.dodge_t) >= 0.0:
-		return
+	if p.is_empty() or float(p.hp) <= 0.0 or now < float(p.invuln_until) or float(p.ms.dodge_t) >= 0.0:
+		return false
 	p.hp = maxf(0.0, float(p.hp) - float(amount))
 	p.last_hurt = now
 	p.invuln_until = now + float((cfg.get("combat", {}) as Dictionary).get("hurt_invulnerable_s", 0.75))
@@ -435,6 +508,7 @@ func damage_player(eid: int, amount: int, source: String) -> void:
 		p.hp = float((p.state as RefCounted).max_hp())
 		p.ms = Motion.new_state(rp)
 		(p.validator as RefCounted).reset_budget()
+	return true
 
 
 # ------------------------------------------------------------------ snapshots
@@ -449,6 +523,8 @@ func index_interest() -> void:
 			interest.put(int(m.eid), m.pos, 1)
 	for j: Dictionary in projectiles.values():
 		interest.put(int(j.eid), j.pos, 2)
+	for s: Dictionary in monster_shots.values():
+		interest.put(int(s.eid), s.pos, 2)
 
 
 func _player_effects(p: Dictionary) -> int:
@@ -488,6 +564,11 @@ func entity_state(id: int) -> Dictionary:
 		var v: Vector3 = j.vel
 		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "sub": 0, "pos": j.pos, "yaw": atan2(-v.x, -v.z),
 			"hp": 0, "max_hp": 0, "effects": 0}
+	if monster_shots.has(id):
+		var s: Dictionary = monster_shots[id]
+		var sv: Vector3 = s.vel
+		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "sub": 1, "pos": s.pos, "yaw": atan2(-sv.x, -sv.z),
+			"hp": 0, "max_hp": 0, "effects": 0}
 	return {}
 
 
@@ -496,7 +577,10 @@ func entity_info(id: int) -> Dictionary:
 	if players.has(id):
 		return {"id": id, "kind": Protocol.KIND_PLAYER, "name": String(players[id].name), "level": int(players[id].state.level)}
 	if monsters.has(id):
-		return {"id": id, "kind": Protocol.KIND_MONSTER, "name": String(monsters[id].name), "monster": String(monsters[id].kind)}
+		return {"id": id, "kind": Protocol.KIND_MONSTER, "name": String(monsters[id].name), "monster": String(monsters[id].kind),
+			"level": int(monsters[id].level)}
 	if projectiles.has(id):
 		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "name": "fire", "owner": int(projectiles[id].owner)}
+	if monster_shots.has(id):
+		return {"id": id, "kind": Protocol.KIND_PROJECTILE, "name": "web", "owner": 0}
 	return {}

@@ -15,6 +15,7 @@ const TextRules := preload("res://prototypes/pixel3d/net/text_rules.gd")
 const Store := preload("res://prototypes/pixel3d/net/json_store.gd")
 const Collision := preload("res://prototypes/pixel3d/net/world_collision.gd")
 const Log := preload("res://prototypes/pixel3d/net/net_log.gd")
+const ServerAI := preload("res://prototypes/pixel3d/net/server_ai.gd")
 
 const TUNING_PATH := "res://prototypes/pixel3d/data/first_adventure.json"
 const COLLISION_PATH := "res://prototypes/pixel3d/net/data/collision_surface.json"
@@ -50,15 +51,22 @@ func setup(config: Dictionary) -> void:
 		var v: Variant = JSON.parse_string(f.get_as_text())
 		if v is Dictionary:
 			tuning = v
-	var col: RefCounted = Collision.load_file(COLLISION_PATH, float(cfg.get("world_half", 60.0)))
+	var floors: Dictionary = Collision.load_floors(COLLISION_PATH, float(cfg.get("world_half", 100.0)))
+	var col: RefCounted = floors[0]
 	world = World.new(cfg, tuning, col)
+	if bool(cfg.get("server_ai", true)) and is_inside_tree():
+		# IA real do jogo num World3D headless com a colisão exportada
+		var holder := Node3D.new()
+		holder.name = "AI"
+		add_child(holder)
+		world.attach_ai(ServerAI.new(holder, floors))
 	_data_path = String(cfg.get("data_dir", "user://aethra-server")).path_join("accounts.json")
 	accounts = Accounts.new(cfg, Store.load_dict(_data_path))
 	friends = Friends.new(accounts)
 	sessions = Sessions.new(float(cfg.get("reconnect_grace_s", 120.0)))
 	limiter = Limiter.new(cfg.get("rate_limits", {}), float(cfg.get("abuse_score_kick", 40)), float(cfg.get("abuse_decay_per_second", 2.0)))
-	logger.write("info", "mundo: %d monstros, %d obstáculos; contas: %d; dados em %s" % [
-		world.monsters.size(), col.circles.size() + col.boxes.size(), accounts.accounts().size(), ProjectSettings.globalize_path(_data_path)])
+	logger.write("info", "mundo: %d monstros (IA %s), %d obstáculos na superfície, %d andares; contas: %d; dados em %s" % [
+		world.monsters.size(), "real" if world.ai != null else "mínima", col.count(), floors.size(), accounts.accounts().size(), ProjectSettings.globalize_path(_data_path)])
 
 
 ## Abre a porta UDP. Devolve OK ou o erro.
