@@ -54,8 +54,8 @@
   "spawn": [-14.0, 0.0, -22.7],
   "spawn_spread_m": 1.5,
   "respawn": [-14.0, 0.0, -22.7],
-  "world_half": 60.0,
-  "player_radius": 0.35,
+  "world_half": 100.0,
+  "player_radius": 0.28,
 
   "move": {
     "speed": 4.2,
