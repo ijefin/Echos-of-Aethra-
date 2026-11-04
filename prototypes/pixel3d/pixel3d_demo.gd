@@ -224,6 +224,8 @@ func _ready() -> void:
 		await get_tree().create_timer(float(args.get("shot_delay", 4.0))).timeout
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(ProjectSettings.globalize_path(String(args.shot)))
+		if args.has("shot_hold"):  # multiplayer: continua conectado para o print do outro cliente
+			await get_tree().create_timer(float(args.shot_hold)).timeout
 		get_tree().quit()
 
 
