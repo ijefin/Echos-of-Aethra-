@@ -15,7 +15,7 @@ const MUTED := Color(0.7, 0.68, 0.62)
 const GOLD := Color(1.0, 0.82, 0.38)
 const HP_COL := Color(0.78, 0.2, 0.18)
 const MP_COL := Color(0.25, 0.48, 0.9)
-const PANELS := ["help", "quest", "char", "bag", "vocation"]
+const PANELS := ["help", "quest", "char", "bag", "vocation", "friends"]
 
 var adventure
 var panel := ""
@@ -30,6 +30,9 @@ var _font: SystemFont
 var _bold: SystemFont
 var _ui := 1.0
 var _mana_flash := 0.0
+## Painel de amigos (só online): nome a pedir e amigo selecionado.
+var _friend_input: LineEdit
+var _friend_sel := 0
 
 
 func build(owner_adventure) -> void:
@@ -147,6 +150,93 @@ func _draw() -> void:
 			_bag_panel()
 		"vocation":
 			_vocation_panel()
+		"friends":
+			_friends_panel()
+	if _friend_input != null:
+		_friend_input.visible = panel == "friends"
+
+
+# ------------------------------------------------------------------ amigos (online)
+
+## Lista de amigos estilo Tibia (VIP): pedidos recebidos, amigos com presença e região.
+func _friends_panel() -> void:
+	var r := _panel_rect(440, 380)
+	var y := _title(r, "AMIGOS", "O")
+	var x := r.position.x + _px(22)
+	var fl: Dictionary = adventure.online.friends if adventure.online != null else {}
+	var incoming: Array = fl.get("incoming", [])
+	var list: Array = fl.get("friends", [])
+	if not incoming.is_empty():
+		_text("PEDIDOS", Vector2(x, y), 11, Color(GOLD, 0.85), true)
+		y += _px(24)
+		for i in mini(incoming.size(), 9):
+			var w := _keycap(Vector2(x, y), "%d" % (i + 1))
+			_text(String(incoming[i]), Vector2(x + w + _px(10), y), 12, CREAM)
+			y += _px(26)
+		y += _px(6)
+	_text("AMIGOS", Vector2(x, y), 11, Color(GOLD, 0.85), true)
+	y += _px(24)
+	_friend_sel = clampi(_friend_sel, 0, maxi(0, list.size() - 1))
+	for i in list.size():
+		var f: Dictionary = list[i]
+		var on := bool(f.get("online", false))
+		if i == _friend_sel:
+			draw_rect(Rect2(x - _px(6), y - _px(16), r.size.x - _px(32), _px(22)), Color(1, 1, 1, 0.06))
+		draw_circle(Vector2(x + _px(5), y - _px(5)), _px(4), Color(0.35, 0.9, 0.35) if on else Color(0.45, 0.45, 0.48))
+		_text(String(f.get("name", "")), Vector2(x + _px(18), y), 12, CREAM if on else MUTED, on)
+		if on and not String(f.get("region", "")).is_empty():
+			_text(String(f.region), Vector2(r.position.x, y), 11, MUTED, false, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(22))
+		y += _px(24)
+		if y > r.end.y - _px(70):
+			break
+	var fy := r.end.y - _px(20)
+	var kx := x
+	for row: Array in [["Enter", "pedir"], ["1–9", "aceitar"], ["↑↓", "escolher"], ["Del", "remover"]]:
+		var w2 := _keycap(Vector2(kx, fy), String(row[0]))
+		_text(String(row[1]), Vector2(kx + w2 + _px(6), fy), 11, MUTED)
+		kx += w2 + _px(78)
+	if _friend_input == null:
+		_friend_input = LineEdit.new()
+		_friend_input.placeholder_text = "nome"
+		_friend_input.max_length = 16
+		_friend_input.text_submitted.connect(_on_friend_name)
+		add_child(_friend_input)
+	_friend_input.position = Vector2(r.position.x + _px(22), r.end.y - _px(68))
+	_friend_input.size = Vector2(r.size.x - _px(44), _px(26))
+
+
+func _on_friend_name(t: String) -> void:
+	t = t.strip_edges()
+	if not t.is_empty() and adventure.online != null:
+		adventure.online.friend("request", t)
+	_friend_input.text = ""
+	_friend_input.release_focus()
+
+
+## Teclas do painel de amigos. Devolve true se consumiu o evento.
+func friends_key(event: InputEvent) -> bool:
+	if panel != "friends" or adventure.online == null or not (event is InputEventKey) or not event.pressed:
+		return false
+	var fl: Dictionary = adventure.online.friends
+	var list: Array = fl.get("friends", [])
+	var incoming: Array = fl.get("incoming", [])
+	var k: int = (event as InputEventKey).physical_keycode
+	if k == KEY_ENTER or k == KEY_KP_ENTER:
+		if _friend_input != null:
+			_friend_input.grab_focus()
+		return true
+	if k >= KEY_1 and k <= KEY_9:
+		var i := k - KEY_1
+		if i < incoming.size():
+			adventure.online.friend("accept", String(incoming[i]))
+		return true
+	if k == KEY_UP or k == KEY_DOWN:
+		_friend_sel = clampi(_friend_sel + (1 if k == KEY_DOWN else -1), 0, maxi(0, list.size() - 1))
+		return true
+	if k == KEY_DELETE and _friend_sel < list.size():
+		adventure.online.friend("remove", String((list[_friend_sel] as Dictionary).get("name", "")))
+		return true
+	return false
 
 
 func _bar(r: Rect2, ratio: float, color: Color, value: String) -> void:

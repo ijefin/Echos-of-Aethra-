@@ -12,6 +12,7 @@ const Dressing := preload("res://prototypes/pixel3d/pixel3d_dressing.gd")
 const BUBBLE_TIME := 10.0
 const ItemInventory := preload("res://src/core/inventory.gd")
 const Quests := preload("res://prototypes/pixel3d/quests.gd")
+const NetPlay := preload("res://prototypes/pixel3d/net/net_play.gd")
 ## Atributos do equipamento que mexem no jogo (diferença para o equipamento inicial).
 const POWER_STATS := ["attack_power", "spell_power"]
 ## Cada ponto de armadura do equipamento reduz 2 % do dano recebido (teto ARMOR_CAP).
@@ -43,6 +44,8 @@ var notice_time := 0.0
 var _hurt_time := 99.0
 var _invulnerable := 0.0
 var _persist := false
+## Modo online (--connect=host:porta): net/net_play.gd; null = jogo offline de sempre.
+var online = null
 ## Evita descer/subir de novo logo depois de trocar de andar.
 var _stair_cd := 0.0
 var chat
@@ -82,7 +85,7 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	demo = owner_demo
 	config = JSON.parse_string(FileAccess.get_file_as_string("res://prototypes/pixel3d/data/first_adventure.json"))
 	state = State.new(config)
-	_persist = not demo._capture and not args.has("no_save")
+	_persist = not demo._capture and not args.has("no_save") and not args.has("connect")  # online: o servidor guarda
 	if _persist and FileAccess.file_exists(save_path):
 		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(save_path))
 		if data is Dictionary:
@@ -120,7 +123,11 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	if args.has("secret"):  # print: revela um segredo logo ao abrir
 		claim_secret.call_deferred(String(args.secret))
 	enemies = Enemies.new()
-	enemies.build(self)
+	if args.has("connect"):
+		enemies.adventure = self   # online: os monstros vêm do servidor (nenhum local)
+		enemies.demo = demo
+	else:
+		enemies.build(self)
 	hud = Hud.new()
 	hud.build(self)
 	core = CoreSkills.new()
@@ -130,6 +137,10 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	chat.post("Servidor", "Bem-vindo a Aethra.")
 	if not args.has("at"):
 		warp(World.NPC + Vector3(0, 0, 2.3), false)
+	if args.has("connect"):
+		online = NetPlay.new()
+		add_child(online)
+		online.start(self, args)
 
 ## Estilo Tibia: pisou na boca da caverna desce; pisou na escada sobe; sem tecla.
 func _check_stairs() -> void:
@@ -217,6 +228,9 @@ func potion_cd_ratio() -> float:
 
 ## Teclas 1 (vida) e 2 (mana).
 func drink(kind: String) -> void:
+	if online != null:
+		online.drink(kind)
+		return
 	if _potion_cd > 0.0 or int(potions.get(kind, 0)) <= 0:
 		return
 	if kind == "hp":
@@ -424,6 +438,9 @@ func hit(collider: Object, amount := -1) -> bool:
 	return false
 
 func cast_ring() -> void:
+	if online != null:
+		online.r(demo._mouse_ground())
+		return
 	if not demo._voc.is_mage():
 		demo._voc.cast_r()
 		return
@@ -438,6 +455,15 @@ func cast_ring() -> void:
 		var angle := i * TAU / 6.0
 		demo._burst(p + Vector3(cos(angle), 0.3, sin(angle)) * 2.3)
 	enemies.ring_damage(p, float(config.ring_radius), int(config.ring_damage) + state.level)
+
+## Tecla 3: core skill Luz (online o servidor liga o efeito, visto por todos).
+func cast_light() -> void:
+	if online != null:
+		if not hud.any_open():
+			online.cast_light()
+		return
+	core.cast("light")
+
 
 ## Ação possível agora ("E — ...") e onde ela aparece (sobre o objeto/pessoa).
 var prompt_at := Vector3.INF
@@ -772,7 +798,7 @@ func update(delta: float, t: float) -> void:
 	_potion_cd = maxf(0, _potion_cd - delta)
 	_update_bubbles(delta)
 	_stair_cd = maxf(0.0, _stair_cd - delta)
-	if _stair_cd <= 0.0:
+	if _stair_cd <= 0.0 and online == null:  # online: o servidor só conhece a superfície
 		_check_stairs()
 	var action := prompt() if not hud.any_open() else ""
 	if action == "E — conversar" and not _speech().text.is_empty():
@@ -792,12 +818,15 @@ func update(delta: float, t: float) -> void:
 			_talk_time = 0.0
 			_speech().text = ""
 	_update_content()
-	mana = minf(max_mana(), mana + float(config.mana_regen_per_second) * delta)
 	_invulnerable = maxf(0, _invulnerable - delta)
 	_hurt_time += delta
-	if _hurt_time > float(config.regen_delay):
-		hp = minf(state.max_hp(), hp + float(config.regen_per_second) * delta)
-	enemies.update(delta, t)
+	if online != null:
+		online.update(delta)   # vida/mana/nível/XP/poções/recargas e monstros vêm do servidor
+	else:
+		mana = minf(max_mana(), mana + float(config.mana_regen_per_second) * delta)
+		if _hurt_time > float(config.regen_delay):
+			hp = minf(state.max_hp(), hp + float(config.regen_per_second) * delta)
+		enemies.update(delta, t)
 	world.sync(state.lit, state.has_reward(), state.stage, t, demo._player.global_position)
 	demo._dress.ambient.visible = not in_cave
 	if in_cave:

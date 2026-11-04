@@ -5,7 +5,8 @@ extends Control
 ##   Servidor — eventos do mundo, dano recebido, poções, XP, itens, nível, missões
 ##   Grupo / PvP — conversa do grupo e chamada geral de PvP
 ## Enter abre a digitação (o personagem para), Enter envia, Esc cancela; clique nas abas.
-## Protótipo sem rede: Grupo e PvP mostram o que o próprio jogador digita.
+## Sem rede, Grupo e PvP mostram o que o próprio jogador digita. Online (net/net_play.gd)
+## Local vai para quem está perto e Servidor para todos.
 
 const CHANNELS := ["Local", "Servidor", "Grupo", "PvP"]
 const KEEP := 120
@@ -86,8 +87,11 @@ func _close_input() -> void:
 func _submit(text: String) -> void:
 	text = text.strip_edges()
 	if not text.is_empty():
-		var who := "Você"
-		post(active, "%s: %s" % [who, text])
+		if adventure.online != null:
+			adventure.online.say(active, text)   # online: a linha volta do servidor para todos
+		else:
+			var who := "Você"
+			post(active, "%s: %s" % [who, text])
 		if active == "Local":
 			adventure.player_say(text)
 	_close_input()

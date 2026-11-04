@@ -874,8 +874,13 @@ func _set_pyro(on: bool) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _capture:
 		return
+	if _adventure != null and _adventure.hud.friends_key(event):
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
+			KEY_O:
+				if _net_mode():
+					_adventure.hud.toggle("friends")
 			KEY_E:
 				if _adventure != null:
 					_adventure.interact()
@@ -905,7 +910,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					_adventure.drink("mana")
 			KEY_3:
 				if _adventure != null and not _adventure.hud.vocation_key(2):
-					_adventure.core.cast("light")
+					_adventure.cast_light()
 			KEY_R:
 				if _adventure != null:
 					_adventure.cast_ring()
@@ -968,7 +973,9 @@ func _attack_at(tgt: Vector3, node: Node3D = null) -> void:
 		return
 	if _attack_t >= 0.0 or _dodge_t >= 0.0 or _blink_t >= 0.0:
 		return
-	if _adventure != null and not _adventure.spend("fire"):
+	if _net_mode():
+		_adventure.online.attack(tgt, node)   # online: o servidor valida mana/recarga/alcance
+	elif _adventure != null and not _adventure.spend("fire"):
 		return
 	_attack_target = tgt
 	_attack_node = node
@@ -1009,36 +1016,40 @@ func _physics_process(delta: float) -> void:
 		input = Vector2.RIGHT
 	if _auto and fmod(_t + 0.8, 2.6) < delta:
 		_skill_q()
-	_blink_cd = maxf(0.0, _blink_cd - delta)
-	var target := Vector3(input.x, 0, input.y) * _speed
-	if _blink_t >= 0.0:
-		_update_blink(delta)
-	elif _dodge_t >= 0.0:
-		_dodge_t += delta
-		var k := _dodge_t / _dash_len
-		var vy := _player.velocity.y
-		_player.velocity = _dodge_dir * _dash_speed * (1.0 - k * (0.55 if _dash_kind.is_empty() else 0.2))
-		_player.velocity.y = vy
-		_ghost_t += delta
-		if _ghost_t >= 0.045:
-			_ghost_t = 0.0
-			_ghost(_player.global_position, 0.55, 0.26)
-		if _voc.dash_tick(_dash_kind) or _dodge_t >= _dash_len:
-			_end_dash()
+	if _net_mode():
+		# online: o servidor move (predição/reconciliação em net/net_play.gd)
+		_adventure.online.physics(delta, input)
 	else:
-		var slow: float = (0.35 if _attack_t >= 0.0 else 1.0) * (_adventure.enemies.player_speed_factor() if _adventure != null else 1.0)
-		var rate := _speed / (ACCEL_T if input != Vector2.ZERO else FRICTION_T)
-		var horizontal := Vector3(_player.velocity.x, 0, _player.velocity.z).move_toward(target * slow, rate * delta)
-		_player.velocity.x = horizontal.x
-		_player.velocity.z = horizontal.z
-	# Gravidade sempre (superfície e gruta): quem sobe numa pedra volta ao chão.
-	if _blink_t >= 0.0:
-		_player.velocity.y = 0.0
-	elif _player.is_on_floor():
-		_player.velocity.y = -0.5  # mantém contato sem acumular queda
-	else:
-		_player.velocity.y = maxf(_player.velocity.y - GRAVITY * delta, -MAX_FALL)
-	_player.move_and_slide()
+		_blink_cd = maxf(0.0, _blink_cd - delta)
+		var target := Vector3(input.x, 0, input.y) * _speed
+		if _blink_t >= 0.0:
+			_update_blink(delta)
+		elif _dodge_t >= 0.0:
+			_dodge_t += delta
+			var k := _dodge_t / _dash_len
+			var vy := _player.velocity.y
+			_player.velocity = _dodge_dir * _dash_speed * (1.0 - k * (0.55 if _dash_kind.is_empty() else 0.2))
+			_player.velocity.y = vy
+			_ghost_t += delta
+			if _ghost_t >= 0.045:
+				_ghost_t = 0.0
+				_ghost(_player.global_position, 0.55, 0.26)
+			if _voc.dash_tick(_dash_kind) or _dodge_t >= _dash_len:
+				_end_dash()
+		else:
+			var slow: float = (0.35 if _attack_t >= 0.0 else 1.0) * (_adventure.enemies.player_speed_factor() if _adventure != null else 1.0)
+			var rate := _speed / (ACCEL_T if input != Vector2.ZERO else FRICTION_T)
+			var horizontal := Vector3(_player.velocity.x, 0, _player.velocity.z).move_toward(target * slow, rate * delta)
+			_player.velocity.x = horizontal.x
+			_player.velocity.z = horizontal.z
+		# Gravidade sempre (superfície e gruta): quem sobe numa pedra volta ao chão.
+		if _blink_t >= 0.0:
+			_player.velocity.y = 0.0
+		elif _player.is_on_floor():
+			_player.velocity.y = -0.5  # mantém contato sem acumular queda
+		else:
+			_player.velocity.y = maxf(_player.velocity.y - GRAVITY * delta, -MAX_FALL)
+		_player.move_and_slide()
 	# rede de segurança: nunca abaixo do piso do andar atual
 	var floor_y: float = _adventure.ground_height() if _adventure != null else 0.0
 	if _player.global_position.y < floor_y - 0.5:
@@ -1092,7 +1103,10 @@ func _animate(delta: float, _input: Vector2) -> void:
 		var a := _attack_t / float(_voc.cfg.attack_t)
 		if a >= float(_voc.cfg.attack_hit) and not _fired:
 			_fired = true
-			_voc.primary()
+			if _net_mode():
+				_adventure.online.primary_fx()   # online: dano e projétil vêm do servidor
+			else:
+				_voc.primary()
 		if a >= 1.0:
 			_attack_t = -1.0
 	# animação do pacote por estado
@@ -1109,6 +1123,11 @@ func _animate(delta: float, _input: Vector2) -> void:
 		_play("Running_A", clampf(speed / _speed, 0.5, 1.3))
 	else:
 		_play("Idle", 1.0)
+
+
+## Jogo ligado ao servidor (--connect)? Offline devolve sempre false.
+func _net_mode() -> bool:
+	return _adventure != null and _adventure.online != null
 
 
 func _anim_len(anim_name: String) -> float:
@@ -1500,6 +1519,9 @@ func _pick_class(args: Dictionary) -> String:
 
 ## Q: Mago = Eco (teleporte); Guerreiro/Arqueiro = habilidade da vocação.
 func _skill_q() -> void:
+	if _net_mode():
+		_adventure.online.q(_mouse_ground())
+		return
 	if _voc.is_mage():
 		_start_blink()
 	else:
