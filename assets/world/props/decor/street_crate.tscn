@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_bih5k"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/props/crate_A_big.gltf" id="2_e82fs"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/props/crate_B_big.gltf" id="3_s8yyf"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/props/crate_long_A.gltf" id="4_0lcfh"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/props/crate_open.gltf" id="5_1khf2"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_d5wjl"]
+size = Vector3(0.756, 0.756, 0.756)
+
+[node name="StreetCrate" type="Node3D" unique_id=670416006]
+script = ExtResource("1_bih5k")
+prop_id = &"street_crate"
+category = &"decor"
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=147415955]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=907851021 instance=ExtResource("2_e82fs")]
+transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, 0, 0, 0)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=1342881240]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=1817634005 instance=ExtResource("3_s8yyf")]
+transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, 0, 0, 0)
+
+[node name="Variant2" type="Node3D" parent="." unique_id=944273131]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant2" unique_id=130714398 instance=ExtResource("4_0lcfh")]
+transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, 0, 0, 0)
+
+[node name="Variant3" type="Node3D" parent="." unique_id=563023486]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant3" unique_id=1596096883 instance=ExtResource("5_1khf2")]
+transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, -0.23682234, 0, 0)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=160464338]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=993231054]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.37800384, 0)
+shape = SubResource("BoxShape3D_d5wjl")

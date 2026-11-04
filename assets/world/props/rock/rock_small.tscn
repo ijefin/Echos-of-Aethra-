@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_x7pea"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/nature/rock_single_A.gltf" id="2_r5bbk"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/nature/rock_single_B.gltf" id="3_4brbc"]
+
+[node name="RockSmall" type="Node3D" unique_id=1043964058]
+script = ExtResource("1_x7pea")
+prop_id = &"rock_small"
+category = &"rock"
+
+[node name="Variant0" type="Node3D" parent="." unique_id=1023553635]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1309906476 instance=ExtResource("2_r5bbk")]
+transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, 0, 0, 0.053896964)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=2028502217]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=1307051162 instance=ExtResource("3_4brbc")]
+transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, -0.004790783, 0, 0.011261255)

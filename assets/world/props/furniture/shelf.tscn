@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_06hnh"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/shelves.gltf.glb" id="2_q0n20"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/shelf_small_candles.gltf.glb" id="3_hflhs"]
+
+[node name="Shelf" type="Node3D" unique_id=1403302446]
+script = ExtResource("1_06hnh")
+prop_id = &"shelf"
+category = &"furniture"
+
+[node name="Variant0" type="Node3D" parent="." unique_id=944862348]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=2112846880 instance=ExtResource("2_q0n20")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=297658869]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=1437846437 instance=ExtResource("3_hflhs")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)

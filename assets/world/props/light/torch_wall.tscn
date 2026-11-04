@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_ee418"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/torch_mounted.gltf.glb" id="2_cegx5"]
+
+[node name="TorchWall" type="Node3D" unique_id=768324944]
+script = ExtResource("1_ee418")
+prop_id = &"torch_wall"
+category = &"light"
+
+[node name="Variant0" type="Node3D" parent="." unique_id=1318075830]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1505917077 instance=ExtResource("2_cegx5")]
+transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)

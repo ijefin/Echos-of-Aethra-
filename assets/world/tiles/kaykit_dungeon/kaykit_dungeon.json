@@ -1,0 +1,384 @@
+{
+	"kit": "kaykit_dungeon",
+	"cell_size": 1.5,
+	"scale": 0.75,
+	"rotations": [
+		0.0,
+		90.0,
+		180.0,
+		270.0
+	],
+	"mapping": "res://assets/world/tiles/kaykit_dungeon/mapping.json",
+	"props": {
+		"wall": "res://assets/world/props/wall/wall.tscn",
+		"wall_corner": "res://assets/world/props/wall/wall_corner.tscn",
+		"wall_doorway": "res://assets/world/props/wall/wall_doorway.tscn",
+		"wall_window": "res://assets/world/props/window/wall_window.tscn",
+		"wall_half": "res://assets/world/props/wall/wall_half.tscn",
+		"wall_shelves": "res://assets/world/props/wall/wall_shelves.tscn",
+		"floor_stone": "res://assets/world/props/floor/floor_stone.tscn",
+		"floor_stone_large": "res://assets/world/props/floor/floor_stone_large.tscn",
+		"floor_wood": "res://assets/world/props/floor/floor_wood.tscn",
+		"floor_wood_large": "res://assets/world/props/floor/floor_wood_large.tscn",
+		"stairs": "res://assets/world/props/stairs/stairs.tscn",
+		"stairs_wood": "res://assets/world/props/stairs/stairs_wood.tscn",
+		"table": "res://assets/world/props/furniture/table.tscn",
+		"table_long": "res://assets/world/props/furniture/table_long.tscn",
+		"chair": "res://assets/world/props/furniture/chair.tscn",
+		"bed": "res://assets/world/props/furniture/bed.tscn",
+		"shelf": "res://assets/world/props/furniture/shelf.tscn",
+		"barrel": "res://assets/world/props/furniture/barrel.tscn",
+		"crate": "res://assets/world/props/furniture/crate.tscn",
+		"chest": "res://assets/world/props/furniture/chest.tscn",
+		"torch_wall": "res://assets/world/props/light/torch_wall.tscn",
+		"banner": "res://assets/world/props/decor/banner.tscn",
+		"pillar": "res://assets/world/props/decor/pillar.tscn"
+	},
+	"info": {
+		"wall": {
+			"category": "wall",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 3,
+			"scale": 0.75,
+			"size": [
+				3.0,
+				3.0,
+				0.75
+			]
+		},
+		"wall_corner": {
+			"category": "wall",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 0.75,
+			"size": [
+				1.88,
+				3.0,
+				1.88
+			]
+		},
+		"wall_doorway": {
+			"category": "wall",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				3.0,
+				3.0,
+				0.75
+			]
+		},
+		"wall_window": {
+			"category": "window",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 3,
+			"scale": 0.75,
+			"size": [
+				3.0,
+				3.0,
+				0.75
+			]
+		},
+		"wall_half": {
+			"category": "wall",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 0.75,
+			"size": [
+				1.5,
+				3.0,
+				0.75
+			]
+		},
+		"wall_shelves": {
+			"category": "wall",
+			"footprint": [
+				2,
+				1
+			],
+			"blocks": true,
+			"variants": 1,
+			"scale": 0.75,
+			"size": [
+				3.0,
+				3.0,
+				1.03
+			]
+		},
+		"floor_stone": {
+			"category": "floor",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": false,
+			"variants": 4,
+			"scale": 0.75,
+			"size": [
+				1.5,
+				0.11,
+				1.5
+			]
+		},
+		"floor_stone_large": {
+			"category": "floor",
+			"footprint": [
+				2,
+				2
+			],
+			"blocks": false,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				3.0,
+				0.11,
+				3.0
+			]
+		},
+		"floor_wood": {
+			"category": "floor",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": false,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				1.5,
+				0.11,
+				1.5
+			]
+		},
+		"floor_wood_large": {
+			"category": "floor",
+			"footprint": [
+				2,
+				2
+			],
+			"blocks": false,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				3.0,
+				0.11,
+				3.0
+			]
+		},
+		"stairs": {
+			"category": "stairs",
+			"footprint": [
+				3,
+				2
+			],
+			"blocks": false,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				3.75,
+				3.82,
+				3.0
+			]
+		},
+		"stairs_wood": {
+			"category": "stairs",
+			"footprint": [
+				2,
+				3
+			],
+			"blocks": false,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				2.47,
+				3.04,
+				4.5
+			]
+		},
+		"table": {
+			"category": "furniture",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 3,
+			"scale": 0.75,
+			"size": [
+				1.5,
+				0.75,
+				1.5
+			]
+		},
+		"table_long": {
+			"category": "furniture",
+			"footprint": [
+				1,
+				2
+			],
+			"blocks": true,
+			"variants": 3,
+			"scale": 0.75,
+			"size": [
+				1.5,
+				0.75,
+				3.0
+			]
+		},
+		"chair": {
+			"category": "furniture",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				0.56,
+				0.92,
+				0.56
+			]
+		},
+		"bed": {
+			"category": "furniture",
+			"footprint": [
+				1,
+				2
+			],
+			"blocks": true,
+			"variants": 3,
+			"scale": 0.75,
+			"size": [
+				1.13,
+				0.8,
+				2.25
+			]
+		},
+		"shelf": {
+			"category": "furniture",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": false,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				1.5,
+				1.46,
+				0.38
+			]
+		},
+		"barrel": {
+			"category": "furniture",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 4,
+			"scale": 0.75,
+			"size": [
+				0.75,
+				0.76,
+				0.75
+			]
+		},
+		"crate": {
+			"category": "furniture",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 3,
+			"scale": 0.75,
+			"size": [
+				0.75,
+				0.75,
+				0.75
+			]
+		},
+		"chest": {
+			"category": "furniture",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				1.28,
+				0.98,
+				1.08
+			]
+		},
+		"torch_wall": {
+			"category": "light",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": false,
+			"variants": 1,
+			"scale": 0.75,
+			"size": [
+				0.41,
+				0.8,
+				0.46
+			]
+		},
+		"banner": {
+			"category": "decor",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": false,
+			"variants": 5,
+			"scale": 0.75,
+			"size": [
+				1.13,
+				2.4,
+				0.23
+			]
+		},
+		"pillar": {
+			"category": "decor",
+			"footprint": [
+				1,
+				1
+			],
+			"blocks": true,
+			"variants": 2,
+			"scale": 0.75,
+			"size": [
+				1.13,
+				3.0,
+				1.13
+			]
+		}
+	}
+}

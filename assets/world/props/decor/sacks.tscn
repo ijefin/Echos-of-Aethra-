@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_nasn2"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/props/sack.gltf" id="2_rwttm"]
+
+[node name="Sacks" type="Node3D" unique_id=1039195018]
+script = ExtResource("1_nasn2")
+prop_id = &"sacks"
+category = &"decor"
+
+[node name="Variant0" type="Node3D" parent="." unique_id=1464579229]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=1359150693 instance=ExtResource("2_rwttm")]
+transform = Transform3D(5, 0, 0, 0, 5, 0, 0, 0, 5, -4.4703484e-05, 0, 0.02950883)

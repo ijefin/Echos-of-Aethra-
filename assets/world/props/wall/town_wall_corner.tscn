@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_e6s2o"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/buildings/neutral/wall_corner_A_outside.gltf" id="2_jsu8a"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/buildings/neutral/wall_corner_A_inside.gltf" id="3_oh55i"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_utyo5"]
+size = Vector3(5.2794213, 3.2999997, 4.2952337)
+
+[node name="TownWallCorner" type="Node3D" unique_id=2094789234]
+script = ExtResource("1_e6s2o")
+prop_id = &"town_wall_corner"
+category = &"wall"
+footprint = Vector2i(4, 3)
+blocks_movement = true
+
+[node name="Variant0" type="Node3D" parent="." unique_id=648305551]
+
+[node name="Model" type="Node3D" parent="Variant0" unique_id=945579066 instance=ExtResource("2_jsu8a")]
+transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0.36031795, 0, 1.0504596)
+
+[node name="Variant1" type="Node3D" parent="." unique_id=336340553]
+visible = false
+
+[node name="Model" type="Node3D" parent="Variant1" unique_id=1490489429 instance=ExtResource("3_oh55i")]
+transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0.2303958, 0, 0.9240494)
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=967399824]
+collision_mask = 0
+
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=940380661]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6499999, 0)
+shape = SubResource("BoxShape3D_utyo5")
