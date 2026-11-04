@@ -60,7 +60,8 @@ func start_from_args(args: Dictionary, world_root: Node3D = null, label_factory:
 	if not args.has("connect"):
 		return false
 	var hp := parse_address(String(args.connect))
-	start(String(hp[0]), int(hp[1]), String(args.get("user", "")), String(args.get("pass", "")), args.has("register"), world_root, label_factory)
+	start(String(hp[0]), int(hp[1]), String(args.get("user", "")), String(args.get("pass", "")), args.has("register"), world_root, label_factory,
+		String(args.get("vocation", args.get("class", ""))))
 	return true
 
 
@@ -74,7 +75,8 @@ static func parse_address(s: String) -> Array:
 	return [host, port]
 
 
-func start(host: String, port: int, user: String, password: String, register := false, world_root: Node3D = null, label_factory: Callable = Callable()) -> void:
+## `vocation` (mage|warrior|archer) só vale para personagem novo; a confirmada vem em `vocation()`.
+func start(host: String, port: int, user: String, password: String, register := false, world_root: Node3D = null, label_factory: Callable = Callable(), vocation := "") -> void:
 	if client == null:
 		_make_client()
 	if world_root != null:
@@ -82,7 +84,7 @@ func start(host: String, port: int, user: String, password: String, register := 
 		view.name = "NetWorldView"
 		view.label_factory = label_factory
 		world_root.add_child(view)
-	client.connect_and_login(host, port, user, password, register)
+	client.connect_and_login(host, port, user, password, register, vocation)
 
 
 func is_online() -> bool:
@@ -112,6 +114,22 @@ func blink_to(point: Vector3) -> void:
 
 func ring() -> void:
 	client.action("ring")
+
+
+## Q da vocação: Eco (mago, ponto de destino), Investida (guerreiro, direção) ou
+## Salto Evasivo (arqueiro, salta para TRÁS da mira). O servidor move e manda o evento "dash"/"blink".
+func q_at(point: Vector3) -> void:
+	client.action("q", {"x": point.x, "z": point.z})
+
+
+## R da vocação: Anel (mago), Redemoinho (guerreiro) ou Flecha Perfurante (arqueiro, mira em `point`).
+func r_at(point: Vector3) -> void:
+	client.action("r", {"x": point.x, "z": point.z})
+
+
+## Vocação confirmada pelo servidor no login.
+func vocation() -> String:
+	return client.vocation if client != null else "mage"
 
 
 func drink(kind: String) -> void:
