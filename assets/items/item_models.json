@@ -1,0 +1,280 @@
+{
+	"_doc": "Arte dos itens (ItemCatalog/IconBaker em src/items/). models = biblioteca: chave -> caminho do modelo + view do ícone. items = id de items.json -> chave da biblioteca (ou {model, view}). view: yaw/pitch/roll em graus, zoom (>1 aproxima), offset [x,y] em fração do quadro. bake = padrão do gerador. Saída: assets/items/icons/<id>.png e assets/items/icons/models/<chave>.png. Reaplicar: bash tools/bake_item_icons.sh",
+	"bake": {
+		"size": 64,
+		"art_px": 32,
+		"yaw": 35.0,
+		"pitch": -30.0,
+		"roll": 0.0,
+		"margin": 0.06,
+		"alpha_cut": 0.5,
+		"outline": [
+			0.07,
+			0.05,
+			0.1,
+			1.0
+		],
+		"light_color": [
+			1.0,
+			0.92,
+			0.78
+		],
+		"light_energy": 1.1,
+		"light_rotation": [
+			-52.0,
+			-38.0,
+			0.0
+		],
+		"ambient_color": [
+			0.42,
+			0.36,
+			0.64
+		],
+		"ambient_energy": 0.6,
+		"toon": true
+	},
+	"models": {
+		"kk_sword_1handed": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/sword_1handed.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_sword_2handed": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/sword_2handed.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_sword_2handed_color": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/sword_2handed_color.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_axe_1handed": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/axe_1handed.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_axe_2handed": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/axe_2handed.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_dagger": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/dagger.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_staff": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/staff.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_wand": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/wand.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_crossbow_1handed": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/crossbow_1handed.gltf",
+			"view": {
+				"pitch": -75.0,
+				"yaw": 0.0
+			}
+		},
+		"kk_crossbow_2handed": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/crossbow_2handed.gltf",
+			"view": {
+				"pitch": -75.0,
+				"yaw": 0.0
+			}
+		},
+		"kk_arrow": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/arrow.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_arrow_bundle": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/arrow_bundle.gltf",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kk_quiver": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/quiver.gltf"
+		},
+		"kk_shield_badge": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_badge.gltf"
+		},
+		"kk_shield_badge_color": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_badge_color.gltf"
+		},
+		"kk_shield_round": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_round.gltf"
+		},
+		"kk_shield_round_barbarian": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_round_barbarian.gltf"
+		},
+		"kk_shield_round_color": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_round_color.gltf"
+		},
+		"kk_shield_spikes": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_spikes.gltf"
+		},
+		"kk_shield_spikes_color": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_spikes_color.gltf"
+		},
+		"kk_shield_square": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_square.gltf"
+		},
+		"kk_shield_square_color": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/shield_square_color.gltf"
+		},
+		"kk_spellbook_closed": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/spellbook_closed.gltf"
+		},
+		"kk_spellbook_open": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/spellbook_open.gltf"
+		},
+		"kk_smokebomb": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/smokebomb.gltf"
+		},
+		"kk_mug_empty": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/mug_empty.gltf"
+		},
+		"kk_mug_full": {
+			"path": "res://assets/third_party/kaykit_adventurers/addons/kaykit_character_pack_adventures/Assets/gltf/mug_full.gltf"
+		},
+		"kd_bottle_A_brown": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/bottle_A_brown.gltf.glb"
+		},
+		"kd_bottle_A_green": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/bottle_A_green.gltf.glb"
+		},
+		"kd_bottle_A_labeled_brown": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/bottle_A_labeled_brown.gltf.glb"
+		},
+		"kd_bottle_A_labeled_green": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/bottle_A_labeled_green.gltf.glb"
+		},
+		"kd_bottle_B_brown": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/bottle_B_brown.gltf.glb"
+		},
+		"kd_bottle_B_green": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/bottle_B_green.gltf.glb"
+		},
+		"kd_bottle_C_brown": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/bottle_C_brown.gltf.glb"
+		},
+		"kd_bottle_C_green": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/bottle_C_green.gltf.glb"
+		},
+		"kd_coin": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/coin.gltf.glb"
+		},
+		"kd_coin_stack_small": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/coin_stack_small.gltf.glb"
+		},
+		"kd_coin_stack_medium": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/coin_stack_medium.gltf.glb"
+		},
+		"kd_coin_stack_large": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/coin_stack_large.gltf.glb"
+		},
+		"kd_key": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/key.gltf.glb",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kd_keyring": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/keyring.gltf.glb",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kd_plate": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/plate.gltf.glb"
+		},
+		"kd_plate_small": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/plate_small.gltf.glb"
+		},
+		"kd_plate_food_A": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/plate_food_A.gltf.glb"
+		},
+		"kd_plate_food_B": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/plate_food_B.gltf.glb"
+		},
+		"kd_candle": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/candle.gltf.glb"
+		},
+		"kd_candle_lit": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/candle_lit.gltf.glb"
+		},
+		"kd_candle_thin": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/candle_thin.gltf.glb"
+		},
+		"kd_candle_melted": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/candle_melted.gltf.glb"
+		},
+		"kd_torch": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/torch.gltf.glb",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kd_torch_lit": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/torch_lit.gltf.glb",
+			"view": {
+				"roll": 45.0
+			}
+		},
+		"kd_banner_red": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_red.gltf.glb"
+		},
+		"kd_banner_blue": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_blue.gltf.glb"
+		},
+		"kd_banner_green": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_green.gltf.glb"
+		},
+		"kd_banner_yellow": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_yellow.gltf.glb"
+		},
+		"kd_banner_white": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_white.gltf.glb"
+		},
+		"kd_banner_brown": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_brown.gltf.glb"
+		},
+		"kd_banner_shield_red": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_shield_red.gltf.glb"
+		},
+		"kd_banner_patternA_blue": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_patternA_blue.gltf.glb"
+		},
+		"kd_chest": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/chest.glb"
+		},
+		"kd_chest_gold": {
+			"path": "res://assets/third_party/kaykit_dungeon_remastered/gltf/chest_gold.glb"
+		}
+	},
+	"items": {
+		"iron_sword": "kk_sword_1handed",
+		"guard_sword": "kk_sword_1handed",
+		"fire_staff": "kk_staff",
+		"sentinel_staff": "kk_staff",
+		"pyromancer_staff": "kk_staff",
+		"round_shield": "kk_shield_round",
+		"pyromancer_grimoire": "kk_spellbook_open"
+	}
+}
