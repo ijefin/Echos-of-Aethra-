@@ -3,6 +3,7 @@
 extends RefCounted
 
 const Dressing := preload("res://prototypes/pixel3d/pixel3d_dressing.gd")
+const WorldLayout := preload("res://prototypes/pixel3d/world/world_layout.gd")
 var _demo: Node
 var _root: Node3D
 var _rng := RandomNumberGenerator.new()
@@ -18,7 +19,7 @@ func _eyes(parent: Node3D, x: float, y: float, z: float) -> void:
 		_part(parent, Color(0.035, 0.04, 0.05), Vector3(sign_x * x, y, z), Vector3.ONE * 0.023)
 
 func _dry(p: Vector2) -> bool:
-	if Dressing.water_dist(p) < 0.85 or Dressing.cave_dist(p) < 2.8 or Dressing.plaza_dist(p) < 0.5:
+	if Dressing.water_dist(p) < 0.85 or Dressing.cave_dist(p) < 2.8 or Dressing.plaza_dist(p) < 0.5 or not WorldLayout.walkable(p, 0.8):
 		return false
 	for tree: Array in _demo._tree_spots:
 		var trunk: Vector3 = tree[0]

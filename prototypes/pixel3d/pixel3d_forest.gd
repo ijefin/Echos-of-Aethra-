@@ -38,10 +38,14 @@ func _branch(demo: Node, parent: Node3D, a: Vector3, b: Vector3, radius: float, 
 	mesh.quaternion = Quaternion(Vector3.UP, (b - a).normalized())
 
 ## Make a legible species silhouette with asymmetric branch-supported clusters.
-func populate(demo: Node, body: Node3D, palette: Array, size: float, rng: RandomNumberGenerator, biome: String) -> void:
+## `species` força a espécie ("pine", "birch", "broad"); vazio = sorteio de sempre.
+func populate(demo: Node, body: Node3D, palette: Array, size: float, rng: RandomNumberGenerator, biome: String, species := "") -> void:
 	var pick := rng.randf()
 	var pine := biome == "green" and pick < 0.28
 	var birch := biome == "green" and pick > 0.76
+	if species != "":
+		pine = species == "pine"
+		birch = species == "birch"
 	var bark: Material = demo._toon_shared(Color(0.67, 0.65, 0.57) if birch else Color(0.32, 0.22, 0.17))
 	var lean := Vector3(rng.randf_range(-0.18, 0.18), 0, rng.randf_range(-0.15, 0.15)) * size
 	var height := (4.4 if pine else (3.7 if birch else 2.8)) * size

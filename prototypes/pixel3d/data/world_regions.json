@@ -1,0 +1,49 @@
+{
+  "half": 100,
+  "regions": [
+    {"id": "floresta", "name": "Floresta de Aethra", "danger": "baixo", "min": [-60, -60], "max": [60, 60],
+     "tree_base": 0.85, "palette": "mixed"},
+    {"id": "serra", "name": "Serra do Vigia", "danger": "alto", "min": [-100, -100], "max": [100, -60],
+     "tree_base": 0.35, "palette": "pine"},
+    {"id": "bosque", "name": "Bosque Antigo", "danger": "alto", "min": [60, -60], "max": [100, 60],
+     "tree_base": 1.0, "palette": "ancient"},
+    {"id": "charco", "name": "Charco das Brumas", "danger": "médio", "min": [-100, 60], "max": [100, 100],
+     "tree_base": 0.45, "palette": "dead"},
+    {"id": "ruinas", "name": "Ruínas da Estrada Velha", "danger": "médio", "min": [-100, -60], "max": [-60, 60],
+     "tree_base": 0.7, "palette": "autumn"}
+  ],
+  "subareas": [
+    {"id": "vale", "name": "Vale do Vigia", "region": "serra", "min": [-58, -90], "max": [62, -74]},
+    {"id": "cordilheira", "name": "Cordilheira do Vigia", "region": "serra", "min": [-100, -100], "max": [100, -90]}
+  ],
+  "hunts": [
+    {"id": "charco", "name": "Charco", "region": "charco", "center": [24, 78], "radius": 10, "kinds": ["frog"], "level": [2, 3],
+     "spawns": [[20, 74, "frog"], [27, 75, "frog"], [22, 82, "frog"], [29, 81, "frog"], [24, 78, "frog"]]},
+    {"id": "estrada_velha", "name": "Estrada Velha", "region": "ruinas", "center": [-80, 40], "radius": 9, "kinds": ["spider", "frog"], "level": [3, 4],
+     "spawns": [[-84, 36, "spider"], [-76, 37, "spider"], [-83, 44, "spider"], [-76, 44, "frog"], [-80, 40, "spider"]]},
+    {"id": "covil_bosque", "name": "Covil do Bosque", "region": "bosque", "center": [80, -28], "radius": 10, "kinds": ["spider"], "level": [4, 5],
+     "spawns": [[76, -32, "spider"], [84, -32, "spider"], [75, -25, "spider"], [85, -24, "spider"], [80, -28, "spider"], [80, -34, "spider"]]},
+    {"id": "vale_vigia", "name": "Vale do Vigia", "region": "serra", "center": [20, -83], "radius": 10, "kinds": ["spider"], "level": [6, 7],
+     "spawns": [[15, -85, "spider"], [25, -85, "spider"], [17, -79, "spider"], [24, -80, "spider"], [20, -87, "spider"], [20, -82, "spider"]]}
+  ],
+  "landmarks": [
+    {"id": "torre_vigia", "name": "Torre de Vigia", "region": "serra", "center": [-30, -84], "radius": 8,
+     "description": "Torre de pedra no Vale do Vigia com mirante de madeira e rampa; de cima se vê a floresta inteira."},
+    {"id": "arvore_mae", "name": "Árvore-Mãe", "region": "bosque", "center": [82, 20], "radius": 9,
+     "description": "A maior árvore de Aethra, copa violeta que brilha à noite, raízes em anel e pedras-guardiãs."},
+    {"id": "estatua_afundada", "name": "Estátua Afundada", "region": "charco", "center": [-30, 80], "radius": 9,
+     "description": "Estátua de uma guardiã encapuzada, tombada e meio submersa numa poça do charco."},
+    {"id": "posto_velho", "name": "Posto Velho", "region": "ruinas", "center": [-80, 10], "radius": 8,
+     "description": "Posto de guarda arruinado na Estrada Velha: muros partidos, guarita caída, carroça e placa."}
+  ],
+  "secrets": [
+    {"id": "segredo_serra_fenda", "name": "Fenda do Contraforte", "region": "serra", "position": [-46, -68], "entrance": [-48, -58],
+     "description": "Bolsão dentro do contraforte; a fenda de entrada fica atrás de arbustos ao pé da serra."},
+    {"id": "segredo_bosque_raizes", "name": "Ninho das Raízes", "region": "bosque", "position": [90, -38], "entrance": [84, -38],
+     "description": "Recanto cercado por pedras cobertas de musgo a leste do Covil, aberto só para o oeste."},
+    {"id": "segredo_charco_juncos", "name": "Ilhota dos Juncos", "region": "charco", "position": [40, 88], "entrance": [40, 82],
+     "description": "Clareira escondida entre pedras e juncos ao sul da caçada do Charco, aberta para o norte."},
+    {"id": "segredo_ruinas_cripta", "name": "Cripta Esquecida", "region": "ruinas", "position": [-90, 30], "entrance": [-90, 24],
+     "description": "Anel de pedras tombadas a oeste da Estrada Velha, aberto para o norte, escondido por arbustos."}
+  ]
+}

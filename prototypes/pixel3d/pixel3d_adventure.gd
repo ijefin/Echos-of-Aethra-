@@ -6,6 +6,7 @@ const World := preload("res://prototypes/pixel3d/adventure_world.gd")
 const Enemies := preload("res://prototypes/pixel3d/adventure_enemies.gd")
 const Hud := preload("res://prototypes/pixel3d/adventure_hud.gd")
 const CoreSkills := preload("res://prototypes/pixel3d/core_skills.gd")
+const WorldLayout := preload("res://prototypes/pixel3d/world/world_layout.gd")
 const Chat := preload("res://prototypes/pixel3d/adventure_chat.gd")
 const Dressing := preload("res://prototypes/pixel3d/pixel3d_dressing.gd")
 const BUBBLE_TIME := 10.0
@@ -392,7 +393,7 @@ func region_name(at: Vector3) -> String:
 		return "às margens do rio"
 	if Vector2(World.NPC.x, World.NPC.z).distance_to(p) < 14.0:
 		return "nos arredores do acampamento"
-	return "na floresta " + ("ao norte" if at.z < -10.0 else ("ao sul" if at.z > 10.0 else ("a leste" if at.x > 0.0 else "a oeste")))
+	return WorldLayout.region_name(p)
 
 
 func interact() -> void:

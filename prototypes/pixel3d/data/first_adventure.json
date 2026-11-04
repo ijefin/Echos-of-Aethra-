@@ -121,87 +121,275 @@
     {
       "kind": "frog",
       "x": -20,
-      "z": -27
+      "z": -27,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": -23,
-      "z": -29
+      "z": -29,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "spider",
       "x": -25,
-      "z": -28
+      "z": -28,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": -28,
-      "z": -30
+      "z": -30,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "spider",
       "x": -31,
-      "z": -27
+      "z": -27,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": -35,
-      "z": -29
+      "z": -29,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": -14,
-      "z": -15.6
+      "z": -15.6,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": -11,
-      "z": -15.3
+      "z": -15.3,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "spider",
       "x": -7,
-      "z": -14.4
+      "z": -14.4,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": -3,
-      "z": -12.9
+      "z": -12.9,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": 1,
-      "z": -11.2
+      "z": -11.2,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "spider",
       "x": 6,
-      "z": -9.1
+      "z": -9.1,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "spider",
       "x": -41,
-      "z": -24
+      "z": -24,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": -35,
-      "z": -23
+      "z": -23,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "spider",
       "x": 33,
-      "z": 34
+      "z": 34,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "spider",
       "x": 39,
-      "z": 35
+      "z": 35,
+      "hunt": "floresta",
+      "level": 1
     },
     {
       "kind": "frog",
       "x": 36,
-      "z": 36
+      "z": 36,
+      "hunt": "floresta",
+      "level": 1
+    },
+    {
+      "kind": "frog",
+      "x": 20,
+      "z": 74,
+      "hunt": "charco",
+      "level": 2
+    },
+    {
+      "kind": "frog",
+      "x": 27,
+      "z": 75,
+      "hunt": "charco",
+      "level": 3
+    },
+    {
+      "kind": "frog",
+      "x": 22,
+      "z": 82,
+      "hunt": "charco",
+      "level": 2
+    },
+    {
+      "kind": "frog",
+      "x": 29,
+      "z": 81,
+      "hunt": "charco",
+      "level": 3
+    },
+    {
+      "kind": "frog",
+      "x": 24,
+      "z": 78,
+      "hunt": "charco",
+      "level": 2
+    },
+    {
+      "kind": "spider",
+      "x": -84,
+      "z": 36,
+      "hunt": "estrada_velha",
+      "level": 3
+    },
+    {
+      "kind": "spider",
+      "x": -76,
+      "z": 37,
+      "hunt": "estrada_velha",
+      "level": 4
+    },
+    {
+      "kind": "spider",
+      "x": -83,
+      "z": 44,
+      "hunt": "estrada_velha",
+      "level": 3
+    },
+    {
+      "kind": "frog",
+      "x": -76,
+      "z": 44,
+      "hunt": "estrada_velha",
+      "level": 4
+    },
+    {
+      "kind": "spider",
+      "x": -80,
+      "z": 40,
+      "hunt": "estrada_velha",
+      "level": 3
+    },
+    {
+      "kind": "wolf",
+      "x": 76,
+      "z": -32,
+      "hunt": "covil_bosque",
+      "level": 4
+    },
+    {
+      "kind": "wolf",
+      "x": 84,
+      "z": -32,
+      "hunt": "covil_bosque",
+      "level": 5
+    },
+    {
+      "kind": "spider",
+      "x": 75,
+      "z": -25,
+      "hunt": "covil_bosque",
+      "level": 4
+    },
+    {
+      "kind": "spider",
+      "x": 85,
+      "z": -24,
+      "hunt": "covil_bosque",
+      "level": 5
+    },
+    {
+      "kind": "spider",
+      "x": 80,
+      "z": -28,
+      "hunt": "covil_bosque",
+      "level": 4
+    },
+    {
+      "kind": "spider",
+      "x": 80,
+      "z": -34,
+      "hunt": "covil_bosque",
+      "level": 5
+    },
+    {
+      "kind": "wolf",
+      "x": 15,
+      "z": -85,
+      "hunt": "vale_vigia",
+      "level": 6
+    },
+    {
+      "kind": "wolf",
+      "x": 25,
+      "z": -85,
+      "hunt": "vale_vigia",
+      "level": 7
+    },
+    {
+      "kind": "wolf",
+      "x": 17,
+      "z": -79,
+      "hunt": "vale_vigia",
+      "level": 6
+    },
+    {
+      "kind": "spider",
+      "x": 24,
+      "z": -80,
+      "hunt": "vale_vigia",
+      "level": 7
+    },
+    {
+      "kind": "spider",
+      "x": 20,
+      "z": -87,
+      "hunt": "vale_vigia",
+      "level": 6
+    },
+    {
+      "kind": "spider",
+      "x": 20,
+      "z": -82,
+      "hunt": "vale_vigia",
+      "level": 7
     }
   ],
   "mana_base": 40,

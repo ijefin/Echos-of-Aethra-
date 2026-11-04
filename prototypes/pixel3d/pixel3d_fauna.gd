@@ -5,6 +5,7 @@
 extends RefCounted
 
 const Dressing := preload("res://prototypes/pixel3d/pixel3d_dressing.gd")
+const WorldLayout := preload("res://prototypes/pixel3d/world/world_layout.gd")
 const ACTIVE_RADIUS := 32.0
 
 var _demo: Node
@@ -21,9 +22,9 @@ func build(root: Node3D, demo: Node, tree_spots: Array, half: float) -> void:
 	_root = root
 	_rng.seed = 21
 	_bushes(half)
-	for i in 16:
+	for i in 28:
 		_rabbits.append(_new_rabbit(_free_point(half, 2.0)))
-	for i in 7:
+	for i in 12:
 		_deer.append(_new_deer(_free_point(half, 3.0)))
 	var violet: Array = tree_spots.filter(func(s: Array) -> bool: return String(s[2]) == "violet")
 	for i in mini(10, violet.size()):
@@ -77,7 +78,7 @@ func _butterflies() -> void:
 func _free_point(half: float, clearance: float) -> Vector2:
 	for i in 80:
 		var p := Vector2(_rng.randf_range(-half + 3, half - 3), _rng.randf_range(-half + 3, half - 3))
-		if Dressing.water_dist(p) > clearance and Dressing.plaza_dist(p) > clearance and Dressing.cave_dist(p) > clearance:
+		if Dressing.water_dist(p) > clearance and Dressing.plaza_dist(p) > clearance and Dressing.cave_dist(p) > clearance and WorldLayout.walkable(p, clearance):
 			return p
 	return Vector2.ZERO
 
@@ -101,8 +102,10 @@ func _bushes(half: float) -> void:
 	var patches := FastNoiseLite.new()
 	patches.seed = 314
 	patches.frequency = 0.16
-	for i in 700:
+	for i in int(700.0 * half * half / 3600.0):
 		var p := Vector2(_rng.randf_range(-half + 1, half - 1), _rng.randf_range(-half + 1, half - 1))
+		if WorldLayout.open_dist(p) > -0.5:
+			continue
 		if patches.get_noise_2d(p.x, p.y) < 0.05:
 			continue
 		if _demo.path_dist(p) < 2.0 or Dressing.water_dist(p) < 0.8 or Dressing.plaza_dist(p) < 1.0 or Dressing.cave_dist(p) < 1.0:
@@ -116,6 +119,13 @@ func _bushes(half: float) -> void:
 			for k in 5:
 				var a := _rng.randf() * TAU
 				berries.append(Transform3D(Basis(), Vector3(p.x + cos(a) * 0.45 * size, 0.35 * size + _rng.randf() * 0.2, p.y + sin(a) * 0.45 * size)))
+	# arbustos da borda dos bosques (planejados junto com as árvores)
+	for p: Vector2 in _demo.edge_bushes:
+		var size := _rng.randf_range(0.55, 1.0)
+		for k in _rng.randi_range(1, 3):
+			var off := Vector3(_rng.randf_range(-0.35, 0.35), 0.18, _rng.randf_range(-0.35, 0.35)) * size
+			var basis := Basis.from_scale(Vector3(size, size * _rng.randf_range(0.8, 1.1), size))
+			lists[_rng.randi() % 3].append(Transform3D(basis, Vector3(p.x, 0, p.y) + off))
 	for g in 3:
 		_multi(blob, lists[g], _demo._toon_shared(greens[g], 0.015))
 	_multi(berry, berries, _demo._toon_shared(Color(0.85, 0.15, 0.25)))
