@@ -275,6 +275,33 @@
 		"sentinel_staff": "kk_staff",
 		"pyromancer_staff": "kk_staff",
 		"round_shield": "kk_shield_round",
-		"pyromancer_grimoire": "kk_spellbook_open"
+		"pyromancer_grimoire": "kk_spellbook_open",
+		"woodcutter_axe": "kk_axe_1handed",
+		"war_axe": "kk_axe_2handed",
+		"bastion_greatsword": "kk_sword_2handed",
+		"oath_blade": "kk_sword_2handed_color",
+		"crest_shield": "kk_shield_badge",
+		"watch_shield": "kk_shield_badge_color",
+		"spiked_buckler": "kk_shield_spikes",
+		"oak_pavise": "kk_shield_square",
+		"northern_targe": "kk_shield_round_barbarian",
+		"scout_dagger": "kk_dagger",
+		"light_crossbow": "kk_crossbow_1handed",
+		"siege_crossbow": "kk_crossbow_2handed",
+		"hunter_quiver": "kk_quiver",
+		"oak_wand": "kk_wand",
+		"apprentice_tome": "kk_spellbook_closed",
+		"mist_codex": {
+			"model": "kk_spellbook_open"
+		},
+		"health_potion": "kd_bottle_C_brown",
+		"mana_potion": "kd_bottle_B_green",
+		"strength_tonic": "kd_bottle_A_labeled_brown",
+		"mead_mug": "kk_mug_full",
+		"roast_plate": "kd_plate_food_A",
+		"smoke_bomb": "kk_smokebomb",
+		"arrow_bundle": "kk_arrow_bundle",
+		"rusty_key": "kd_key",
+		"jailer_keyring": "kd_keyring"
 	}
 }

@@ -739,6 +739,510 @@
 				0.5,
 				0.55
 			]
+		},
+		"woodcutter_axe": {
+			"name": "Machadinha de Lenhador",
+			"slot": "weapon",
+			"rarity": "common",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"attack_power": 4,
+				"STR": 1,
+				"crit_chance": 0.02
+			},
+			"desc": "Cortou lenha na vila antes de cortar presas.",
+			"color": [
+				0.62,
+				0.6,
+				0.62
+			],
+			"glow_energy": 0.0,
+			"icon": "res://assets/items/icons/woodcutter_axe.png"
+		},
+		"war_axe": {
+			"name": "Machado de Guerra",
+			"slot": "weapon",
+			"rarity": "rare",
+			"classes": [
+				"warrior"
+			],
+			"two_handed": true,
+			"stats": {
+				"attack_power": 8,
+				"STR": 3
+			},
+			"desc": "Pesado demais para quem nunca segurou uma linha de escudos.",
+			"color": [
+				0.55,
+				0.55,
+				0.6
+			],
+			"glow_energy": 0.0,
+			"icon": "res://assets/items/icons/war_axe.png"
+		},
+		"bastion_greatsword": {
+			"name": "Montante do Bastião",
+			"slot": "weapon",
+			"rarity": "rare",
+			"classes": [
+				"warrior"
+			],
+			"two_handed": true,
+			"stats": {
+				"attack_power": 8,
+				"STR": 2,
+				"VIT": 2
+			},
+			"desc": "Forjado para a muralha que caiu antes de ficar pronta.",
+			"color": [
+				0.7,
+				0.72,
+				0.78
+			],
+			"glow_energy": 0.0,
+			"icon": "res://assets/items/icons/bastion_greatsword.png"
+		},
+		"oath_blade": {
+			"name": "Lâmina do Juramento",
+			"slot": "weapon",
+			"rarity": "epic",
+			"classes": [
+				"warrior"
+			],
+			"two_handed": true,
+			"stats": {
+				"attack_power": 14,
+				"STR": 6,
+				"crit_chance": 0.03
+			},
+			"desc": "Quem a ergue jura não voltar sem os seus.",
+			"color": [
+				0.95,
+				0.78,
+				0.35
+			],
+			"glow": [
+				1.0,
+				0.8,
+				0.4
+			],
+			"glow_energy": 0.8,
+			"icon": "res://assets/items/icons/oath_blade.png"
+		},
+		"crest_shield": {
+			"name": "Escudo de Brasão",
+			"slot": "shield",
+			"rarity": "common",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 5,
+				"block": 0.08
+			},
+			"desc": "O brasão foi raspado; o dono preferiu esquecer de onde veio.",
+			"color": [
+				0.55,
+				0.38,
+				0.22
+			],
+			"icon": "res://assets/items/icons/crest_shield.png"
+		},
+		"watch_shield": {
+			"name": "Escudo da Vigia",
+			"slot": "shield",
+			"rarity": "rare",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 8,
+				"block": 0.12,
+				"VIT": 1
+			},
+			"desc": "As cores da Vigia, desbotadas por três invernos na estrada.",
+			"color": [
+				0.8,
+				0.2,
+				0.2
+			],
+			"icon": "res://assets/items/icons/watch_shield.png"
+		},
+		"spiked_buckler": {
+			"name": "Broquel Cravejado",
+			"slot": "shield",
+			"rarity": "rare",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 6,
+				"block": 0.1,
+				"attack_power": 2
+			},
+			"desc": "Os cravos foram presas de lobo; agora são de ferro.",
+			"color": [
+				0.55,
+				0.55,
+				0.6
+			],
+			"icon": "res://assets/items/icons/spiked_buckler.png"
+		},
+		"oak_pavise": {
+			"name": "Pavês de Carvalho",
+			"slot": "shield",
+			"rarity": "common",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 6,
+				"block": 0.06
+			},
+			"desc": "Tábuas da velha ponte, presas com rebites de carroça.",
+			"color": [
+				0.5,
+				0.33,
+				0.2
+			],
+			"icon": "res://assets/items/icons/oak_pavise.png"
+		},
+		"northern_targe": {
+			"name": "Rodela do Norte",
+			"slot": "shield",
+			"rarity": "rare",
+			"classes": [
+				"warrior"
+			],
+			"stats": {
+				"armor": 7,
+				"block": 0.1,
+				"STR": 1
+			},
+			"desc": "Trazida por um viajante que não disse o nome.",
+			"color": [
+				0.6,
+				0.6,
+				0.65
+			],
+			"icon": "res://assets/items/icons/northern_targe.png"
+		},
+		"scout_dagger": {
+			"name": "Adaga de Batedor",
+			"slot": "weapon",
+			"rarity": "common",
+			"classes": [
+				"archer",
+				"warrior"
+			],
+			"stats": {
+				"attack_power": 3,
+				"AGI": 2,
+				"crit_chance": 0.03
+			},
+			"desc": "Curta o bastante para esconder na bota.",
+			"color": [
+				0.7,
+				0.72,
+				0.78
+			],
+			"glow_energy": 0.0,
+			"icon": "res://assets/items/icons/scout_dagger.png"
+		},
+		"light_crossbow": {
+			"name": "Besta Leve",
+			"slot": "weapon",
+			"rarity": "common",
+			"classes": [
+				"archer"
+			],
+			"stats": {
+				"attack_power": 4,
+				"AGI": 1
+			},
+			"desc": "Arma de guarda de portão; dispara antes que o medo chegue.",
+			"color": [
+				0.55,
+				0.38,
+				0.22
+			],
+			"glow_energy": 0.0,
+			"icon": "res://assets/items/icons/light_crossbow.png"
+		},
+		"siege_crossbow": {
+			"name": "Besta de Cerco",
+			"slot": "weapon",
+			"rarity": "rare",
+			"classes": [
+				"archer"
+			],
+			"two_handed": true,
+			"stats": {
+				"attack_power": 7,
+				"AGI": 2,
+				"STR": 1
+			},
+			"desc": "O virote atravessa couro de lobo e a árvore atrás dele.",
+			"color": [
+				0.45,
+				0.3,
+				0.2
+			],
+			"glow_energy": 0.0,
+			"icon": "res://assets/items/icons/siege_crossbow.png"
+		},
+		"hunter_quiver": {
+			"name": "Aljava do Caçador",
+			"slot": "shield",
+			"rarity": "common",
+			"classes": [
+				"archer"
+			],
+			"stats": {
+				"AGI": 1,
+				"crit_chance": 0.02
+			},
+			"desc": "Penas de garça nas flechas, costuradas à mão.",
+			"color": [
+				0.55,
+				0.38,
+				0.22
+			],
+			"icon": "res://assets/items/icons/hunter_quiver.png"
+		},
+		"oak_wand": {
+			"name": "Varinha de Carvalho",
+			"slot": "weapon",
+			"rarity": "common",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"spell_power": 3,
+				"INT": 1,
+				"haste": 0.03
+			},
+			"desc": "Galho do carvalho que o raio partiu na noite do eco.",
+			"color": [
+				0.5,
+				0.33,
+				0.2
+			],
+			"glow": [
+				1.0,
+				0.6,
+				0.25
+			],
+			"glow_energy": 0.4,
+			"icon": "res://assets/items/icons/oak_wand.png"
+		},
+		"apprentice_tome": {
+			"name": "Tomo do Aprendiz",
+			"slot": "shield",
+			"rarity": "common",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"max_resource": 12,
+				"spell_power": 1
+			},
+			"desc": "Metade das páginas são anotações de outro aprendiz.",
+			"color": [
+				0.7,
+				0.2,
+				0.35
+			],
+			"icon": "res://assets/items/icons/apprentice_tome.png"
+		},
+		"mist_codex": {
+			"name": "Códice das Brumas",
+			"slot": "shield",
+			"rarity": "rare",
+			"classes": [
+				"fire_mage"
+			],
+			"stats": {
+				"max_resource": 18,
+				"resource_regen": 1.0,
+				"spell_power": 2
+			},
+			"desc": "As letras somem quando a névoa do vale se levanta.",
+			"color": [
+				0.35,
+				0.45,
+				0.8
+			],
+			"tint": [
+				0.55,
+				0.75,
+				1.25
+			],
+			"icon": "res://assets/items/icons/mist_codex.png"
+		},
+		"health_potion": {
+			"name": "Poção de Vida",
+			"rarity": "basic",
+			"kind": "consumable",
+			"stack": 20,
+			"value": 10,
+			"use": {
+				"hp": 45
+			},
+			"desc": "Receita da Nessa: raiz-de-sangue e mel do charco.",
+			"color": [
+				0.86,
+				0.18,
+				0.2
+			],
+			"tint": [
+				1.3,
+				0.45,
+				0.42
+			],
+			"icon": "res://assets/items/icons/health_potion.png"
+		},
+		"mana_potion": {
+			"name": "Poção de Mana",
+			"rarity": "basic",
+			"kind": "consumable",
+			"stack": 20,
+			"value": 12,
+			"use": {
+				"mana": 35
+			},
+			"desc": "Água de nascente que guardou a luz de uma noite clara.",
+			"color": [
+				0.25,
+				0.5,
+				0.95
+			],
+			"tint": [
+				0.55,
+				0.75,
+				1.6
+			],
+			"icon": "res://assets/items/icons/mana_potion.png"
+		},
+		"strength_tonic": {
+			"name": "Tônico de Força",
+			"rarity": "common",
+			"kind": "consumable",
+			"stack": 10,
+			"value": 25,
+			"use": {
+				"buff": "STR",
+				"amount": 4,
+				"duration": 60
+			},
+			"desc": "Amargo como a casca do teixo. Os lenhadores juram por ele.",
+			"color": [
+				0.95,
+				0.65,
+				0.2
+			],
+			"tint": [
+				1.25,
+				1.0,
+				0.45
+			],
+			"icon": "res://assets/items/icons/strength_tonic.png"
+		},
+		"mead_mug": {
+			"name": "Caneca de Hidromel",
+			"rarity": "basic",
+			"kind": "consumable",
+			"stack": 10,
+			"value": 3,
+			"use": {
+				"mana": 15
+			},
+			"desc": "Da taverna de Aethra, servida morna.",
+			"color": [
+				0.85,
+				0.7,
+				0.4
+			],
+			"icon": "res://assets/items/icons/mead_mug.png"
+		},
+		"roast_plate": {
+			"name": "Prato de Assado",
+			"rarity": "basic",
+			"kind": "consumable",
+			"stack": 10,
+			"value": 4,
+			"use": {
+				"hp": 25
+			},
+			"desc": "Javali com raízes. Ninguém pergunta de onde veio o javali.",
+			"color": [
+				0.75,
+				0.4,
+				0.3
+			],
+			"icon": "res://assets/items/icons/roast_plate.png"
+		},
+		"smoke_bomb": {
+			"name": "Bomba de Fumaça",
+			"rarity": "common",
+			"kind": "consumable",
+			"stack": 10,
+			"value": 8,
+			"use": {
+				"effect": "smoke",
+				"radius": 3.0,
+				"duration": 4.0
+			},
+			"desc": "Pólvora úmida e cinza de fogueira, amarradas num saquinho.",
+			"color": [
+				0.45,
+				0.35,
+				0.3
+			],
+			"icon": "res://assets/items/icons/smoke_bomb.png"
+		},
+		"arrow_bundle": {
+			"name": "Feixe de Flechas",
+			"rarity": "basic",
+			"kind": "ammo",
+			"classes": [
+				"archer"
+			],
+			"stack": 99,
+			"value": 1,
+			"desc": "Pontas de ferro, hastes de bétula.",
+			"color": [
+				0.55,
+				0.4,
+				0.25
+			],
+			"icon": "res://assets/items/icons/arrow_bundle.png"
+		},
+		"rusty_key": {
+			"name": "Chave Enferrujada",
+			"rarity": "basic",
+			"kind": "key",
+			"desc": "Não abre nenhuma porta da vila. Alguém a escondeu por um motivo.",
+			"color": [
+				0.55,
+				0.5,
+				0.45
+			],
+			"icon": "res://assets/items/icons/rusty_key.png"
+		},
+		"jailer_keyring": {
+			"name": "Molho do Carcereiro",
+			"rarity": "common",
+			"kind": "key",
+			"desc": "Sete chaves; uma delas ainda está quente.",
+			"color": [
+				0.55,
+				0.55,
+				0.6
+			],
+			"icon": "res://assets/items/icons/jailer_keyring.png"
 		}
 	},
 	"rarity_colors": {
