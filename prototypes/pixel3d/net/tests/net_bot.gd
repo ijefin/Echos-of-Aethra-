@@ -87,13 +87,15 @@ func _run() -> void:
 		"buddy": await _buddy()
 		"quester": await _quester()
 		"quester2": await _quester_after_restart()
+		"trader": await _trader()
+		"partner": await _partner()
 	finish()
 
 
 # ------------------------------------------------------------------ utilidades
 
 ## Vocação de cada bot (personagem novo): Alice arqueira, Bruno guerreiro.
-const VOCATION := {"Alice": "archer", "Bruno": "warrior", "Bia": "warrior", "Quinn": "archer"}
+const VOCATION := {"Alice": "archer", "Bruno": "warrior", "Bia": "warrior", "Quinn": "archer", "Tara": "archer", "Teo": "warrior"}
 
 
 func login(user: String) -> bool:
@@ -763,3 +765,197 @@ func _friend_in_list(n: String) -> bool:
 		if String(f.name) == n:
 			return true
 	return false
+
+
+# ------------------------------------------------------------------ Tara + Teo: loja, chão e troca
+
+## Bolsa atual (último estado de conteúdo do servidor).
+func bag() -> Array:
+	for i in range(events.size() - 1, -1, -1):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "content":
+			return (e.get("state", {}) as Dictionary).get("bag", [])
+	return (welcomes[0].get("content", {}) as Dictionary).get("bag", []) if not welcomes.is_empty() else []
+
+
+func gold() -> int:
+	for i in range(events.size() - 1, -1, -1):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "content":
+			return int((e.get("state", {}) as Dictionary).get("gold", 0))
+		if String(e.get("type", "")) == "kill" and e.has("gold_total"):
+			return int(e.gold_total)
+	return int((welcomes[0].get("content", {}) as Dictionary).get("gold", 0)) if not welcomes.is_empty() else 0
+
+
+func trade_since(n0: int, op: String) -> Array:
+	var out: Array = []
+	for i in range(n0, events.size()):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "trade" and String(e.get("op", "")) == op:
+			out.append(e)
+	return out
+
+
+func last_trade() -> Dictionary:
+	for i in range(events.size() - 1, -1, -1):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "trade":
+			return e
+	return {}
+
+
+func ground_since(n0: int, op: String, item := "") -> Dictionary:
+	for i in range(n0, events.size()):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "ground" and String(e.get("op", "")) == op and (item.is_empty() or String(e.get("item", "")) == item):
+			return e
+	return {}
+
+
+## Ação que responde com evento "content" `what` (ou recusa). Devolve o evento ou {}.
+func content_act(act: String, extra: Dictionary, what: String, timeout := 5.0) -> Dictionary:
+	var n0 := events.size()
+	c.action(act, extra)
+	await wait_until(func() -> bool: return not content_since(n0, what).is_empty() or _refused_any(n0, act), timeout)
+	var got := content_since(n0, what)
+	return got[0] if not got.is_empty() else {}
+
+
+func _refused_any(n0: int, act: String) -> bool:
+	for i in range(n0, events.size()):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "refused" and String(e.get("act", "")) == act:
+			return true
+	return false
+
+
+func _refused_reason(n0: int, act: String) -> String:
+	for i in range(n0, events.size()):
+		var e: Dictionary = events[i]
+		if String(e.get("type", "")) == "refused" and String(e.get("act", "")) == act:
+			return String(e.get("reason", ""))
+	return ""
+
+
+func _near(n: String, d: float) -> bool:
+	var e := find_player(n)
+	return not e.is_empty() and (e.pos as Vector3).distance_to(server_pos()) < d
+
+
+## Tara (arqueira): vende e compra com a Nessa, troca com o Teo, larga um item para ele pegar
+## e abre a segunda troca (que ele desfaz se afastando).
+func _trader() -> void:
+	check(await login("Tara"), "entra no servidor (cadastro/login)")
+	await wait_until(func() -> bool: return int(c.snaps) > 3, 5.0)
+	check(await wait_until(func() -> bool: return not find_player("Teo").is_empty(), 30.0), "vê o Teo replicado")
+	# --- loja da Nessa (o ponto de chegada fica ao lado dela)
+	var nessa := StairsRef.NPC
+	await _go_to(nessa + Vector3(0, 0, 1.8), 20.0, func() -> bool: return server_pos().distance_to(nessa) < 2.4)
+	check(gold() == 0, "personagem novo sem ouro")
+	var n0 := events.size()
+	c.action("buy", {"kind": "hp"})
+	await wait_until(func() -> bool: return _refused_any(n0, "buy"), 5.0)
+	check(_refused_reason(n0, "buy") == "gold", "comprar sem ouro: recusado pelo servidor (gold)")
+	var un: Dictionary = await content_act("unequip", {"slot": "head"}, "unequip")
+	check(String(un.get("item", "")) == "leather_hood" and bag().has("leather_hood"), "desequipar o capuz: volta para a bolsa no servidor")
+	await content_act("unequip", {"slot": "chest"}, "unequip")
+	var s1: Dictionary = await content_act("sell", {"item": "leather_hood"}, "sell")
+	var s2: Dictionary = await content_act("sell", {"item": "leather_vest"}, "sell")
+	var earned := int(s1.get("price", 0)) + int(s2.get("price", 0))
+	check(not s1.is_empty() and not s2.is_empty() and gold() == earned and not bag().has("leather_hood"), "vende capuz e colete à Nessa: %d moedas (servidor)" % gold())
+	var pots := int(c.me.get("pot_hp", 0))
+	var b: Dictionary = await content_act("buy", {"kind": "hp"}, "buy")
+	await wait(0.4)
+	check(not b.is_empty() and gold() == earned - int(b.get("price", 0)) and int(c.me.pot_hp) == pots + 1, "compra uma poção de vida: ouro %d, poções %d → %d" % [gold(), pots, int(c.me.pot_hp)])
+	# --- troca 1: arco inicial ↔ elmo do Teo
+	await content_act("unequip", {"slot": "weapon"}, "unequip")
+	check(bag().has("hunting_bow"), "arco inicial na bolsa para a troca")
+	await _go_to(_teo_pos(), 15.0, func() -> bool: return _near("Teo", 2.0))
+	var teo := int(find_player("Teo").get("id", 0))
+	n0 = events.size()
+	c.action("trade_ask", {"target": teo})
+	c.action("trade_add", {"item": "hunting_bow"})
+	check(await wait_until(func() -> bool: return not trade_since(n0, "open").is_empty(), 5.0), "troca aberta pelo servidor (perto do Teo)")
+	check(await wait_until(func() -> bool: return (last_trade().get("theirs", []) as Array).has("knight_helm"), 20.0), "vê o Elmo de Cavaleiro oferecido pelo Teo")
+	c.action("trade_ok")
+	check(await wait_until(func() -> bool: return not trade_since(n0, "done").is_empty(), 20.0), "os dois confirmaram: servidor concluiu a troca")
+	await wait(0.3)
+	check(bag().has("knight_helm") and not bag().has("hunting_bow"), "bolsa: recebeu o elmo e entregou o arco")
+	# --- chão: larga o elmo, o Teo pega
+	n0 = events.size()
+	var dr: Dictionary = await content_act("drop", {"item": "knight_helm"}, "drop")
+	check(not dr.is_empty() and not bag().has("knight_helm") and not ground_since(n0, "add", "knight_helm").is_empty(), "larga o elmo no chão (sai da bolsa; evento ground)")
+	var gid := int(dr.get("gid", 0))
+	check(await wait_until(func() -> bool:
+		var d := ground_since(n0, "del")
+		return not d.is_empty() and int(d.gid) == gid and int(d.get("by", 0)) == teo, 30.0), "vê o Teo pegar o elmo do chão (ground del)")
+	# --- troca 2: o Teo se afasta e o servidor cancela
+	await wait(0.5)
+	await _go_to(_teo_pos(), 15.0, func() -> bool: return _near("Teo", 2.0))
+	n0 = events.size()
+	c.action("trade_ask", {"target": teo})
+	check(await wait_until(func() -> bool: return (last_trade().get("theirs", []) as Array).has("knight_helm"), 20.0), "troca 2 aberta: o Teo oferece o elmo de volta")
+	c.action("trade_ok")
+	check(await wait_until(func() -> bool:
+		var cl := trade_since(n0, "close")
+		return not cl.is_empty() and String(cl[0].get("reason", "")) == "range", 30.0), "o Teo se afastou: servidor cancelou a troca (range)")
+	await wait(0.3)
+	check(not bag().has("knight_helm"), "troca cancelada: nada mudou na bolsa")
+	c.logout()
+	await wait(0.6)
+
+
+func _teo_pos() -> Vector3:
+	var e := find_player("Teo")
+	return e.pos if not e.is_empty() else server_pos()
+
+
+## Teo (guerreiro): oferece o elmo na troca 1, pega o elmo que a Tara largou e, na troca 2,
+## se afasta depois que ela confirma.
+func _partner() -> void:
+	check(await login("Teo"), "entra no servidor (cadastro/login)")
+	await wait_until(func() -> bool: return int(c.snaps) > 3, 5.0)
+	var un: Dictionary = await content_act("unequip", {"slot": "head"}, "unequip")
+	check(String(un.get("item", "")) == "knight_helm", "desequipa o elmo para trocar")
+	var n0 := events.size()
+	check(await wait_until(func() -> bool: return not trade_since(n0, "open").is_empty(), 120.0), "recebe o pedido de troca da Tara")
+	check(String(trade_since(n0, "open")[0].get("name", "")) == "Tara" if not trade_since(n0, "open").is_empty() else false, "a troca mostra o nome da Tara")
+	c.action("trade_add", {"item": "knight_helm"})
+	await wait_until(func() -> bool: return (last_trade().get("theirs", []) as Array).has("hunting_bow"), 10.0)
+	c.action("trade_ok")
+	check(await wait_until(func() -> bool: return not trade_since(n0, "done").is_empty(), 20.0), "troca concluída no servidor")
+	await wait(0.3)
+	check(bag().has("hunting_bow") and not bag().has("knight_helm"), "bolsa: recebeu o arco e entregou o elmo")
+	# --- pega o elmo que a Tara larga
+	check(await wait_until(func() -> bool: return not ground_since(n0, "add", "knight_helm").is_empty(), 30.0), "vê o elmo largado no chão pela Tara")
+	var g := ground_since(n0, "add", "knight_helm")
+	if not g.is_empty():
+		var at := Vector3(float(g.at[0]), 0, float(g.at[1]))
+		await _go_to(at, 15.0, func() -> bool: return Vector2(server_pos().x - at.x, server_pos().z - at.z).length() < 0.8)
+		var tk: Dictionary = await content_act("take", {"gid": int(g.gid)}, "take")
+		check(not tk.is_empty() and bag().has("knight_helm"), "pega o elmo do chão: vai para a bolsa")
+	# --- troca 2: oferece e se afasta depois que a Tara confirma
+	var n1 := events.size()
+	check(await wait_until(func() -> bool: return not trade_since(n1, "open").is_empty(), 40.0), "recebe o segundo pedido de troca")
+	c.action("trade_add", {"item": "knight_helm"})
+	await wait_until(func() -> bool: return bool(last_trade().get("their_ok", false)), 15.0)
+	var from := server_pos()
+	var away := (from - _tara_pos())
+	away.y = 0.0
+	if away.length() < 0.1:
+		away = Vector3(1, 0, 0)
+	_move = Vector2(away.x, away.z).normalized()
+	check(await wait_until(func() -> bool:
+		var cl := trade_since(n1, "close")
+		return not cl.is_empty() and String(cl[0].get("reason", "")) == "range", 8.0), "se afastou: troca cancelada (range)")
+	_move = Vector2.ZERO
+	await wait(0.3)
+	check(bag().has("knight_helm"), "troca cancelada: o elmo continua com o Teo")
+	c.logout()
+	await wait(0.6)
+
+
+func _tara_pos() -> Vector3:
+	var e := find_player("Tara")
+	return e.pos if not e.is_empty() else server_pos()
