@@ -36,6 +36,8 @@ const Adventure := preload("res://prototypes/pixel3d/pixel3d_adventure.gd")
 const AmbienceAudio := preload("res://prototypes/pixel3d/pixel3d_ambience_audio.gd")
 const WorldLabels := preload("res://prototypes/pixel3d/world_labels_overlay.gd")
 const HALF := 60.0             # meio lado do mapa (u)
+const MAX_TREES := 1500
+const WorldLayout := preload("res://prototypes/pixel3d/world/world_layout.gd")
 const HELP := "WASD andar · clique/segurar: fogo · Espaço: esquiva · E: interagir · Q: Eco · R: Anel · I: bolsa"
 ## Paletas de copa por bioma (verde, outono, florada, violeta, dourada).
 const CANOPY := {
@@ -110,6 +112,8 @@ var _sun: DirectionalLight3D
 var _env: Environment
 ## [posição, tamanho, bioma] de cada árvore (fadas e colmeias usam).
 var _tree_spots: Array = []
+## Arbustos na borda dos bosques (planejados com as árvores; desenhados pela fauna).
+var edge_bushes: Array = []
 var _scorch_tex: GradientTexture2D
 var _ember_tex: GradientTexture2D
 var _biome := FastNoiseLite.new()
@@ -346,41 +350,17 @@ func _build_world() -> void:
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
-	# árvores e pedras longe da trilha e do centro
-	var blocked: Array[Vector2] = []
-	var spacings: Array[float] = []
+	# árvores em bosques agrupados, com clareiras e trilhas livres (world/world_layout.gd)
 	_biome.frequency = 0.022
 	_biome.seed = 5
-	var groves := FastNoiseLite.new()
-	groves.seed = 72
-	groves.frequency = 0.055
-	for i in 9500:
-		if blocked.size() >= 650:
-			break
-		var p := Vector2(rng.randf_range(-HALF + 2, HALF - 2), rng.randf_range(-HALF + 2, HALF - 2))
-		var patch := groves.get_noise_2d(p.x, p.y)
-		var density := Camps.woodland_density(p, patch)
-		if density < 0.2 and (patch < -0.18 or rng.randf() < 0.65):
-			continue
-		if path_dist(p) < 2.7 or Camps.clearing_distance(p) < 0.0 or p.length() < 4.0 or Dressing.water_dist(p) < 1.8 or Dressing.plaza_dist(p) < 2.3 or Dressing.cave_dist(p) < 2.5:
-			continue
-		var spacing := lerpf(4.0, 2.35, smoothstep(0.2, 0.85, density))
-		if Camps.clearing_distance(p) < 7.0:
-			spacing = maxf(spacing, 3.5)
-		var crowded := false
-		for k in blocked.size():
-			var separation := (spacing + spacings[k]) * 0.5
-			if p.distance_squared_to(blocked[k]) < separation * separation:
-				crowded = true
-				break
-		if crowded:
-			continue
-		blocked.append(p)
-		spacings.append(spacing)
-		_tree(root, Vector3(p.x, 0, p.y), rng)
+	var plan: Dictionary = WorldLayout.plan_trees(HALF, MAX_TREES, rng, path_dist)
+	for t: Array in plan.trees:
+		var tp: Vector2 = t[0]
+		_tree(root, Vector3(tp.x, 0, tp.y), rng, float(t[1]))
+	edge_bushes = plan.bushes
 	for i in 80:
 		var p := Vector2(rng.randf_range(-HALF + 2, HALF - 2), rng.randf_range(-HALF + 2, HALF - 2))
-		if path_dist(p) < 1.8 or Camps.clearing_distance(p) < 0.0 or p.length() < 2.5 or Dressing.water_dist(p) < 0.8 or Dressing.plaza_dist(p) < 1.0:
+		if path_dist(p) < 1.8 or Camps.clearing_distance(p) < 0.0 or WorldLayout.clearing_dist(p) < 1.0 or p.length() < 2.5 or Dressing.water_dist(p) < 0.8 or Dressing.plaza_dist(p) < 1.0:
 			continue
 		_rock(root, Vector3(p.x, 0, p.y), rng)
 	# pedras de margem: beiram o lago e o rio
@@ -469,11 +449,11 @@ func _biome_at(p: Vector2, rng: RandomNumberGenerator) -> String:
 	return "green"
 
 
-func _tree(root: Node3D, pos: Vector3, rng: RandomNumberGenerator) -> void:
+func _tree(root: Node3D, pos: Vector3, rng: RandomNumberGenerator, size_k := 1.0) -> void:
 	var body := StaticBody3D.new()
 	body.position = pos
 	root.add_child(body)
-	var size := rng.randf_range(0.8, 1.2)
+	var size := rng.randf_range(0.8, 1.2) * size_k
 	var col := CollisionShape3D.new()
 	var cyl := CylinderShape3D.new()
 	cyl.radius = 0.32 * size

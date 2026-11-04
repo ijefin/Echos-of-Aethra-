@@ -116,6 +116,13 @@ func _bushes(half: float) -> void:
 			for k in 5:
 				var a := _rng.randf() * TAU
 				berries.append(Transform3D(Basis(), Vector3(p.x + cos(a) * 0.45 * size, 0.35 * size + _rng.randf() * 0.2, p.y + sin(a) * 0.45 * size)))
+	# arbustos da borda dos bosques (planejados junto com as árvores)
+	for p: Vector2 in _demo.edge_bushes:
+		var size := _rng.randf_range(0.55, 1.0)
+		for k in _rng.randi_range(1, 3):
+			var off := Vector3(_rng.randf_range(-0.35, 0.35), 0.18, _rng.randf_range(-0.35, 0.35)) * size
+			var basis := Basis.from_scale(Vector3(size, size * _rng.randf_range(0.8, 1.1), size))
+			lists[_rng.randi() % 3].append(Transform3D(basis, Vector3(p.x, 0, p.y) + off))
 	for g in 3:
 		_multi(blob, lists[g], _demo._toon_shared(greens[g], 0.015))
 	_multi(berry, berries, _demo._toon_shared(Color(0.85, 0.15, 0.25)))
