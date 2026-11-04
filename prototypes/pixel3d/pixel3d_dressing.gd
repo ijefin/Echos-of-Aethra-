@@ -11,6 +11,12 @@ const PLAZA_C := Vector2(2.2, 4.7)
 const PLAZA_R := 3.4
 const RIVER_HALF := 1.8
 const BRIDGE_X := -1.3
+## Pontes sobre o rio: a da estrada (BRIDGE_X), a da Estrada Velha e a do leste.
+const BRIDGES := [-1.3, -80.0, 75.0]
+## Poças do Charco das Brumas: (x, z, raio). Mesma lista vai para o shader do chão.
+const POOLS := [Vector3(-30, 82, 4.5), Vector3(-52, 90, 4.0), Vector3(-8, 90, 4.5), Vector3(48, 72, 3.5),
+	Vector3(62, 88, 4.5), Vector3(-75, 90, 3.5), Vector3(86, 76, 4.0), Vector3(-14, 68, 3.0)]
+const RIVER_X := 101.0  # o rio atravessa o mapa inteiro
 const WATER_Y := -0.18
 ## Bocas de caverna (entradas viradas para o sul).
 const CAVES := [Vector2(-38.0, -32.0), Vector2(36.0, 30.0)]
@@ -37,7 +43,19 @@ static func lake_dist(p: Vector2) -> float:
 static func water_dist(p: Vector2) -> float:
 	var lake := lake_dist(p)
 	var river := absf(p.y - river_center(p.x)) - RIVER_HALF
-	return minf(lake, river)
+	var d := minf(lake, river)
+	if p.y > 60.0:
+		d = minf(d, pool_dist(p))
+	return d
+
+
+static func pool_dist(p: Vector2) -> float:
+	var d := INF
+	for pool: Vector3 in POOLS:
+		var v := p - Vector2(pool.x, pool.y)
+		var a := v.angle()
+		d = minf(d, v.length() - pool.z * (1.0 + 0.12 * sin(3.0 * a + pool.x) + 0.07 * sin(5.0 * a + pool.y)))
+	return d
 
 
 static func cave_dist(p: Vector2) -> float:
@@ -53,7 +71,9 @@ static func plaza_dist(p: Vector2) -> float:
 
 func build(root: Node3D, demo: Node, noise: Texture2D) -> void:
 	_water(root, noise)
-	_bridge(root, demo)
+	for bx: float in BRIDGES:
+		_bridge(root, demo, bx)
+	_pools(root, noise)
 	_fountain(root, demo, noise)
 	_lamps(root, demo)
 	_ambient(root)
@@ -103,9 +123,9 @@ func _water(root: Node3D, noise: Texture2D) -> void:
 	var prev_r := Vector3.ZERO
 	var prev_v := 0.0
 	var dist := 0.0
-	var x := -70.0
+	var x := -RIVER_X
 	var first := true
-	while x <= 70.0:
+	while x <= RIVER_X:
 		var c := Vector3(x, WATER_Y, river_center(x))
 		var tangent := Vector3(1.0, 0.0, cos(x * 0.11) * 0.44).normalized()
 		var side := Vector3(-tangent.z, 0.0, tangent.x) * (RIVER_HALF + 0.8)
@@ -134,8 +154,11 @@ func _water(root: Node3D, noise: Texture2D) -> void:
 	var river_body := StaticBody3D.new()
 	river_body.collision_layer = WATER_LAYER
 	root.add_child(river_body)
-	for xi in range(-70, 71):
-		if absf(xi - BRIDGE_X) < 1.6:
+	for xi in range(-int(RIVER_X), int(RIVER_X) + 1):
+		var on_bridge := false
+		for bx: float in BRIDGES:
+			on_bridge = on_bridge or absf(xi - bx) < 1.6
+		if on_bridge:
 			continue
 		var col := CollisionShape3D.new()
 		var box := BoxShape3D.new()
@@ -146,11 +169,11 @@ func _water(root: Node3D, noise: Texture2D) -> void:
 		river_body.add_child(col)
 
 
-func _bridge(root: Node3D, demo: Node) -> void:
-	var z := river_center(BRIDGE_X)
+func _bridge(root: Node3D, demo: Node, bx: float) -> void:
+	var z := river_center(bx)
 	var b := Node3D.new()
-	b.position = Vector3(BRIDGE_X, 0, z)
-	b.rotation.y = -atan(cos(BRIDGE_X * 0.11) * 0.44)
+	b.position = Vector3(bx, 0, z)
+	b.rotation.y = -atan(cos(bx * 0.11) * 0.44)
 	root.add_child(b)
 	var wood: Material = demo._toon(Color(0.5, 0.33, 0.2))
 	var dark: Material = demo._toon(Color(0.32, 0.2, 0.13))
@@ -166,6 +189,37 @@ func _bridge(root: Node3D, demo: Node) -> void:
 			var post := BoxMesh.new()
 			post.size = Vector3(0.1, 0.7, 0.1)
 			demo._mesh(post, dark, Vector3(0.95 * sx, 0.35, -2.4 + k * 1.6), b)
+
+
+## Poças do charco: superfície d'água (mesmo shader do lago) + margem que bloqueia.
+func _pools(root: Node3D, noise: Texture2D) -> void:
+	var body := StaticBody3D.new()
+	body.collision_layer = WATER_LAYER
+	root.add_child(body)
+	for pool: Vector3 in POOLS:
+		var c := Vector2(pool.x, pool.y)
+		var surf := MeshInstance3D.new()
+		var plane := PlaneMesh.new()
+		plane.size = Vector2.ONE * (pool.z * 2.6 + 2.0)
+		surf.mesh = plane
+		surf.material_override = _water_mat(noise)
+		surf.position = Vector3(c.x, WATER_Y, c.y)
+		root.add_child(surf)
+		var g := -pool.z
+		while g <= pool.z:
+			var h := -pool.z
+			while h <= pool.z:
+				var p := c + Vector2(g, h)
+				if pool_dist(p) < -0.9:
+					var lc := CollisionShape3D.new()
+					var cyl := CylinderShape3D.new()
+					cyl.radius = 0.9
+					cyl.height = 2.0
+					lc.shape = cyl
+					lc.position = Vector3(p.x, 0, p.y)
+					body.add_child(lc)
+				h += 1.2
+			g += 1.2
 
 
 # ------------------------------------------------------------------ praça

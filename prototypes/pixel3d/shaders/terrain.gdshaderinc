@@ -14,6 +14,13 @@ uniform sampler2D noise_tex : repeat_enable, filter_linear;
 // Uploaded from pixel3d_camps.gd; also used to reserve CPU vegetation placement.
 uniform vec2 camp_centers[3];
 uniform vec2 woodland_trails[20];
+// Mundo maior (world/world_layout.gd): trilhas novas, Estrada Velha e poças do charco.
+uniform vec4 world_trails[32];
+uniform int world_trail_count = 0;
+uniform vec4 old_road[16];
+uniform int old_road_count = 0;
+uniform vec3 pools[10];
+uniform int pool_count = 0;
 
 const vec2 LAKE_C = vec2(-15.0, 13.0);
 const float LAKE_R = 6.5;
@@ -39,7 +46,38 @@ float path_dist(vec2 p) {
 			d = min(d, trail_segment(p, woodland_trails[camp * 5 + i], woodland_trails[camp * 5 + i + 1]) + 0.6);
 		}
 	}
+	for (int i = 0; i < world_trail_count; i++) {
+		d = min(d, trail_segment(p, world_trails[i].xy, world_trails[i].zw) + 0.3);
+	}
 	return d;
+}
+
+float old_road_dist(vec2 p) {
+	float d = 1e6;
+	for (int i = 0; i < old_road_count; i++) {
+		d = min(d, trail_segment(p, old_road[i].xy, old_road[i].zw));
+	}
+	return d;
+}
+
+float pool_dist(vec2 p) {
+	float d = 1e6;
+	for (int i = 0; i < pool_count; i++) {
+		vec2 v = p - pools[i].xy;
+		float a = atan(v.y, v.x);
+		d = min(d, length(v) - pools[i].z * (1.0 + 0.12 * sin(3.0 * a + pools[i].x) + 0.07 * sin(5.0 * a + pools[i].y)));
+	}
+	return d;
+}
+
+// Peso de cada região (0..1) com borda quebrada por ruído: serra, bosque, charco, ruínas.
+vec4 region_weights(vec2 p) {
+	float n = (texture(noise_tex, p * 0.031).r - 0.5) * 9.0;
+	float serra = 1.0 - smoothstep(-66.0, -56.0, p.y + n);
+	float charco = smoothstep(56.0, 66.0, p.y + n);
+	float bosque = smoothstep(56.0, 66.0, p.x + n) * (1.0 - serra) * (1.0 - charco);
+	float ruinas = (1.0 - smoothstep(-66.0, -56.0, p.x + n)) * (1.0 - serra) * (1.0 - charco);
+	return vec4(serra, bosque, charco, ruinas);
 }
 
 float river_center(float x) {
@@ -58,7 +96,11 @@ float lake_dist(vec2 p) {
 float water_dist(vec2 p) {
 	float lake = lake_dist(p);
 	float river = abs(p.y - river_center(p.x)) - RIVER_HALF;
-	return min(lake, river);
+	float d = min(lake, river);
+	if (p.y > 60.0) {
+		d = min(d, pool_dist(p));
+	}
+	return d;
 }
 
 // altura do chão: bacia funda dentro d'água, margem suave
@@ -68,5 +110,13 @@ float terrain_h(vec2 p) {
 
 vec3 grass_color(vec2 p) {
 	float n = texture(noise_tex, p * 0.08).r;
-	return n < 0.42 ? grass_a.rgb : (n < 0.58 ? grass_b.rgb : grass_c.rgb);
+	vec3 col = n < 0.42 ? grass_a.rgb : (n < 0.58 ? grass_b.rgb : grass_c.rgb);
+	// tom de cada região, em degraus (sem degradê liso): serra fria e pedregosa, bosque
+	// fundo, charco oliva-escuro, ruínas seca e amarelada
+	vec4 w = step(vec4(0.5), region_weights(p));
+	col = mix(col, col * vec3(0.86, 0.9, 1.02) + vec3(0.05, 0.04, 0.06), w.x);
+	col = mix(col, col * vec3(0.78, 0.86, 0.9), w.y);
+	col = mix(col, col * vec3(0.92, 0.82, 0.62) + vec3(0.03, 0.02, 0.0), w.z);
+	col = mix(col, col * vec3(1.1, 0.98, 0.7) + vec3(0.04, 0.02, 0.0), w.w);
+	return col;
 }

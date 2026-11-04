@@ -80,6 +80,12 @@ func run() -> void:
 		var pass_ok := c >= 0 and seen[c] == 1
 		print("%s %s (%.0f, %.0f)" % ["PASS" if pass_ok else "FAIL", name, p.x, p.y])
 		ok = ok and pass_ok
+	for target: Array in WorldLayout.blocked_targets():
+		var p: Vector2 = target[1]
+		var c := _free_near(blocked, n, half, p)
+		var pass_ok := c < 0 or seen[c] == 0
+		print("%s %s bloqueado (%.0f, %.0f)" % ["PASS" if pass_ok else "FAIL", target[0], p.x, p.y])
+		ok = ok and pass_ok
 	# áreas abertas 9×10 m na floresta inicial (sem árvore, pedra ou água)
 	var wx := int(ceil(9.0 / CELL))
 	var wz := int(ceil(10.0 / CELL))

@@ -35,9 +35,11 @@ const Camps := preload("res://prototypes/pixel3d/pixel3d_camps.gd")
 const Adventure := preload("res://prototypes/pixel3d/pixel3d_adventure.gd")
 const AmbienceAudio := preload("res://prototypes/pixel3d/pixel3d_ambience_audio.gd")
 const WorldLabels := preload("res://prototypes/pixel3d/world_labels_overlay.gd")
-const HALF := 60.0             # meio lado do mapa (u)
+const HALF := 100.0            # meio lado do mapa (u)
 const MAX_TREES := 1500
 const WorldLayout := preload("res://prototypes/pixel3d/world/world_layout.gd")
+const WorldChunks := preload("res://prototypes/pixel3d/world/world_chunks.gd")
+const WorldProps := preload("res://prototypes/pixel3d/world/world_props.gd")
 const HELP := "WASD andar · clique/segurar: fogo · Espaço: esquiva · E: interagir · Q: Eco · R: Anel · I: bolsa"
 ## Paletas de copa por bioma (verde, outono, florada, violeta, dourada).
 const CANOPY := {
@@ -114,6 +116,8 @@ var _env: Environment
 var _tree_spots: Array = []
 ## Arbustos na borda dos bosques (planejados com as árvores; desenhados pela fauna).
 var edge_bushes: Array = []
+var _chunks
+var _props
 var _scorch_tex: GradientTexture2D
 var _ember_tex: GradientTexture2D
 var _biome := FastNoiseLite.new()
@@ -293,7 +297,7 @@ func _mesh(mesh: Mesh, mat: Material, pos: Vector3, parent: Node3D, rot := Vecto
 static func path_dist(p: Vector2) -> float:
 	var a := absf(p.x - sin(p.y * 0.18) * 3.0)
 	var b := absf(p.y - (sin(p.x * 0.15) * 2.0 + 4.0))
-	return minf(minf(a, b), Camps.path_distance(p))
+	return minf(minf(minf(a, b), Camps.path_distance(p)), WorldLayout.trail_dist(p))
 
 
 func _build_world() -> void:
@@ -329,20 +333,29 @@ func _build_world() -> void:
 	we.environment = env
 	root.add_child(we)
 
-	# chão
+	# pedaços de 20 m: só o que está perto da câmera fica visível (world/world_chunks.gd)
+	_chunks = WorldChunks.new()
+	_chunks.setup(root)
+	# chão em ladrilhos (um por pedaço), grade de 0,5 m: a bacia da água afunda suave
 	var ground := PlaneMesh.new()
-	ground.size = Vector2(HALF * 2.0, HALF * 2.0)
-	ground.subdivide_width = int(HALF * 4.0) - 1   # grade de 0,5: a bacia da água afunda suave
-	ground.subdivide_depth = int(HALF * 4.0) - 1
+	ground.size = Vector2(WorldChunks.SIZE, WorldChunks.SIZE)
+	ground.subdivide_width = int(WorldChunks.SIZE * 2.0) - 1
+	ground.subdivide_depth = int(WorldChunks.SIZE * 2.0) - 1
 	var gm := ShaderMaterial.new()
 	gm.shader = load(SH + "ground.gdshader")
 	gm.set_shader_parameter("noise_tex", _noise)
 	Camps.configure_terrain(gm)
-	_mesh(ground, gm, Vector3.ZERO, root)
+	WorldLayout.configure_terrain(gm)
+	var tiles := int(WorldChunks.EXTENT * 2.0 / WorldChunks.SIZE)
+	for ix in tiles:
+		for iz in tiles:
+			var c := Vector3(-WorldChunks.EXTENT + (ix + 0.5) * WorldChunks.SIZE, 0, -WorldChunks.EXTENT + (iz + 0.5) * WorldChunks.SIZE)
+			var tile := _mesh(ground, gm, c, _chunks.node_at3(c))
+			tile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var floor_body := StaticBody3D.new()
 	var fs := CollisionShape3D.new()
 	var fbox := BoxShape3D.new()
-	fbox.size = Vector3(HALF * 2.0, 1, HALF * 2.0)
+	fbox.size = Vector3(WorldChunks.EXTENT * 2.0, 1, WorldChunks.EXTENT * 2.0)
 	fs.shape = fbox
 	fs.position = Vector3(0, -0.5, 0)
 	floor_body.add_child(fs)
@@ -353,48 +366,50 @@ func _build_world() -> void:
 	# árvores em bosques agrupados, com clareiras e trilhas livres (world/world_layout.gd)
 	_biome.frequency = 0.022
 	_biome.seed = 5
+	_props = WorldProps.new()
+	_props.demo = self
+	_props.chunks = _chunks
 	var plan: Dictionary = WorldLayout.plan_trees(HALF, MAX_TREES, rng, path_dist)
 	for t: Array in plan.trees:
 		var tp: Vector2 = t[0]
-		_tree(root, Vector3(tp.x, 0, tp.y), rng, float(t[1]))
+		_tree(_chunks.node_at(tp), Vector3(tp.x, 0, tp.y), rng, float(t[1]), String(t[2]))
 	edge_bushes = plan.bushes
-	for i in 80:
+	_props.build(self, _chunks)
+	for i in 220:
 		var p := Vector2(rng.randf_range(-HALF + 2, HALF - 2), rng.randf_range(-HALF + 2, HALF - 2))
-		if path_dist(p) < 1.8 or Camps.clearing_distance(p) < 0.0 or WorldLayout.clearing_dist(p) < 1.0 or p.length() < 2.5 or Dressing.water_dist(p) < 0.8 or Dressing.plaza_dist(p) < 1.0:
+		if path_dist(p) < 1.8 or Camps.clearing_distance(p) < 0.0 or WorldLayout.clearing_dist(p) < 1.0 or p.length() < 2.5 or Dressing.water_dist(p) < 0.8 or Dressing.plaza_dist(p) < 1.0 or WorldLayout.open_dist(p) > -1.0:
 			continue
-		_rock(root, Vector3(p.x, 0, p.y), rng)
+		_rock(_chunks.node_at(p), Vector3(p.x, 0, p.y), rng)
 	# pedras de margem: beiram o lago e o rio
 	var placed := 0
 	while placed < 26:
 		var p := Vector2(rng.randf_range(-30, 30), rng.randf_range(-24, 20))
 		var wd := Dressing.water_dist(p)
 		if wd > 0.1 and wd < 0.9 and absf(p.x - Dressing.BRIDGE_X) > 2.5:
-			_rock(root, Vector3(p.x, 0, p.y), rng)
+			_rock(_chunks.node_at(p), Vector3(p.x, 0, p.y), rng)
 			placed += 1
 
-	# grama
+	# grama (um MultiMesh por pedaço: a GPU descarta o que está fora da tela)
 	_grass_mat = ShaderMaterial.new()
 	_grass_mat.shader = load(SH + "grass.gdshader")
 	_grass_mat.set_shader_parameter("noise_tex", _noise)
 	Camps.configure_terrain(_grass_mat)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = _tuft_mesh()
-	var xforms: Array[Transform3D] = []
-	for i in 52000:
+	WorldLayout.configure_terrain(_grass_mat)
+	var tuft := _tuft_mesh()
+	var groups := {}
+	for i in int(52000.0 * HALF * HALF / 3600.0):
 		var p := Vector2(rng.randf_range(-HALF, HALF), rng.randf_range(-HALF, HALF))
-		if path_dist(p) < 1.5 + rng.randf() * 0.4 or Dressing.water_dist(p) < 0.35 or Dressing.plaza_dist(p) < 0.2:
+		if path_dist(p) < 1.5 + rng.randf() * 0.4 or Dressing.water_dist(p) < 0.35 or Dressing.plaza_dist(p) < 0.2 or WorldLayout.open_dist(p) > 0.6:
 			continue
-		var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.25)), Vector3(p.x, 0, p.y))
-		xforms.append(t)
-	mm.instance_count = xforms.size()
-	for i in xforms.size():
-		mm.set_instance_transform(i, xforms[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = _grass_mat
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mmi)
+		var k: Vector2i = _chunks.key(p)
+		if not groups.has(k):
+			groups[k] = []
+		(groups[k] as Array).append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.25)), Vector3(p.x, 0, p.y)))
+	for k: Vector2i in groups:
+		var xforms: Array = groups[k]
+		var first: Transform3D = xforms[0]
+		var mmi: MultiMeshInstance3D = _props._multimesh(_chunks.node_at(Vector2(first.origin.x, first.origin.z)), tuft, _grass_mat, xforms)
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_flowers(root, rng)
 	_dress = Dressing.new()
 	_dress.build(root, self, _noise)
@@ -410,6 +425,15 @@ func _build_world() -> void:
 	_fauna.build(root, self, _tree_spots, HALF)
 	_wildlife = Wildlife.new()
 	_wildlife.build(root, self, HALF)
+
+
+## Só os pedaços do mundo na tela (+ margem) ficam visíveis; a margem sul é maior porque
+## árvores e rochas altas logo abaixo da tela ainda aparecem por cima (câmera a -50°).
+func _update_chunks() -> void:
+	var s := _cam.size
+	var aspect := float(_vp.size.x) / maxf(1.0, float(_vp.size.y))
+	var depth := s * 0.5 / sin(deg_to_rad(-_pitch))
+	_chunks.update(_cam_focus, s * aspect * 0.5 + 5.0, depth + 9.0, depth + 5.0)
 
 
 func _tuft_mesh() -> ArrayMesh:
@@ -449,7 +473,7 @@ func _biome_at(p: Vector2, rng: RandomNumberGenerator) -> String:
 	return "green"
 
 
-func _tree(root: Node3D, pos: Vector3, rng: RandomNumberGenerator, size_k := 1.0) -> void:
+func _tree(root: Node3D, pos: Vector3, rng: RandomNumberGenerator, size_k := 1.0, region := "floresta") -> void:
 	var body := StaticBody3D.new()
 	body.position = pos
 	root.add_child(body)
@@ -462,12 +486,32 @@ func _tree(root: Node3D, pos: Vector3, rng: RandomNumberGenerator, size_k := 1.0
 	col.position.y = 1.0
 	body.add_child(col)
 	var biome := _biome_at(Vector2(pos.x, pos.z), rng)
-	var palette: Array = CANOPY[biome]
+	var species := ""
+	match region:
+		"ruinas":
+			if rng.randf() < 0.55:
+				biome = "autumn"
+		"bosque":
+			var pick := rng.randf()
+			biome = "violet" if pick < 0.22 else ("golden" if pick < 0.32 else "green")
+			species = "pine" if rng.randf() < 0.1 else "broad"
+		"serra":
+			biome = "green"
+			species = "pine" if rng.randf() < 0.8 else ""
+		"charco":
+			if rng.randf() < 0.65:
+				biome = "dead"
 	body.set_meta("kind", "tree")
 	body.set_meta("size", size)
+	if biome == "dead":
+		body.set_meta("leaf", Color(0.45, 0.42, 0.3))
+		_tree_spots.append([pos, size, biome])
+		_props.dead_tree(body, size, rng)
+		return
+	var palette: Array = CANOPY[biome]
 	body.set_meta("leaf", palette[0])
 	_tree_spots.append([pos, size, biome])
-	_forest.populate(self, body, palette, size, rng, biome)
+	_forest.populate(self, body, palette, size, rng, biome, species)
 
 
 ## Tapete de flores em manchas (cor por mancha), fora de trilha/água/praça.
@@ -492,25 +536,39 @@ func _flowers(root: Node3D, rng: RandomNumberGenerator) -> void:
 	patch.frequency = 0.09
 	patch.seed = 9
 	var items: Array = []
-	for i in 30000:
+	for i in int(30000.0 * HALF * HALF / 3600.0):
 		var p := Vector2(rng.randf_range(-HALF, HALF), rng.randf_range(-HALF, HALF))
 		if patch.get_noise_2d(p.x, p.y) < 0.28:
 			continue
-		if path_dist(p) < 1.8 or Dressing.water_dist(p) < 0.5 or Dressing.plaza_dist(p) < 0.5:
+		if p.y < -58.0 or p.y > 62.0 or path_dist(p) < 1.8 or Dressing.water_dist(p) < 0.5 or Dressing.plaza_dist(p) < 0.5:
 			continue
 		var c: Color = FLOWER_COLORS[int(absf(patch.get_noise_2d(p.x * 0.3 + 100.0, p.y * 0.3)) * 40.0) % FLOWER_COLORS.size()]
 		items.append([Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.3)), Vector3(p.x, 0, p.y)), c])
-	mm.instance_count = items.size()
-	for i in items.size():
-		mm.set_instance_transform(i, items[i][0])
-		mm.set_instance_color(i, items[i][1])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
 	var fm := ShaderMaterial.new()
 	fm.shader = load(SH + "flower.gdshader")
-	mmi.material_override = fm
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mmi)
+	var groups := {}
+	for it: Array in items:
+		var xf: Transform3D = it[0]
+		var k: Vector2i = _chunks.key(Vector2(xf.origin.x, xf.origin.z))
+		if not groups.has(k):
+			groups[k] = []
+		(groups[k] as Array).append(it)
+	for k: Vector2i in groups:
+		var arr: Array = groups[k]
+		var chunk_mm := MultiMesh.new()
+		chunk_mm.transform_format = MultiMesh.TRANSFORM_3D
+		chunk_mm.use_colors = true
+		chunk_mm.mesh = mm.mesh
+		chunk_mm.instance_count = arr.size()
+		for i in arr.size():
+			chunk_mm.set_instance_transform(i, arr[i][0])
+			chunk_mm.set_instance_color(i, arr[i][1])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = chunk_mm
+		mmi.material_override = fm
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var first: Transform3D = arr[0][0]
+		_chunks.node_at(Vector2(first.origin.x, first.origin.z)).add_child(mmi)
 
 
 func _rock(root: Node3D, pos: Vector3, rng: RandomNumberGenerator) -> void:
@@ -960,6 +1018,7 @@ func _physics_process(delta: float) -> void:
 	_fauna.update(delta, _t, _player.global_position, HALF, _sky.day)
 	_wildlife.update(delta, _t, _player.global_position, _sky.day)
 	_camps.update(_t, _sky.night, _player.global_position)
+	_update_chunks()
 	_help.text = HELP + "\n" + _sky.label() + " (N +3h) · L: luz da arma — " + String(WEAPON_LIGHTS[_weapon_glow].label)
 	_help.visible = _adventure == null  # com a aventura, as teclas ficam na tela de atalhos (H)
 	_dress.ambient.global_position = Vector3(_cam_focus.x, 0, _cam_focus.z)

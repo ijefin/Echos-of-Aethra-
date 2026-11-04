@@ -31,6 +31,26 @@ void fragment() {
 	} else if (pd < 1.55) {
 		col = mix(col, dirt_a.rgb, 0.55);
 	}
+	// Estrada Velha: lajes antigas, quebradas, com grama brotando nas falhas
+	float rd = old_road_dist(wpos.xz) + (n2 - 0.5) * 0.8;
+	if (rd < 1.7) {
+		vec2 g = wpos.xz * 1.6;
+		g.x += step(1.0, mod(floor(g.y), 2.0)) * 0.5;
+		vec2 f = fract(g);
+		float var = texture(noise_tex, floor(g) * 0.211).r;
+		float joint = step(0.86, max(f.x, f.y));
+		bool missing = var < 0.3 || (rd > 1.1 && var < 0.55);
+		if (!missing) {
+			col = mix(mix(stone_a.rgb * 0.92, stone_b.rgb * 0.85, step(0.6, var)), stone_a.rgb * 0.55, joint);
+		} else if (rd < 1.3) {
+			col = mix(col, dirt_a.rgb, 0.5);
+		}
+	}
+	// serra: cascalho pelo chão do vale e do desfiladeiro
+	vec4 rw = region_weights(wpos.xz);
+	if (rw.x > 0.5 && pd > 1.55 && n2 > 0.66) {
+		col = mix(col, stone_a.rgb * 0.8, 0.7);
+	}
 	// praça: pedras em grade com juntas escuras e variação por pedra
 	float pr = length(wpos.xz - PLAZA_C);
 	if (pr < PLAZA_R + (n2 - 0.5) * 0.4) {
