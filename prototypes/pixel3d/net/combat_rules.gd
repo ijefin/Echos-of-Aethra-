@@ -78,7 +78,8 @@ func required_level(skill: String) -> int:
 
 func max_mana(level: int, ch: Variant = null) -> int:
 	var base := int(tuning.get("mana_base", 40)) + (level - 1) * int(tuning.get("mana_per_level", 6))
-	return int(round(base * float(voc(ch).get("mana_mult", 1.0))))
+	var extra := int((ch as Dictionary).get("mana_bonus", 0)) if ch is Dictionary else 0   # equipamento + relíquias
+	return int(round(base * float(voc(ch).get("mana_mult", 1.0)))) + extra
 
 
 func hp_mult(ch: Variant) -> float:

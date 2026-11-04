@@ -666,7 +666,33 @@ func _talk_content(id: String) -> void:
 	_save()
 
 
+## Online: o que a tecla E pediria agora (mesma ordem do interact offline). O servidor
+## confere a distância e responde com o resultado (net_play._on_content).
+func interact_target() -> String:
+	var p: Vector3 = demo._player.global_position
+	if not in_cave:
+		for id: String in world.npcs:
+			if p.distance_to(world.npcs[id].pos) < 2.8:
+				return "npc:" + id
+		for pk: Dictionary in quests.pickups():
+			if Vector2(p.x, p.z).distance_to(pk.at) <= Quests.PICKUP_RADIUS:
+				return "pickup"
+		var sid := _secret_near(p)
+		if not sid.is_empty():
+			return "secret:" + sid
+		return "nessa" if p.distance_to(World.NPC) < 2.8 else ""
+	if p.distance_to(World.CHEST) < 2.2:
+		return "chest"
+	for i in World.TORCHES.size():
+		if p.distance_to(World.ROOM + World.TORCHES[i]) < 2.1:
+			return "torch:%d" % i
+	return ""
+
+
 func interact() -> void:
+	if online != null:
+		online.interact(interact_target())
+		return
 	var p: Vector3 = demo._player.global_position
 	if not in_cave:
 		for id: String in world.npcs:
@@ -772,7 +798,7 @@ func objective() -> String:
 ## Passos "reach", objetos de missão visíveis só quando servem, marcadores dos NPCs.
 func _update_content() -> void:
 	var p: Vector3 = demo._player.global_position
-	if not in_cave:
+	if not in_cave and online == null:  # online: o servidor confere os passos "chegue a"
 		var events: Array = quests.on_reach(Vector2(p.x, p.z))
 		if not events.is_empty():
 			_quest_events(events, p)

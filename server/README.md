@@ -16,7 +16,7 @@ O código fica em `prototypes/pixel3d/net/`. Esta pasta guarda só os arquivos d
 - **Colisão do mundo:** vem do mapa gerado (árvores, rochas, serra, casas, rio), exportada para
   `net/data/collision_surface.json`.
   - Superfície: 1897 círculos, 246 caixas e 1 polígono.
-  - Gruta (andar −1): 477 obstáculos. Ela foi exportada, mas o servidor ainda não usa.
+  - Gruta (andar −1): 477 obstáculos; o servidor troca de andar pelas escadas e pelo portal.
   - Água bloqueia o andar, mas não o tiro.
   - O mesmo arquivo é usado pela predição do cliente.
 - **Monstros:** a IA é a mesma do jogo (`ai/enemy_director.gd`). Roda num World3D headless
@@ -52,6 +52,27 @@ O código fica em `prototypes/pixel3d/net/`. Esta pasta guarda só os arquivos d
 - **Amigos:** pedir, aceitar e remover, com presença (online/offline e região) em tempo real.
 - **Limites:** pacote acima de 512 B derruba o peer. Há rate limit por tipo e placar de abuso.
   5 senhas erradas bloqueiam o IP por 60 s. Chat e nomes são sanitizados.
+
+- **Missões, segredos e recompensas (autoritativos):** `net/server_content.gd` roda a regra
+  pura `quests.gd` e o inventário `src/core/inventory.gd` por jogador, no servidor.
+  - O cliente só pede `{"act": "interact", "target": "npc:<id>" | "pickup" | "secret:<id>" |
+    "nessa" | "chest"}` (tecla E). O servidor confere o andar e a distância na posição dele
+    (raio do jogo + 1,2 m de folga, `combat.interact_tolerance_m`). Recusas: `range`, `floor`,
+    `target`, `claimed`, `locked`.
+  - Abates (só os do servidor, da caçada certa) e passos "chegue a" (posição do servidor, a
+    cada 5 ticks) avançam as missões. A Nessa (As Três Brasas) e o baú da gruta também.
+  - Recompensas aplicadas uma vez: XP, poções, item da vocação (vestido na hora), bônus
+    permanentes. O XP de missão/segredo agora fica no snapshot (antes era sobrescrito).
+  - O evento `content` (só para o jogador) leva o resultado e o estado para o cliente mostrar
+    (diário J, objetivo, falas, bolsa); o `welcome` leva o mesmo estado.
+- **Equipamento (autoritativo):** `{"act": "equip", "item": id}` — o inventário confere bolsa,
+  slot e vocação. O servidor calcula o bônus acima do equipamento inicial com a mesma conta do
+  cliente: dano (`attack_power` + `spell_power`), armadura (2 % por ponto, teto 80 %), vida e
+  mana máximas (com as relíquias). Sem painel de equipar no cliente ainda: `net_play.equip(id)`.
+- **Investida e salto remotos:** o servidor resolve o deslocamento no tick do pedido; o cliente
+  desenha o corpo deslizando de `from` até o destino no tempo da habilidade (ease-out,
+  `net/dash_motion.gd`), tanto para o próprio jogador quanto para os outros. O Eco do mago
+  continua teleporte.
 
 Parâmetros de rede: `prototypes/pixel3d/net/data/net_config.json`.
 Regras de jogo: `prototypes/pixel3d/data/first_adventure.json`, `classes.json` e `core_skills.json`.
@@ -112,11 +133,24 @@ Sem `--connect`, o jogo roda offline como sempre: nada da rede é criado.
 "$G" --headless --path . -s res://tests/unit/net/collision_export_test.gd   # COLLISION_EXPORT: OK (39)
 "$G" --headless --path . -s res://tests/unit/net/server_ai_test.gd          # SERVER_AI: OK (16)
 "$G" --headless --path . -s res://tests/unit/net/vocation_rules_test.gd     # VOCATION_RULES: OK (44)
-bash tools/net_session_test.sh        # 1 servidor + 3 bots (arqueira, guerreiro, relogin): 35 PASS
-bash tools/net_game_client_test.sh    # servidor + bot + CLIENTE REAL do jogo (--connect): 20 PASS
+"$G" --headless --path . -s res://tests/unit/net/server_content_test.gd     # SERVER_CONTENT: OK (43)
+"$G" --headless --path . -s res://tests/unit/net/dash_motion_test.gd        # DASH_MOTION: OK (9)
+bash tools/net_unit_tests.sh          # todos os tests/unit/net/*_test.gd de uma vez
+bash tools/net_session_test.sh        # 1 servidor + 5 bots: 66 PASS (~6 min)
+bash tools/net_game_client_test.sh    # servidor + bot + CLIENTE REAL do jogo (--connect): 23 PASS
 bash tools/net_two_clients_shot.sh    # 2 clientes em janela; prints em production/qa/evidence/pixel3d-net-client-*.png
 bash prototypes/pixel3d/tools/run_world_tests.sh test_quests test_world_reach test_vocations test_mage_combat test_floors test_day_night test_core_light test_enemy_ai
 ```
+
+**Bot Quinn (arqueira) no `net_session_test.sh`:** sobe ao nível 2, anda (BFS na colisão, longe
+das bocas de escada) até a Sálvia, faz a missão 1 inteira online (5 sapos do Charco abatidos
+pelo servidor, entrega, +25 XP e +3 poções no snapshot), revela o segredo da Ilhota dos Juncos
+(+15 de mana; a 2ª vez é recusada, inclusive depois de cair e voltar por RESUME), faz a missão
+2 (Rook, Estrada Velha, 4 aranhas, insígnia) e recebe o Arco de Teixo. **Equipar muda o dano
+autoritativo** é provado com a arma ganha na própria missão (caminho real, sem conta semeada):
+os golpes no monstro saem com o dano do Arco de Teixo e, depois de `equip hunting_bow`, com o
+do arco inicial (14 > 11 na execução de referência); espada de guerreiro é recusada. Depois do
+reinício do servidor, `quester2` confere missão, segredo e arma no save.
 
 ## Configuração
 
@@ -155,7 +189,8 @@ AETHRA_AUTOSAVE_S=30
 
 - **Persistência:** `accounts.json` em `AETHRA_DATA_DIR`, gravado de forma atômica (`.tmp`,
   `.bak` e rename). Guarda contas, amigos e o personagem: vocação, nível, XP, posição, vida,
-  mana e poções.
+  mana, poções e o conteúdo (`progress.content`: missões, segredos, itens de missão, bônus
+  permanentes, equipamento ganho e vestido — mesmo formato do save offline).
   - Grava a cada 30 s, no logout ou queda e ao encerrar.
   - No pior caso (kill brusco) perdem-se até 30 s.
   - No modo online, o cliente não grava o save local.
@@ -192,7 +227,9 @@ docker compose logs -f aethra          # "AETHRA_SERVER_READY 7777"
 - A imagem leva só o necessário:
   - `project.godot`, `first_adventure_state.gd`;
   - `data/first_adventure.json`, `data/classes.json` e `data/core_skills.json`;
-  - as pastas `ai/` e `net/` (com `collision_surface.json`).
+  - as pastas `ai/` e `net/` (com `collision_surface.json`);
+  - o conteúdo: `quests.gd`, `data/quests.json`, `data/world_regions.json`,
+    `assets/data/items.json`, `src/core/inventory.gd` e `src/core/json_data.gd`.
 - Antes de publicar, preencha `GODOT_SHA512` no Dockerfile com o valor da release 4.7.2.
 - Firewall: libere só `7777/udp` (ufw/nftables e painel do provedor).
 
@@ -204,7 +241,9 @@ sudo mkdir -p /opt/aethra/app /var/lib/aethra /etc/aethra && sudo chown aethra: 
 # binário Godot_v4.7.2-stable_linux.x86_64 → /opt/aethra/godot (chmod +x)
 # copie para /opt/aethra/app: project.godot, prototypes/pixel3d/first_adventure_state.gd,
 #   prototypes/pixel3d/data/{first_adventure,classes,core_skills}.json,
-#   prototypes/pixel3d/ai/ e prototypes/pixel3d/net/
+#   prototypes/pixel3d/ai/ e prototypes/pixel3d/net/, prototypes/pixel3d/quests.gd,
+#   prototypes/pixel3d/data/{quests,world_regions}.json, assets/data/items.json,
+#   src/core/{inventory,json_data}.gd
 # /etc/aethra/aethra.env com as variáveis (AETHRA_DATA_DIR=/var/lib/aethra), chmod 600
 sudo cp server/aethra-server.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now aethra-server
@@ -218,16 +257,15 @@ Depois de um reinício, a volta é com senha, porque o token vive em memória.
 
 ## O que ainda falta
 
-- **Andares e gruta online:** a colisão da gruta já foi exportada, mas o servidor não troca de
-  andar. Online, as escadas ficam desligadas e os guardiões da gruta não existem.
-- **Itens, bolsas, baú, tochas e recompensas de missão** não passam pelo servidor.
-  - As missões avançam no cliente com os abates confirmados pelo servidor.
-  - O XP de recompensa de missão ou segredo não é autoritativo: o snapshot seguinte
-    sobrescreve.
-- **Equipamento:** o bônus de dano e armadura do equipamento não chega ao servidor. Ele usa
-  só a base da vocação.
-- **Q de guerreiro e arqueiro:** o servidor resolve a investida e o salto na hora do pedido. O
-  cliente salta para o destino (snap acima de 2,5 m); ainda não é um dash previsto.
+- **Painel de equipar no cliente:** o servidor já aceita `equip`, mas o HUD só mostra o que
+  está vestido; trocar de item online ainda não tem tecla/painel (`net_play.equip(id)` existe).
+- **Bolsa cheia / soltar item:** o inventário recusa acima da capacidade, mas não há "largar"
+  nem troca entre jogadores.
+- **Q de guerreiro e arqueiro:** o deslizamento é só visual (o servidor resolve tudo no tick do
+  pedido, inclusive o dano). Um dash simulado tick a tick no servidor (com predição) daria
+  colisão com monstros no meio do caminho mais fiel.
+- **Monstros da missão compartilhados:** cada abate conta só para quem deu o golpe final; não
+  há grupo dividindo progresso.
 - **Chat:** abas Grupo e PvP sem canal próprio; não há painel para mensagem privada.
 - **Hash de senha:** SHA-256 iterado, porque o Godot não expõe PBKDF2/scrypt. Para
   produção, trocar por argon2/scrypt (GDExtension) ou por um serviço de contas.

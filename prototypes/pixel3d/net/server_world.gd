@@ -14,6 +14,7 @@ const Validator := preload("res://prototypes/pixel3d/net/move_validator.gd")
 const Combat := preload("res://prototypes/pixel3d/net/combat_rules.gd")
 const Interest := preload("res://prototypes/pixel3d/net/interest_grid.gd")
 const AdventureState := preload("res://prototypes/pixel3d/first_adventure_state.gd")
+const Content := preload("res://prototypes/pixel3d/net/server_content.gd")
 
 const NPC := Vector3(-14, 0, -25)
 const ENTRANCE := Vector3(-38, 0, -28)
@@ -41,6 +42,8 @@ var col: RefCounted
 ## Colisão por andar: {0: superfície, -1: gruta}. Sem a gruta, o servidor só tem a superfície.
 var floors: Dictionary = {}
 var combat: RefCounted
+## Missões, segredos, bolsa, equipamento e recompensas (server_content.gd).
+var content: RefCounted
 var interest: RefCounted
 var now := 0.0
 var tick := 0
@@ -61,7 +64,7 @@ var monster_shots: Dictionary = {}
 
 
 ## `classes_data` = data/classes.json e `core_data` = data/core_skills.json (vazios = só o mago antigo).
-func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCounted, seed_value := 7, classes_data: Dictionary = {}, core_data: Dictionary = {}, floors_data: Dictionary = {}) -> void:
+func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCounted, seed_value := 7, classes_data: Dictionary = {}, core_data: Dictionary = {}, floors_data: Dictionary = {}, content_data: Dictionary = {}) -> void:
 	cfg = net_cfg
 	tuning = adventure_tuning
 	col = collision
@@ -69,6 +72,10 @@ func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCoun
 	floors[0] = collision
 	combat = Combat.new(tuning, cfg.get("combat", {}), col, classes_data, core_data)
 	interest = Interest.new(cfg)
+	content = Content.new(content_data if not content_data.is_empty() else Content.load_data(), classes_data, tuning, combat,
+		float((cfg.get("combat", {}) as Dictionary).get("interact_tolerance_m", 1.2)))
+	content.nessa = NPC
+	content.chest = CHEST
 	_mcfg = cfg.get("monsters", {})
 	_mv = cfg.get("move", {})
 	_radius = float(cfg.get("player_radius", 0.35))
@@ -144,6 +151,10 @@ func add_player(key: String, display: String, saved: Dictionary, vocation := "")
 		"validator": Validator.new(cfg), "spell_power": 0, "kills": int(saved.get("kills", 0)),
 	}
 	players[eid] = p
+	content.attach(p)   # bolsa, equipamento, missões e bônus (vida/mana máx. podem subir)
+	p.hp = clampf(float(saved.get("hp", st.max_hp())), 1.0, float(st.max_hp()))
+	var mm := float(combat.max_mana(st.level, p))
+	p.mana = clampf(float(saved.get("mana", mm)), 0.0, mm)
 	return eid
 
 
@@ -152,6 +163,7 @@ func character_data(eid: int) -> Dictionary:
 	var p: Dictionary = players.get(eid, {})
 	if p.is_empty():
 		return {}
+	content.save(p)
 	var pos: Vector3 = p.ms.pos
 	return {"version": 1, "pos": [snappedf(pos.x, 0.01), snappedf(pos.y, 0.01), snappedf(pos.z, 0.01)],
 		"yaw": snappedf(float(p.ms.yaw), 0.01), "hp": roundi(float(p.hp)), "mana": roundi(float(p.mana)),
@@ -210,6 +222,10 @@ func player_action(eid: int, act: Dictionary) -> String:
 			return _act_r(p, act)
 		"potion":
 			return _act_potion(p, act)
+		"interact":
+			return _content_result(p, content.interact(p, String(act.get("target", ""))))
+		"equip":
+			return _content_result(p, content.equip(p, String(act.get("item", ""))))
 		"light":
 			# core skill de luz ("utevo vis lux"): mana + recarga de core_skills.json; relançar renova.
 			var err: String = combat.can_use(p, "light", now)
@@ -221,6 +237,26 @@ func player_action(eid: int, act: Dictionary) -> String:
 			events.append({"to": -1, "type": "light", "eid": int(p.eid), "left": dur, "duration": dur, "at": [p.ms.pos.x, p.ms.pos.z]})
 			return ""
 	return "unknown"
+
+
+## Resultado do conteúdo ({err, ev}): o evento vai só para o jogador; subida de nível
+## pela recompensa gera o mesmo evento "level" do abate.
+func _content_result(p: Dictionary, r: Dictionary) -> String:
+	if String(r.err) != "":
+		return String(r.err)
+	_content_event(p, r.ev)
+	return ""
+
+
+func _content_event(p: Dictionary, ev: Dictionary) -> void:
+	if ev.is_empty():
+		return
+	var out := ev.duplicate()
+	out["to"] = int(p.eid)
+	events.append(out)
+	var rw: Dictionary = ev.get("reward", {})
+	if not rw.is_empty() and int(rw.level_to) > int(rw.level_from):
+		events.append({"to": int(p.eid), "type": "level", "from": int(rw.level_from), "level": int(rw.level_to)})
 
 
 ## Segundos restantes da Luz do jogador (0 = apagada). Vai no entity_info para quem chega depois.
@@ -467,6 +503,8 @@ func step(dt: float) -> void:
 	tick += 1
 	for p: Dictionary in players.values():
 		_step_player(p, dt)
+		if tick % 5 == 0 and float(p.hp) > 0.0:
+			_content_event(p, content.on_tick(p))   # passos "chegue a" na posição do servidor
 	if ai != null:
 		for m: Dictionary in monsters.values():
 			_monster_respawn_tick(m)
@@ -680,6 +718,7 @@ func _damage_monster(m: Dictionary, amount: int, by: int) -> void:
 		p.kills = int(p.kills) + 1
 		events.append({"to": by, "type": "kill", "target": int(m.eid), "name": String(m.name), "xp": int(m.xp),
 			"kind": String(m.kind), "hunt": String(m.get("hunt", "")), "at": [m.pos.x, m.pos.z]})
+		_content_event(p, content.on_kill(p, String(m.kind), String(m.get("hunt", "")), Vector2(m.pos.x, m.pos.z)))
 		if st.level > old_level:
 			p.hp = float(st.max_hp())
 			p.mana = float(combat.max_mana(st.level, p))

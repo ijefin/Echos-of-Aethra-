@@ -16,6 +16,7 @@ const Protocol := preload("res://prototypes/pixel3d/net/net_protocol.gd")
 const Vocations := preload("res://prototypes/pixel3d/vocations.gd")
 const Enemies := preload("res://prototypes/pixel3d/adventure_enemies.gd")
 const AdvWorld := preload("res://prototypes/pixel3d/adventure_world.gd")
+const DashMotion := preload("res://prototypes/pixel3d/net/dash_motion.gd")
 
 ## canal do servidor → aba do chat
 const CHAT_TAB := {"local": "Local", "global": "Servidor", "server": "Servidor", "private": "Grupo"}
@@ -36,6 +37,8 @@ var _light_left := 0.0
 var _ring_mat: StandardMaterial3D
 var _ring_mesh := TorusMesh.new()
 var _args := {}
+## Investida/salto do próprio jogador em andamento (DashMotion); {} = nenhum.
+var _dash := {}
 
 
 ## `owner_adventure` = pixel3d_adventure (já com world/hud/chat montados).
@@ -88,6 +91,126 @@ func _on_welcome(w: Dictionary) -> void:
 		adventure.chat.post("Servidor", "Seu personagem é %s." % String(demo._voc.all.classes.get(v, {}).get("name", v)))
 	demo._player.global_position = net.local_position()
 	demo._cam_focus = demo._player.global_position
+	_apply_content(w.get("content", {}))
+
+
+# ------------------------------------------------------------------ conteúdo (servidor manda)
+
+## Espelha o conteúdo do servidor: diário/segredos/itens de missão (quests), bolsa e
+## equipamento, estágio da Nessa e tochas. O cliente só mostra.
+func _apply_content(s: Variant) -> void:
+	if not (s is Dictionary) or (s as Dictionary).is_empty():
+		return
+	adventure.quests.restore(s.get("quests", {}))
+	adventure.state.stage = String(s.get("stage", adventure.state.stage))
+	adventure.state.lit.assign(s.get("lit", []))
+	adventure.state.cave_kills.clear()
+	for k: Variant in s.get("guardians", []):
+		adventure.state.cave_kills[String(k)] = true
+	var inv = adventure.inventory
+	inv.items.assign(s.get("bag", inv.items))
+	var eq: Variant = s.get("equipped", {})
+	if eq is Dictionary:
+		inv.equipped = (eq as Dictionary).duplicate()
+	adventure._refresh_stats()
+	adventure._sync_secret_marks()
+
+
+## Resultado de um pedido de conteúdo (ou progresso de abate/chegada): falas, diário e festa.
+func _on_content(ev: Dictionary) -> void:
+	var gold := Color(1.0, 0.82, 0.38)
+	var me: Vector3 = demo._player.global_position
+	match String(ev.get("what", "")):
+		"talk":
+			var npc := String(ev.get("npc", ""))
+			if adventure.world.npcs.has(npc):
+				adventure.npc_talk(ev.get("lines", []), npc)
+			var qname := String(adventure.quests.quest(String(ev.get("quest", ""))).get("name", ""))
+			match String(ev.get("event", "")):
+				"accept":
+					adventure.chat.post("Servidor", "Missão iniciada: %s." % qname, gold)
+				"step":
+					adventure.chat.post("Servidor", "Diário atualizado: %s." % qname, gold)
+				"complete":
+					adventure.chat.post("Servidor", "Missão concluída: %s." % qname, gold)
+					demo._shockwave(me)
+					_show_reward(ev.get("reward", {}), qname, "Missão concluída")
+		"quest":
+			var at: Array = ev.get("at", [me.x, me.z])
+			var p := Vector3(float(at[0]), 0, float(at[1])) if at.size() >= 2 else me
+			adventure._quest_events(ev.get("events", []), p)
+		"secret":
+			var id := String(ev.get("id", ""))
+			var entry: Dictionary = (adventure.quests.data.secrets as Dictionary).get(id, {})
+			var at3: Vector3 = adventure._secret_pos(id)
+			adventure.object_say("secret_" + id, demo._vp, at3 + Vector3(0, 2.4, 0), adventure._wrap(String(entry.get("found", "")), 34), Color(0.7, 0.88, 1.0))
+			demo._shockwave(at3)
+			demo._burst(at3 + Vector3(0, 1.0, 0))
+			_show_reward(ev.get("reward", {}), String(entry.get("name", "")), String(entry.get("announce", "")))
+			adventure.chat.post("Servidor", "Você descobriu um segredo: %s." % String(entry.get("name", "")), Color(0.6, 0.85, 1.0))
+		"nessa":
+			match String(ev.get("result", "")):
+				"accept":
+					adventure.npc_talk(adventure.NESSA_ACCEPT)
+					adventure.chat.post("Servidor", "Missão iniciada: As Três Brasas.", gold)
+				"finish":
+					adventure.npc_talk(adventure.NESSA_FINISH)
+					adventure.chat.post("Servidor", "Missão concluída: As Três Brasas.", gold)
+				"after":
+					adventure.npc_talk(adventure.NESSA_AFTER.pick_random())
+				_:
+					adventure.npc_talk(adventure.NESSA_WAITING.pick_random())
+		"chest":
+			var item_label := String(ev.get("item_name", "Colar de Brasa"))
+			demo.world_labels.announce(item_label, "  ".join(ev.get("gains", [])))
+			adventure.object_say("chest", adventure.world.cave, AdvWorld.CHEST - AdvWorld.ROOM + Vector3(0, 1.8, 0), item_label, gold)
+			adventure.chat.post("Servidor", "Você recebeu: %s." % item_label, gold)
+			demo._shockwave(AdvWorld.CHEST)
+		"equip":
+			adventure.chat.post("Servidor", "Você equipou: %s." % String(ev.get("item_name", "")), gold)
+
+
+## Mesma apresentação do _apply_reward offline, com os números que o servidor aplicou.
+func _show_reward(r: Variant, title: String, sub: String) -> void:
+	if not (r is Dictionary):
+		return
+	var rw: Dictionary = r
+	var gold := Color(1.0, 0.82, 0.38)
+	if not String(rw.get("item", "")).is_empty():
+		var it_name := String(rw.get("item_name", rw.item))
+		adventure.chat.post("Servidor", "Você recebeu: %s." % it_name, gold)
+		title = it_name
+		sub = "  ".join(rw.get("gains", []))
+	var pots: Dictionary = rw.get("potions", {})
+	for k: String in pots:
+		adventure.chat.post("Servidor", "Você recebeu %d poções de %s." % [int(pots[k]), "vida" if k == "hp" else "mana"], gold)
+	var xp := int(rw.get("xp", 0))
+	if xp > 0:
+		adventure.floating("%d" % xp, demo._player.global_position + Vector3(0, 2.0, 0), Color(1, 1, 1))
+		adventure.chat.post("Servidor", "Você ganhou %d de experiência." % xp)
+	if title.is_empty():
+		return
+	if int(rw.get("level_to", 0)) > int(rw.get("level_from", 0)) and is_inside_tree():
+		# a mensagem de nível (evento "level") vem primeiro; a do prêmio entra quando ela some
+		get_tree().create_timer(4.6).timeout.connect(demo.world_labels.announce.bind(title, sub))
+	else:
+		demo.world_labels.announce(title, sub)
+
+
+## Tecla E online: pede ao servidor (ele confere a distância na posição dele).
+func interact(target: String) -> void:
+	if target.is_empty() or not is_online():
+		return
+	if target.begins_with("torch:"):
+		net.client.action("torch", {"index": int(target.get_slice(":", 1))})
+		return
+	net.client.action("interact", {"target": target})
+
+
+## Vestir um item da bolsa (o servidor valida vocação/slot e recalcula os bônus).
+func equip(item_id: String) -> void:
+	if is_online():
+		net.client.action("equip", {"item": item_id})
 
 
 # ------------------------------------------------------------------ quadro
@@ -108,7 +231,10 @@ func physics(delta: float, input: Vector2) -> void:
 	var np: Vector3 = net.local_position()
 	var cave := np.y < -4.0
 	if cave != bool(adventure.in_cave):
+		_dash = {}
 		adventure.warp(np, cave)   # escada/gruta decidida pelo servidor: troca o andar visível
+	if DashMotion.active(_dash):
+		np = DashMotion.step(_dash, delta, np)   # investida/salto: desliza até a posição do servidor
 	var v: Vector3 = (np - demo._player.global_position) / maxf(delta, 0.001)
 	v.y = 0.0
 	demo._player.velocity = v
@@ -231,7 +357,10 @@ func _on_event(ev: Dictionary) -> void:
 			adventure.floating("%d" % int(ev.get("xp", 0)), p + Vector3(0, 1.6, 0), Color(1, 1, 1))
 			demo._burst(p + Vector3(0, 0.7, 0))
 			adventure.chat.post("Servidor", "Você derrotou %s. Ganhou %d de experiência." % [String(ev.get("name", "")), int(ev.get("xp", 0))])
-			adventure._quest_events(adventure.quests.on_kill(String(ev.get("kind", "")), String(ev.get("hunt", ""))), p)
+			# o progresso das missões vem do servidor no evento "content" logo a seguir
+		"content":
+			_apply_content(ev.get("state", {}))
+			_on_content(ev)
 		"level":
 			var old := int(ev.get("from", 1))
 			var lv := int(ev.get("level", 1))
@@ -250,6 +379,20 @@ func _on_event(ev: Dictionary) -> void:
 				var fr: Array = ev.get("from", [])
 				if fr.size() >= 2:
 					demo._ghost(Vector3(float(fr[0]), 0, float(fr[1])), 0.5, 0.3)
+				if String(ev.get("type", "")) == "dash":
+					# investida/salto: desliza (o Eco do mago continua sendo teleporte)
+					var who := int(ev.get("eid", 0))
+					var t := float(ev.get("time", 0.3))
+					if who == my_id():
+						# parte de "from" do servidor: se o snapshot chegou antes do evento, não fica parado no destino
+						var start: Vector3 = demo._player.global_position
+						if fr.size() >= 2:
+							start = Vector3(float(fr[0]), start.y, float(fr[1]))
+						_dash = DashMotion.start(start, to, t)
+					elif remotes.has(who):
+						var rr: Dictionary = remotes[who]
+						var rp: Vector3 = (rr.root as Node3D).position
+						rr.dash = DashMotion.start(rp, Vector3(to.x, rp.y, to.z), t)
 		"whirl":
 			demo._shockwave(_pos_of(int(ev.get("eid", 0)), at), float(ev.get("radius", 2.6)))
 		"torch":
@@ -450,6 +593,10 @@ func _update_remote(r: Dictionary, e: Dictionary, delta: float) -> void:
 	var pos: Vector3 = e.pos
 	var moved := Vector2(pos.x - (r.last as Vector3).x, pos.z - (r.last as Vector3).z).length() / maxf(delta, 0.001)
 	r.last = pos
+	var dash: Dictionary = r.get("dash", {})
+	if DashMotion.active(dash):
+		var to: Vector3 = dash.to
+		pos = DashMotion.step(dash, delta, Vector3(to.x, pos.y, to.z))   # investida/salto de outro jogador
 	root.position = pos
 	var fx: Array = e.effects
 	match int(r.kind):
