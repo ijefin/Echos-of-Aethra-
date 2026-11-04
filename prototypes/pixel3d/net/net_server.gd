@@ -168,7 +168,8 @@ func kick(id: int, reason: String) -> void:
 	_stats.kicks += 1
 	logger.limited("warn", "kick:" + reason, "desconectando peer %d (%s): %s" % [id, String(conns[id].addr), reason])
 	_send_control(id, Protocol.S_KICK, {"reason": reason})
-	_leave_world(id, false)
+	# abuso encerra a sessão (sem RESUME); queda por tempo ou login em outro lugar não
+	_leave_world(id, reason not in ["replaced", "idle_timeout", "handshake_timeout"])
 	conns.erase(id)
 	limiter.forget(id)
 	peer.disconnect_peer(id, false)   # false = envia o S_KICK antes de cair

@@ -64,6 +64,7 @@ var _retry_n := 0
 var _ping_acc := 0.0
 var _manual_close := false
 var _close_in := -1.0
+var _kicked := false
 
 
 func _init(config: Dictionary = {}) -> void:
@@ -91,6 +92,7 @@ func _open(address: String, port_number: int) -> Error:
 	peer.peer_disconnected.connect(func(_id: int) -> void: _on_lost("server_closed"))
 	state = "connecting"
 	_manual_close = false
+	_kicked = false
 	return OK
 
 
@@ -105,8 +107,8 @@ func _on_lost(reason: String) -> void:
 		return
 	var was_game := state == "game"
 	state = "offline"
-	if _manual_close:
-		disconnected.emit("logout")
+	if _manual_close or _kicked:
+		disconnected.emit("kicked" if _kicked else "logout")
 		return
 	disconnected.emit(reason)
 	# queda durante o jogo: tenta voltar no mesmo personagem com o token
@@ -286,6 +288,7 @@ func _handle(pkt: PackedByteArray) -> void:
 				event_received.emit({"type": "error", "code": code})
 		Protocol.S_KICK:
 			_want_resume = false
+			_kicked = true
 			token = "" if String(msg.get("reason", "")) == "replaced" else token
 			event_received.emit({"type": "kicked", "reason": String(msg.get("reason", ""))})
 		Protocol.S_ENTITY_INFO:

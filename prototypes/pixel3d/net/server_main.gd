@@ -21,6 +21,7 @@ func _initialize() -> void:
 	if args.has("log_level"):
 		cfg.log_level = String(args.log_level)
 	_quit_after = float(args.get("quit_after", -1.0))
+	Engine.max_fps = int(args.get("max_fps", 60))   # headless não tem vsync: sem isso o laço gira a 100% de CPU
 	server = NetServer.new()
 	server.name = "AethraServer"
 	root.add_child(server)
