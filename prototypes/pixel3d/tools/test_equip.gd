@@ -45,6 +45,17 @@ class FakeOnline:
 	func equip(id: String) -> void:
 		asked.append(id)
 
+	func unequip(slot: String) -> void:
+		asked.append("unequip:" + slot)
+
+
+func _mb(at: Vector2, pressed: bool) -> InputEventMouseButton:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = pressed
+	e.position = at
+	return e
+
 
 func run() -> void:
 	# ---------------- Mago
@@ -83,7 +94,47 @@ func run() -> void:
 	hud.equip_refused()
 	check(hud.pending_equip == "" and hud._reject_fx.has("chest"), "online: recusa do servidor pisca o slot")
 	check(not hud.drop_on_slot("iron_sword", "weapon") and fake.asked.size() == 1, "online: item de outra vocação nem é pedido")
+	check(hud.unequip_slot("chest") and fake.asked.back() == "unequip:chest" and a.inventory.equipped.get("chest", "") == "mist_mantle", "online: desequipar só pede ao servidor ({act: unequip, slot})")
+	hud.unequip_refused()
+	check(hud.pending_unequip == "" and hud._reject_fx.has("chest"), "online: recusa do desequipar pisca o slot")
 	a.online = null
+	# ---------------- desequipar (offline): duplo clique / arrastar até a grade
+	hud._reject_fx.clear()
+	var dmg_w: int = a.basic_damage()
+	check(hud.unequip_slot("weapon") and not a.inventory.equipped.has("weapon") and "sentinel_staff" in a.inventory.items, "desequipar a arma: volta para a bolsa")
+	check(a.basic_damage() < dmg_w, "desequipar recalcula o dano %d → %d" % [dmg_w, a.basic_damage()])
+	check(hud._accept_fx.has("weapon"), "desequipar: slot brilha dourado")
+	check(not hud.unequip_slot("weapon") and hud._reject_fx.has("weapon"), "slot vazio: recusa vermelha")
+	var arm_u: float = a.armor_ratio()
+	while a.inventory.items.size() < a.inventory.capacity():
+		a.inventory.items.append("iron_sword")
+	hud._reject_fx.clear()
+	check(not hud.unequip_slot("chest") and a.inventory.equipped.chest == "mist_mantle" and hud._reject_fx.has("chest"), "bolsa cheia: desequipar recusado (slot treme)")
+	a.inventory.items.resize(5)
+	check(hud.unequip_slot("chest") and a.armor_ratio() < arm_u, "com espaço: manto sai e a armadura cai %d%% → %d%%" % [roundi(arm_u * 100), roundi(a.armor_ratio() * 100)])
+	var snap: Dictionary = a.content_snapshot()
+	check((snap.bag as Array).has("mist_mantle") and not (snap.equipped as Dictionary).has("chest"), "save leva a bolsa e o slot vazio")
+	# arrastar do slot e soltar na grade (eventos de mouse de verdade no painel)
+	a.inventory.equip("sentinel_staff")
+	hud.panel = "bag"
+	hud.queue_redraw()
+	await process_frame
+	await process_frame
+	var src: Vector2 = (hud._doll_rects.weapon as Rect2).get_center()
+	var dst: Vector2 = hud._grid_rect.get_center()
+	hud.bag_mouse(_mb(src, true))
+	var mm := InputEventMouseMotion.new()
+	mm.position = dst
+	hud.bag_mouse(mm)
+	hud.bag_mouse(_mb(dst, false))
+	check(not a.inventory.equipped.has("weapon") and "sentinel_staff" in a.inventory.items, "arrastar o cajado do slot até a grade desequipa")
+	var dbl := _mb((hud._doll_rects.head as Rect2).get_center(), true)
+	dbl.double_click = true
+	var head_id: String = a.inventory.equipped.get("head", "")
+	hud.bag_mouse(dbl)
+	check(head_id != "" and not a.inventory.equipped.has("head") and head_id in a.inventory.items, "duplo clique no slot da cabeça desequipa (%s)" % head_id)
+	hud.panel = ""
+	a.inventory.equip("sentinel_staff")
 	# ---------------- nome sobre a Insígnia da Patrulha (missão 2) só de perto
 	a._debug_quest("fios_estrada:2")
 	var pk: Array = a.quests.pickups()

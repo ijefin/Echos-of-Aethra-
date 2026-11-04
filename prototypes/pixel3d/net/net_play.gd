@@ -39,6 +39,9 @@ var _ring_mesh := TorusMesh.new()
 var _args := {}
 ## Investida/salto do próprio jogador em andamento (DashMotion); {} = nenhum.
 var _dash := {}
+## Itens largados no chão (servidor manda): gid → {item, pos, floor, node, label}.
+var ground := {}
+const GROUND_TAKE_M := 1.6
 
 
 ## `owner_adventure` = pixel3d_adventure (já com world/hud/chat montados).
@@ -113,6 +116,11 @@ func _on_welcome(w: Dictionary) -> void:
 	demo._player.global_position = net.local_position()
 	demo._cam_focus = demo._player.global_position
 	_apply_content(w.get("content", {}))
+	for gid: int in ground.keys():
+		_ground_del(gid)
+	for g: Variant in w.get("ground", []):
+		if g is Dictionary:
+			_ground_add(g)
 	if _args.has("auto_q"):
 		_auto_q()
 
@@ -132,6 +140,7 @@ func _apply_content(s: Variant) -> void:
 		adventure.state.cave_kills[String(k)] = true
 	var inv = adventure.inventory
 	inv.items.assign(s.get("bag", inv.items))
+	adventure.gold = int(s.get("gold", adventure.gold))
 	var eq: Variant = s.get("equipped", {})
 	if eq is Dictionary:
 		inv.equipped = (eq as Dictionary).duplicate()
@@ -184,6 +193,8 @@ func _on_content(ev: Dictionary) -> void:
 					adventure.npc_talk(adventure.NESSA_AFTER.pick_random())
 				_:
 					adventure.npc_talk(adventure.NESSA_WAITING.pick_random())
+			if bool(ev.get("shop", false)):
+				adventure.hud.open_shop()
 		"chest":
 			var item_label := String(ev.get("item_name", "Colar de Brasa"))
 			demo.world_labels.announce(item_label, "  ".join(ev.get("gains", [])))
@@ -193,6 +204,22 @@ func _on_content(ev: Dictionary) -> void:
 		"equip":
 			adventure.chat.post("Servidor", "Você equipou: %s." % String(ev.get("item_name", "")), gold)
 			adventure.hud.equip_done(String(adventure.inventory.item(String(ev.get("item", ""))).get("slot", "")))
+		"unequip":
+			adventure.chat.post("Servidor", "Você desequipou: %s." % String(ev.get("item_name", "")))
+			adventure.hud.unequip_done(String(ev.get("slot", "")))
+		"buy":
+			adventure.hud.shop_done()
+		"sell":
+			adventure.chat.post("Servidor", "Você vendeu %s por %d moedas de ouro." % [String(ev.get("item_name", "")), int(ev.get("price", 0))])
+			adventure.hud.shop_done()
+		"take":
+			var nm := String(adventure.inventory.item(String(ev.get("item", ""))).get("name", ""))
+			adventure.chat.post("Servidor", "Você pegou: %s." % nm, gold)
+		"trade":
+			var names: Array[String] = []
+			for id: Variant in ev.get("got", []):
+				names.append(String(adventure.inventory.item(String(id)).get("name", id)))
+			adventure.chat.post("Servidor", "Troca com %s concluída%s" % [String(ev.get("with", "")), (": " + ", ".join(names) + ".") if not names.is_empty() else "."], gold)
 
 
 ## Mesma apresentação do _apply_reward offline, com os números que o servidor aplicou.
@@ -209,6 +236,8 @@ func _show_reward(r: Variant, title: String, sub: String) -> void:
 	var pots: Dictionary = rw.get("potions", {})
 	for k: String in pots:
 		adventure.chat.post("Servidor", "Você recebeu %d poções de %s." % [int(pots[k]), "vida" if k == "hp" else "mana"], gold)
+	if int(rw.get("gold", 0)) > 0:
+		adventure.chat.post("Servidor", "Você recebeu %d moedas de ouro." % int(rw.gold), gold)
 	var xp := int(rw.get("xp", 0))
 	if xp > 0:
 		adventure.floating("%d" % xp, demo._player.global_position + Vector3(0, 2.0, 0), Color(1, 1, 1))
@@ -229,6 +258,9 @@ func interact(target: String) -> void:
 	if target.begins_with("torch:"):
 		net.client.action("torch", {"index": int(target.get_slice(":", 1))})
 		return
+	if target.begins_with("ground:"):
+		net.client.action("take", {"gid": int(target.get_slice(":", 1))})
+		return
 	net.client.action("interact", {"target": target})
 
 
@@ -236,6 +268,148 @@ func interact(target: String) -> void:
 func equip(item_id: String) -> void:
 	if is_online():
 		net.client.action("equip", {"item": item_id})
+
+
+## Tirar do slot para a bolsa (o servidor confere espaço e recalcula os bônus).
+func unequip(slot: String) -> void:
+	if is_online():
+		net.client.action("unequip", {"slot": slot})
+
+
+## Troca com a Nessa: o servidor confere distância e ouro.
+func buy(kind: String) -> void:
+	if is_online():
+		net.client.action("buy", {"kind": kind})
+
+
+func sell(item_id: String) -> void:
+	if is_online():
+		net.client.action("sell", {"item": item_id})
+
+
+## Largar no chão (todos veem por um tempo; qualquer um pega com E).
+func drop(item_id: String) -> void:
+	if is_online():
+		net.client.action("drop", {"item": item_id})
+
+
+## Pedir troca a outro jogador já oferecendo um item (o canal confiável mantém a ordem).
+func trade_ask(eid: int, item_id := "") -> void:
+	if not is_online():
+		return
+	net.client.action("trade_ask", {"target": eid})
+	if not item_id.is_empty():
+		net.client.action("trade_add", {"item": item_id})
+
+
+func trade_add(item_id: String) -> void:
+	if is_online():
+		net.client.action("trade_add", {"item": item_id})
+
+
+func trade_remove(item_id: String) -> void:
+	if is_online():
+		net.client.action("trade_remove", {"item": item_id})
+
+
+func trade_ok() -> void:
+	if is_online():
+		net.client.action("trade_ok")
+
+
+func trade_cancel() -> void:
+	if is_online():
+		net.client.action("trade_cancel")
+
+
+## Outro jogador mais perto de `at` (no chão) dentro de `radius`; 0 = nenhum.
+func player_near(at: Vector3, radius: float) -> int:
+	var best := 0
+	var bd := radius
+	for id: int in remotes:
+		var r: Dictionary = remotes[id]
+		if int(r.kind) != Protocol.KIND_PLAYER:
+			continue
+		var p: Vector3 = (r.root as Node3D).global_position
+		var d := Vector2(p.x - at.x, p.z - at.z).length()
+		if d <= bd:
+			bd = d
+			best = id
+	return best
+
+
+func ground_pos_of_player(eid: int) -> Vector3:
+	return (remotes[eid].root as Node3D).global_position if remotes.has(eid) else Vector3.INF
+
+
+# ------------------------------------------------------------------ itens no chão
+
+## Item no chão mais perto do jogador ao alcance de pegar; 0 = nenhum.
+func ground_near(p: Vector3) -> int:
+	var best := 0
+	var bd := GROUND_TAKE_M
+	var fl := -1 if adventure.in_cave else 0
+	for gid: int in ground:
+		var g: Dictionary = ground[gid]
+		if int(g.floor) != fl:
+			continue
+		var d := Vector2(p.x - (g.pos as Vector3).x, p.z - (g.pos as Vector3).z).length()
+		if d <= bd:
+			bd = d
+			best = gid
+	return best
+
+
+func ground_pos(gid: int) -> Vector3:
+	return ground[gid].pos if ground.has(gid) else Vector3.INF
+
+
+## Saquinho no chão com a cor do item; o nome aparece só de perto (como a insígnia).
+func _ground_add(g: Dictionary) -> void:
+	var gid := int(g.get("gid", 0))
+	if gid <= 0 or ground.has(gid):
+		return
+	var at: Array = g.get("at", [0.0, 0.0])
+	var pos := Vector3(float(at[0]), float(g.get("y", 0.0)), float(at[1]))
+	var id := String(g.get("item", ""))
+	var it: Dictionary = adventure.inventory.item(id)
+	var node := Node3D.new()
+	node.name = "Ground%d" % gid
+	_root.add_child(node)
+	node.position = pos
+	var mi := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.42, 0.16, 0.3)
+	mi.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	var c: Array = it.get("color", [0.6, 0.5, 0.35])
+	mat.albedo_color = Color(float(c[0]), float(c[1]), float(c[2])).lightened(0.15)
+	mat.emission_enabled = true
+	mat.emission = mat.albedo_color * 0.25
+	mi.material_override = mat
+	mi.position = Vector3(0, 0.08, 0)
+	mi.rotation.y = float(gid % 7) * 0.7
+	node.add_child(mi)
+	var lab: Label3D = adventure.world.label(node, String(it.get("name", id)), Vector3(0, 0.75, 0), adventure.hud._rarity_color(it) if it.has("slot") else Color(1, 1, 1), 28)
+	lab.visible = false
+	ground[gid] = {"item": id, "pos": pos, "floor": int(g.get("floor", 0)), "node": node, "label": lab}
+
+
+func _ground_del(gid: int) -> void:
+	if not ground.has(gid):
+		return
+	var node: Node3D = ground[gid].node
+	if is_instance_valid(node):
+		demo._burst(node.global_position + Vector3(0, 0.3, 0))
+		node.queue_free()
+	ground.erase(gid)
+
+
+func _update_ground() -> void:
+	var me: Vector3 = demo._player.global_position
+	for gid: int in ground:
+		var g: Dictionary = ground[gid]
+		(g.label as Label3D).visible = me.distance_to(g.pos) < 6.0
 
 
 # ------------------------------------------------------------------ quadro
@@ -284,6 +458,7 @@ func update(delta: float) -> void:
 		_light_left = maxf(0.1, _light_left - delta) if lit else 0.0
 		adventure.core.set_effects({"light": _light_left})
 	_sync_remotes(delta)
+	_update_ground()
 
 
 # ------------------------------------------------------------------ pedidos
@@ -382,6 +557,8 @@ func _on_event(ev: Dictionary) -> void:
 			adventure.floating("%d" % int(ev.get("xp", 0)), p + Vector3(0, 1.6, 0), Color(1, 1, 1))
 			demo._burst(p + Vector3(0, 0.7, 0))
 			adventure.chat.post("Servidor", "Você derrotou %s. Ganhou %d de experiência." % [String(ev.get("name", "")), int(ev.get("xp", 0))])
+			if ev.has("gold_total"):
+				adventure.gain_gold(int(ev.get("gold", 0)), p, int(ev.gold_total))
 			# o progresso das missões vem do servidor no evento "content" logo a seguir
 		"content":
 			_apply_content(ev.get("state", {}))
@@ -437,8 +614,26 @@ func _on_event(ev: Dictionary) -> void:
 		"refused":
 			if String(ev.get("reason", "")) == "mana":
 				adventure.hud.flash_mana()
-			if String(ev.get("act", "")) == "equip":
-				adventure.hud.equip_refused()   # servidor recusou: o slot treme em vermelho
+			match String(ev.get("act", "")):
+				"equip":
+					adventure.hud.equip_refused()   # servidor recusou: o slot treme em vermelho
+				"unequip":
+					adventure.hud.unequip_refused()
+				"buy", "sell":
+					adventure.hud.shop_refused()
+		"ground":
+			if String(ev.get("op", "")) == "add":
+				_ground_add(ev)
+			else:
+				_ground_del(int(ev.get("gid", 0)))
+		"trade":
+			adventure.hud.trade_state(ev)
+			match String(ev.get("op", "")):
+				"open":
+					demo._burst(_pos_of(int(ev.get("with", 0)), []) + Vector3(0, 1.2, 0))
+				"close":
+					if String(ev.get("reason", "")) != "cancel":
+						adventure.chat.post("Servidor", "A troca foi desfeita.", Color(1.0, 0.55, 0.5))
 
 
 func _on_chat(m: Dictionary) -> void:
