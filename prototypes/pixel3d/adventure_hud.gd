@@ -380,7 +380,7 @@ func _panel_rect(w: float, h: float, drop := 0.0) -> Rect2:
 
 func _title(r: Rect2, t: String, key: String) -> float:
 	_text(t, r.position + Vector2(_px(18), _px(30)), 15, GOLD, true)
-	_text("%s / Esc fecha" % key, Vector2(r.position.x, r.position.y + _px(30)), 10, MUTED, false, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(18))
+	_text(("%s / Esc fecha" % key) if key != "Esc" else "Esc fecha", Vector2(r.position.x, r.position.y + _px(30)), 10, MUTED, false, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - _px(18))
 	draw_line(r.position + Vector2(_px(18), _px(40)), Vector2(r.end.x - _px(18), r.position.y + _px(40)), BRASS_DIM, 1.0)
 	return r.position.y + _px(66)
 
@@ -1075,10 +1075,16 @@ func shop_refused() -> void:
 
 # ------------------------------------------------------------------ troca entre jogadores (online)
 ## Abre para os dois quando um arrasta um item da bolsa até o outro. Em cima: a sua oferta e a
-## do outro (moldura verde = confirmou). Embaixo: a sua bolsa; duplo clique põe/tira da oferta.
+## do outro (moldura verde = confirmou), cada uma com a linha de ouro e poções. Embaixo: a sua
+## bolsa (duplo clique põe/tira da oferta) e as fontes de ouro/poção (clique põe 10 moedas ou
+## 1 poção; clique na linha da sua oferta ou botão direito na fonte tira).
 ## Botões só com ícone: ✓ confirma, ✕ cancela. Mudar a oferta desfaz as confirmações.
 
-## {with, name, mine, theirs, my_ok, their_ok} vindo do servidor; {} = sem troca.
+## Moedas por clique na fonte de ouro da troca.
+const TRADE_GOLD_STEP := 10
+
+## {with, name, mine, theirs, my_gold, their_gold, my_pots, their_pots, my_ok, their_ok}
+## vindo do servidor; {} = sem troca.
 var trade: Dictionary = {}
 var _trade_cells: Array[Dictionary] = []
 var _trade_ok_rect := Rect2()
@@ -1086,7 +1092,7 @@ var _trade_x_rect := Rect2()
 
 
 func _offer_box(at: Vector2, title: String, items: Array, ok: bool, mine: bool, cell: float, gap: float) -> void:
-	var box := Rect2(at, Vector2(cell * 3 + gap * 2 + _px(12), cell * 2 + gap + _px(30)))
+	var box := Rect2(at, Vector2(cell * 3 + gap * 2 + _px(12), cell * 2 + gap + _px(30) + _px(26)))
 	draw_rect(box, Color(0.02, 0.025, 0.035, 0.7))
 	draw_rect(box, Color(0.35, 0.85, 0.4, 0.95) if ok else BRASS_DIM, false, _px(2) if ok else 1.0)
 	_text(title, box.position + Vector2(_px(6), _px(15)), 11, Color(0.6, 1.0, 0.6) if ok else CREAM, true)
@@ -1099,12 +1105,33 @@ func _offer_box(at: Vector2, title: String, items: Array, ok: bool, mine: bool, 
 			_item_icon(rect, it, 1.0)
 			draw_rect(rect.grow(-1.0), Color(_rarity_color(it), 0.6), false, 1.0)
 			_trade_cells.append({"rect": rect, "kind": "mine" if mine else "theirs", "id": String(items[i])})
+	# ouro e poções da oferta: ícone + quantidade (só aparecem quando há algo)
+	var side := "my" if mine else "their"
+	var pots: Dictionary = trade.get(side + "_pots", {})
+	var amounts := {"gold": int(trade.get(side + "_gold", 0)), "hp": int(pots.get("hp", 0)), "mana": int(pots.get("mana", 0))}
+	var w := (box.size.x - _px(12)) / 3.0
+	var col := 0
+	for what: String in ["gold", "hp", "mana"]:
+		var chip := Rect2(box.position + Vector2(_px(6) + col * w, cell * 2 + gap + _px(26)), Vector2(w - _px(3), _px(22)))
+		col += 1
+		var n := int(amounts[what])
+		if n <= 0:
+			continue
+		var ico := Rect2(chip.position, Vector2(chip.size.y, chip.size.y))
+		if what == "gold":
+			_coin_icon(ico, 1.0, true)
+		else:
+			_slot_potion(ico.grow(_px(4)), what, 1.0)
+		_text("%d" % n, Vector2(ico.end.x + _px(2), chip.end.y - _px(5)), 11, GOLD if what == "gold" else CREAM, true)
+		_fx_border(chip, "trade:" + side + ":" + what)
+		if mine:
+			_trade_cells.append({"rect": chip, "kind": "mine_amount", "id": what})
 
 
 func _trade_panel() -> void:
 	var cell := _px(40)
 	var gap := _px(5)
-	var r := _panel_rect(22 + 2 * (3 * 40 + 2 * 5 + 12) + 20 + 22, 66 + 2 * 40 + 5 + 30 + 20 + 3 * 45 + 50)
+	var r := _panel_rect(22 + 2 * (3 * 40 + 2 * 5 + 12) + 20 + 22, 66 + 2 * 40 + 5 + 30 + 26 + 20 + 3 * 45 + 50)
 	var y := _title(r, "TROCA", "Esc") - _px(18)
 	var mouse := get_local_mouse_position()
 	_trade_cells.clear()
@@ -1115,7 +1142,7 @@ func _trade_panel() -> void:
 	var bw := cell * 3 + gap * 2 + _px(12)
 	_offer_box(Vector2(x + bw + _px(20), y), String(trade.get("name", "")), theirs, bool(trade.get("their_ok", false)), false, cell, gap)
 	# --- a sua bolsa (menos o que já está na oferta)
-	var gy := y + cell * 2 + gap + _px(30) + _px(20)
+	var gy := y + cell * 2 + gap + _px(30) + _px(26) + _px(20)
 	var left: Array = (adventure.inventory.items as Array).duplicate()
 	for id: Variant in mine:
 		left.erase(id)
@@ -1135,6 +1162,28 @@ func _trade_panel() -> void:
 		_trade_cells.append({"rect": rect, "kind": "bag", "id": id})
 	# --- botões (só ícones)
 	var by := r.end.y - _px(46)
+	# --- fontes: o seu ouro e as suas poções que ainda não estão na oferta
+	var my_pots: Dictionary = trade.get("my_pots", {})
+	var have := {"gold": int(adventure.gold) - int(trade.get("my_gold", 0)),
+		"hp": int(adventure.potions.get("hp", 0)) - int(my_pots.get("hp", 0)),
+		"mana": int(adventure.potions.get("mana", 0)) - int(my_pots.get("mana", 0))}
+	var sx := x
+	for what: String in ["gold", "hp", "mana"]:
+		var rect := Rect2(sx, by, cell, cell)
+		sx += cell + gap
+		var n := maxi(0, int(have[what]))
+		rect.position.x += _shake("trade:src:" + what)
+		_frame(rect, Color(0.03, 0.035, 0.05, 0.85))
+		var a := 1.0 if n > 0 else 0.35
+		if what == "gold":
+			_coin_icon(rect, a)
+		else:
+			_slot_potion(rect, what, a)
+		_text("%d" % n, Vector2(rect.position.x, rect.end.y - _px(3)), 11, CREAM if n > 0 else Color(CREAM, 0.4), true, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - _px(3))
+		_fx_border(rect, "trade:src:" + what)
+		if rect.has_point(mouse):
+			draw_rect(rect.grow(_px(1)), Color(GOLD, 0.5), false, 1.0)
+		_trade_cells.append({"rect": rect, "kind": "source", "id": what})
 	_trade_ok_rect = Rect2(r.end.x - _px(22) - cell * 2 - gap, by, cell, cell)
 	_trade_x_rect = Rect2(r.end.x - _px(22) - cell, by, cell, cell)
 	var ok_on := bool(trade.get("my_ok", false))
@@ -1150,15 +1199,23 @@ func _trade_panel() -> void:
 		if b.has_point(mouse):
 			draw_rect(b.grow(_px(1)), Color(GOLD, 0.5), false, 1.0)
 	for tc: Dictionary in _trade_cells:
-		if (tc.rect as Rect2).has_point(mouse):
+		if (tc.rect as Rect2).has_point(mouse) and String(tc.kind) in ["bag", "mine", "theirs"]:
 			_tooltip(mouse, adventure.inventory.item(String(tc.id)))
 			break
 
 
 func _trade_mouse(event: InputEvent) -> bool:
-	if not (event is InputEventMouseButton) or (event as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT:
+	if not (event is InputEventMouseButton):
 		return false
 	var mb := event as InputEventMouseButton
+	if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and adventure.online != null:
+		for tc: Dictionary in _trade_cells:
+			if (tc.rect as Rect2).has_point(mb.position) and String(tc.kind) in ["source", "mine_amount"]:
+				trade_amount(String(tc.id), false)
+				return true
+		return true
+	if mb.button_index != MOUSE_BUTTON_LEFT:
+		return false
 	if not mb.pressed or adventure.online == null:
 		return true
 	if _trade_ok_rect.has_point(mb.position):
@@ -1169,6 +1226,10 @@ func _trade_mouse(event: InputEvent) -> bool:
 		trade = {}
 		panel = ""
 		return true
+	for tc: Dictionary in _trade_cells:
+		if (tc.rect as Rect2).has_point(mb.position) and String(tc.kind) in ["source", "mine_amount"]:
+			trade_amount(String(tc.id), String(tc.kind) == "source")
+			return true
 	if not mb.double_click:
 		return true
 	for tc: Dictionary in _trade_cells:
@@ -1182,6 +1243,22 @@ func _trade_mouse(event: InputEvent) -> bool:
 				"mine":
 					adventure.online.trade_remove(String(tc.id))
 			break
+	return true
+
+
+## Põe (add) ou tira ouro (de TRADE_GOLD_STEP em TRADE_GOLD_STEP) ou uma poção da sua oferta.
+## Sem o que pôr/tirar, a fonte treme em vermelho. O servidor confere e manda o estado novo.
+func trade_amount(what: String, add: bool) -> bool:
+	if trade.is_empty() or adventure.online == null:
+		return false
+	var cur := int(trade.get("my_gold", 0)) if what == "gold" else int((trade.get("my_pots", {}) as Dictionary).get(what, 0))
+	var have := int(adventure.gold) if what == "gold" else int(adventure.potions.get(what, 0))
+	var step := TRADE_GOLD_STEP if what == "gold" else 1
+	var n := mini(have, cur + step) if add else maxi(0, cur - step)
+	if n == cur:
+		_reject_fx["trade:src:" + what] = 0.5
+		return false
+	adventure.online.trade_set(what, n)
 	return true
 
 

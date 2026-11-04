@@ -120,6 +120,9 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	if args.has("equip"):  # prints: --equip=id,id veste da bolsa (com --give)
 		for id: String in String(args.equip).split(","):
 			inventory.equip(id)
+	if args.has("unequip"):  # prints: --unequip=weapon,head,chest tira para a bolsa
+		for slot: String in String(args.unequip).split(","):
+			inventory.unequip(slot)
 	if args.has("quest"):
 		_debug_quest(String(args.quest))
 	if args.has("level"):  # prints/testes

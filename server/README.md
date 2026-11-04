@@ -83,10 +83,15 @@ O código fica em `prototypes/pixel3d/net/`. Esta pasta guarda só os arquivos d
     `{"act": "take", "gid": n}` pega (mesmo andar, `ground_take_m` + folga, bolsa com espaço).
     Recusas: `item`, `trade`, `gone`, `floor`, `range`, `full`.
   - Troca: `trade_ask` (target = eid, perto: `trade_radius_m` + folga) abre para os dois;
-    `trade_add`/`trade_remove` (item da bolsa, até 6) desfazem as confirmações; com os dois
-    `trade_ok` o servidor confere tudo de novo (itens ainda na bolsa, espaço) e troca no mesmo
-    passo. Afastar além de `trade_break_m` (6 m), mudar de andar, morrer, sair ou
+    `trade_add`/`trade_remove` (item da bolsa, até 6) e `trade_set` (`what` = `gold`|`hp`|`mana`,
+    `n` = total oferecido; recusas `gold`/`potion` se passa do que tem, `what`) desfazem as
+    confirmações; com os dois `trade_ok` o servidor confere tudo de novo (itens ainda na bolsa,
+    espaço, ouro e poções; fecha com `gold`/`potion` se gastou ou bebeu) e troca itens, ouro e
+    poções no mesmo passo. Afastar além de `trade_break_m` (6 m), mudar de andar, morrer, sair ou
     `trade_cancel` fecham para os dois. Eventos `trade` com `op: open/state/done/close`.
+- **Equipamento visível:** `entity_info` leva `gear` (arma/escudo/cabeça/peito vestidos); toda ação
+  que muda isso manda o evento `gear` (`eid`, `gear`) para quem está perto, e o cliente redesenha
+  o modelo do outro jogador (`vocations.gd` → `apply_gear`).
 - **Investida e salto remotos:** o servidor resolve o deslocamento no tick do pedido; o cliente
   desenha o corpo deslizando de `from` até o destino no tempo da habilidade (ease-out,
   `net/dash_motion.gd`), tanto para o próprio jogador quanto para os outros. O Eco do mago
@@ -156,8 +161,9 @@ Sem `--connect`, o jogo roda offline como sempre: nada da rede é criado.
 "$G" --headless --path . -s res://tests/unit/net/server_economy_test.gd     # SERVER_ECONOMY: OK (58)
 bash tools/net_unit_tests.sh          # todos os tests/unit/net/*_test.gd de uma vez
 bash tools/net_session_test.sh        # 1 servidor + 7 bots: 94 PASS (~6 min)
-bash tools/net_trade_test.sh          # só Tara + Teo: loja, troca concluída, chão, troca cancelada: 28 PASS
-bash tools/net_game_client_test.sh    # servidor + bot + CLIENTE REAL do jogo (--connect): 34 PASS
+bash tools/net_trade_test.sh          # só Tara + Teo: loja, troca com ouro e poções, chão, troca cancelada: 34 PASS
+bash tools/net_game_client_test.sh    # servidor + bot + CLIENTE REAL do jogo (--connect; arma da Bia some/volta): 39 PASS
+bash tools/net_trade_shot.sh          # 2 clientes em janela; painel de troca aberto (itens + ouro + poções)
 bash tools/net_drop_shot.sh           # 2 clientes em janela; item largado pela Ana visto pelo Davi
 bash tools/net_two_clients_shot.sh    # 2 clientes em janela; prints em production/qa/evidence/pixel3d-net-client-*.png
 bash prototypes/pixel3d/tools/run_world_tests.sh test_quests test_world_reach test_vocations test_mage_combat test_floors test_day_night test_core_light test_enemy_ai

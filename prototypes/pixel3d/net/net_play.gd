@@ -101,6 +101,42 @@ func _auto_drop() -> void:
 	drop(id)
 
 
+## Print da troca (tools/net_trade_shot.sh): --auto_trade=S, S segundos depois de entrar, vende o
+## peitoral à Nessa (ganha ouro), tira o item da cabeça e pede troca ao jogador mais perto
+## oferecendo esse item, o ouro e 1 poção de vida. --auto_trade_reply: ao receber a troca, oferece
+## o item da cabeça e 1 poção de mana.
+func _auto_trade() -> void:
+	await get_tree().create_timer(float(_args.get("auto_trade", 6.0))).timeout
+	var chest := String(adventure.inventory.equipped.get("chest", ""))
+	if not chest.is_empty():
+		unequip("chest")
+		await get_tree().create_timer(0.8).timeout
+		sell(chest)
+		await get_tree().create_timer(0.8).timeout
+	var head := String(adventure.inventory.equipped.get("head", ""))
+	if not head.is_empty():
+		unequip("head")
+		await get_tree().create_timer(0.8).timeout
+	var eid := player_near(demo._player.global_position, 4.0)
+	if eid == 0:
+		return
+	trade_ask(eid, head)
+	await get_tree().create_timer(0.6).timeout
+	if adventure.gold > 0:
+		trade_set("gold", adventure.gold)
+	trade_set("hp", 1)
+
+
+func _auto_trade_reply() -> void:
+	_args["_auto_trade_reply_done"] = true
+	var head := String(adventure.inventory.equipped.get("head", ""))
+	if not head.is_empty():
+		unequip("head")
+		await get_tree().create_timer(0.8).timeout
+		trade_add(head)
+	trade_set("mana", 1)
+
+
 func _dash_shot() -> void:
 	if not _args.has("dash_shot") or _args.has("_dash_shot_done"):
 		return
@@ -137,6 +173,8 @@ func _on_welcome(w: Dictionary) -> void:
 		_auto_q()
 	if _args.has("auto_drop"):
 		_auto_drop()
+	if _args.has("auto_trade"):
+		_auto_trade()
 
 
 # ------------------------------------------------------------------ conteúdo (servidor manda)
@@ -233,6 +271,12 @@ func _on_content(ev: Dictionary) -> void:
 			var names: Array[String] = []
 			for id: Variant in ev.get("got", []):
 				names.append(String(adventure.inventory.item(String(id)).get("name", id)))
+			if int(ev.get("gold_got", 0)) > 0:
+				names.append("%d moedas de ouro" % int(ev.gold_got))
+			var pg: Dictionary = ev.get("pots_got", {})
+			for k: String in ["hp", "mana"]:
+				if int(pg.get(k, 0)) > 0:
+					names.append("%d %s de %s" % [int(pg[k]), "poção" if int(pg[k]) == 1 else "poções", "vida" if k == "hp" else "mana"])
 			adventure.chat.post("Servidor", "Troca com %s concluída%s" % [String(ev.get("with", "")), (": " + ", ".join(names) + ".") if not names.is_empty() else "."], gold)
 
 
@@ -324,6 +368,12 @@ func trade_add(item_id: String) -> void:
 func trade_remove(item_id: String) -> void:
 	if is_online():
 		net.client.action("trade_remove", {"item": item_id})
+
+
+## Ouro ou poções ("gold" | "hp" | "mana") na oferta: `n` é o total (o servidor valida).
+func trade_set(what: String, n: int) -> void:
+	if is_online():
+		net.client.action("trade_set", {"what": what, "n": n})
 
 
 func trade_ok() -> void:
@@ -625,6 +675,14 @@ func _on_event(ev: Dictionary) -> void:
 			if int(ev.get("eid", 0)) == my_id():
 				_light_left = float(ev.get("left", 0.0))
 				adventure.core.set_effects({"light": _light_left})
+		"gear":
+			# outro jogador trocou arma/elmo/peitoral: redesenha o modelo dele
+			var gid := int(ev.get("eid", 0))
+			var gear: Dictionary = ev.get("gear", {})
+			if net.client.infos.has(gid):
+				(net.client.infos[gid] as Dictionary)["gear"] = gear
+			if gid != my_id() and remotes.has(gid) and remotes[gid].has("vv"):
+				remotes[gid].vv.apply_gear(gear, adventure.inventory.item)
 		"refused":
 			if String(ev.get("reason", "")) == "mana":
 				adventure.hud.flash_mana()
@@ -642,6 +700,8 @@ func _on_event(ev: Dictionary) -> void:
 				_ground_del(int(ev.get("gid", 0)))
 		"trade":
 			adventure.hud.trade_state(ev)
+			if String(ev.get("op", "")) == "open" and _args.has("auto_trade_reply") and not _args.has("_auto_trade_reply_done"):
+				_auto_trade_reply()
 			match String(ev.get("op", "")):
 				"open":
 					demo._burst(_pos_of(int(ev.get("with", 0)), []) + Vector3(0, 1.2, 0))
@@ -720,6 +780,8 @@ func _make_player(r: Dictionary, root: Node3D, info: Dictionary) -> void:
 	v.build_model(holder)
 	r.anim = demo._anim
 	r.voc = v.cfg
+	r.vv = v
+	v.apply_gear(info.get("gear", {}), adventure.inventory.item)
 	demo._anim = keep_anim
 	demo._p.staff = keep_staff
 	r.model = holder

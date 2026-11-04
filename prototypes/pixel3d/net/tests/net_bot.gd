@@ -382,6 +382,15 @@ func _buddy() -> void:
 	c.chat("local", "ola Tester")
 	check(await wait_until(func() -> bool: return has_event(friend_events, "op", "request"), 40.0), "recebe o pedido de amizade do Tester")
 	c.friend("accept", "Tester")
+	# guarda a arma e veste de novo: o Tester vê a arma sumir e voltar no modelo (evento gear)
+	await wait(1.5)
+	var n0 := events.size()
+	c.action("unequip", {"slot": "weapon"})
+	await wait(5.0)
+	var off: Array = content_since(n0, "unequip")
+	check(not off.is_empty(), "guardou a arma (%s)" % (String(off[0].get("item", "")) if not off.is_empty() else "recusado"))
+	if not off.is_empty():
+		c.action("equip", {"item": String(off[0].item)})
 	var end := Time.get_ticks_msec() + int(stay * 1000.0)
 	while Time.get_ticks_msec() < end:
 		if _chat_from("Tester", "pronto"):
@@ -877,11 +886,32 @@ func _trader() -> void:
 	c.action("trade_ask", {"target": teo})
 	c.action("trade_add", {"item": "hunting_bow"})
 	check(await wait_until(func() -> bool: return not trade_since(n0, "open").is_empty(), 5.0), "troca aberta pelo servidor (perto do Teo)")
-	check(await wait_until(func() -> bool: return (last_trade().get("theirs", []) as Array).has("knight_helm"), 20.0), "vê o Elmo de Cavaleiro oferecido pelo Teo")
+	# ouro e poções na oferta: mais do que tem é recusado; o que tem entra
+	var g0 := gold()
+	var hp0 := int(c.me.get("pot_hp", 0))
+	var mp0 := int(c.me.get("pot_mana", 0))
+	var n2 := events.size()
+	c.action("trade_set", {"what": "gold", "n": g0 + 50})
+	await wait_until(func() -> bool: return _refused_any(n2, "trade_set"), 5.0)
+	check(_refused_reason(n2, "trade_set") == "gold", "oferecer %d moedas tendo %d: recusado pelo servidor (gold)" % [g0 + 50, g0])
+	n2 = events.size()
+	c.action("trade_set", {"what": "hp", "n": hp0 + 5})
+	await wait_until(func() -> bool: return _refused_any(n2, "trade_set"), 5.0)
+	check(_refused_reason(n2, "trade_set") == "potion", "oferecer %d poções tendo %d: recusado (potion)" % [hp0 + 5, hp0])
+	# todo o ouro que sobrou da loja entra na oferta
+	c.action("trade_set", {"what": "gold", "n": g0})
+	c.action("trade_set", {"what": "hp", "n": 1})
+	check(g0 > 0 and await wait_until(func() -> bool: return int(last_trade().get("my_gold", 0)) == g0 and int((last_trade().get("my_pots", {}) as Dictionary).get("hp", 0)) == 1, 5.0),
+		"oferta com %d moedas e 1 poção de vida (estado do servidor)" % g0)
+	check(await wait_until(func() -> bool: return (last_trade().get("theirs", []) as Array).has("knight_helm") and int((last_trade().get("their_pots", {}) as Dictionary).get("mana", 0)) == 1, 20.0),
+		"vê o Elmo de Cavaleiro e 1 poção de mana oferecidos pelo Teo")
 	c.action("trade_ok")
 	check(await wait_until(func() -> bool: return not trade_since(n0, "done").is_empty(), 20.0), "os dois confirmaram: servidor concluiu a troca")
 	await wait(0.3)
 	check(bag().has("knight_helm") and not bag().has("hunting_bow"), "bolsa: recebeu o elmo e entregou o arco")
+	await wait_until(func() -> bool: return int(c.me.get("pot_mana", 0)) == mp0 + 1, 3.0)   # snapshot
+	check(gold() == 0 and int(c.me.pot_hp) == hp0 - 1 and int(c.me.pot_mana) == mp0 + 1,
+		"ouro %d → %d, poções vida %d → %d, mana %d → %d" % [g0, gold(), hp0, int(c.me.pot_hp), mp0, int(c.me.pot_mana)])
 	# --- chão: larga o elmo, o Teo pega
 	n0 = events.size()
 	var dr: Dictionary = await content_act("drop", {"item": "knight_helm"}, "drop")
@@ -923,11 +953,23 @@ func _partner() -> void:
 	check(await wait_until(func() -> bool: return not trade_since(n0, "open").is_empty(), 120.0), "recebe o pedido de troca da Tara")
 	check(String(trade_since(n0, "open")[0].get("name", "")) == "Tara" if not trade_since(n0, "open").is_empty() else false, "a troca mostra o nome da Tara")
 	c.action("trade_add", {"item": "knight_helm"})
-	await wait_until(func() -> bool: return (last_trade().get("theirs", []) as Array).has("hunting_bow"), 10.0)
+	var g0 := gold()
+	var hp0 := int(c.me.get("pot_hp", 0))
+	var mp0 := int(c.me.get("pot_mana", 0))
+	check(await wait_until(func() -> bool:
+		var t := last_trade()
+		return (t.get("theirs", []) as Array).has("hunting_bow") and int(t.get("their_gold", 0)) > 0 and int((t.get("their_pots", {}) as Dictionary).get("hp", 0)) == 1, 20.0),
+		"vê o arco, %d moedas e 1 poção de vida oferecidos pela Tara" % int(last_trade().get("their_gold", 0)))
+	var offered := int(last_trade().get("their_gold", 0))
+	c.action("trade_set", {"what": "mana", "n": 1})
+	await wait_until(func() -> bool: return int((last_trade().get("my_pots", {}) as Dictionary).get("mana", 0)) == 1, 5.0)
 	c.action("trade_ok")
 	check(await wait_until(func() -> bool: return not trade_since(n0, "done").is_empty(), 20.0), "troca concluída no servidor")
 	await wait(0.3)
 	check(bag().has("hunting_bow") and not bag().has("knight_helm"), "bolsa: recebeu o arco e entregou o elmo")
+	await wait_until(func() -> bool: return int(c.me.get("pot_hp", 0)) == hp0 + 1, 3.0)   # snapshot
+	check(offered > 0 and gold() == g0 + offered and int(c.me.pot_hp) == hp0 + 1 and int(c.me.pot_mana) == mp0 - 1,
+		"ouro %d → %d, poções vida %d → %d, mana %d → %d" % [g0, gold(), hp0, int(c.me.pot_hp), mp0, int(c.me.pot_mana)])
 	# --- pega o elmo que a Tara larga
 	check(await wait_until(func() -> bool: return not ground_since(n0, "add", "knight_helm").is_empty(), 30.0), "vê o elmo largado no chão pela Tara")
 	var g := ground_since(n0, "add", "knight_helm")

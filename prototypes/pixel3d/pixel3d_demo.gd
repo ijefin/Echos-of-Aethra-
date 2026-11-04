@@ -689,6 +689,7 @@ func _build_player() -> void:
 		m.material_override = mat
 		if String(m.name) in CLOTH_PARTS:
 			_clothes.append([mat, Color.WHITE, PYRO_TINT, String(m.name) in RUNE_PARTS])
+	_voc.bind_gear(mage)
 	_anim = mage.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	for a: String in LOOPED:
 		if _anim.has_animation(a):
@@ -719,14 +720,16 @@ func _build_player() -> void:
 	_p.staff = tip
 
 
-## Arma vestida no modelo: cristal, luz e tom do cajado do mago; espada ou arco das outras
-## vocações (vocations.gd). Chamado ao abrir, ao equipar e quando o servidor manda o estado.
+## Equipamento no modelo (vocations.apply_gear: arma/escudo/elmo/capa somem com o slot vazio,
+## tinta do corpo pelo peitoral) + cristal, luz e tom do cajado do mago. Chamado ao abrir, ao
+## equipar e quando o servidor manda o estado.
 func apply_gear_look() -> void:
 	if _adventure == null or _adventure.inventory == null:
 		return
-	var it: Dictionary = _adventure.inventory.item(String(_adventure.inventory.equipped.get("weapon", "")))
-	if not _voc.is_mage():
-		_voc.apply_weapon(it)
+	var eq: Dictionary = _adventure.inventory.equipped
+	_voc.apply_gear(eq, _adventure.inventory.item)
+	var it: Dictionary = _adventure.inventory.item(String(eq.get("weapon", "")))
+	if not _voc.is_mage() or it.is_empty():
 		return
 	if _crystal == null:
 		return
@@ -890,6 +893,8 @@ func _set_pyro(on: bool) -> void:
 		var m: ShaderMaterial = c[0]
 		m.next_pass = _rune_mat if on and bool(c[3]) else null
 		m.set_shader_parameter("tint", c[2] if on else c[1])
+	if not on:
+		apply_gear_look()  # devolve a tinta do equipamento
 	for n in _pyro_nodes:
 		if n is GPUParticles3D:
 			(n as GPUParticles3D).emitting = on

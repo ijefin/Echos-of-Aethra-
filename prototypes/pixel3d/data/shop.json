@@ -1,8 +1,20 @@
 {
-  "_doc": "Ouro e comércio (economy.gd). gold_drop: moedas por abate = kinds[tipo] (ou base) + per_level × (nível da caçada − 1). Missões dão ouro em reward.gold (quests.json). merchant: NPC que abre a troca ao interagir (raio radius_m). buy: preço de cada poção. sell: preço pago por item da bolsa (não vestido), pela raridade de items.json (sem raridade = basic); sell_items sobrescreve por id. ground_item_s: tempo de um item largado no chão (online). trade_*: troca direta entre jogadores (online).",
+  "_doc": "Ouro e comércio (economy.gd). gold_drop: moedas por abate = round(kinds[tipo] (ou base) + per_level × (nível da caçada − 1)); conta do balanço em _balance. Missões dão ouro em reward.gold (quests.json). merchant: NPC que abre a troca ao interagir (raio radius_m). buy: preço de cada poção. sell: preço pago por item da bolsa (não vestido), pela raridade de items.json (sem raridade = basic); sell_items sobrescreve por id. ground_item_s: tempo de um item largado no chão (online). trade_*: troca direta entre jogadores (online).",
+  "_balance": [
+    "Meta: ~10 min de caça na faixa de nível certa pagam algumas poções; recompensa de missão vale 10+ min de caça.",
+    "Ritmo assumido: ~2,5-3 abates/min (respawn 15 s, 5-6 monstros por caçada, andar e curar) = 25-30 abates em 10 min.",
+    "Ouro por abate = round(kinds[tipo] + per_level × (nível − 1)), per_level 0,5.",
+    "Charco (sapo nv 2-3): 2/abate → 25-30 × 2 = 50-60 moedas = 5-6 poções de vida (10); gasta ~3 → sobram 2-3.",
+    "Estrada Velha (aranha nv 3-4 + sapo): ~3,4/abate → ~85-100 moedas = 8-10 poções; gasta ~4.",
+    "Covil do Bosque (aranha nv 4-5): 4/abate → ~25×4 = 100 moedas = 10 poções; gasta ~4-5.",
+    "Vale do Vigia (aranha nv 6-7): 5/abate → ~25×5 = 125 moedas = 12 poções; gasta ~5-6.",
+    "Missões (quests.json reward.gold): coaxar 30 + 3 poções de vida (≈60 = 10 min no Charco); fios_estrada 70 + arma rara (≈8 min na Estrada + item);",
+    "presas_covil 90 + 2 mana + peitoral raro (≈11 min no Covil + item); vigia_vale 160 + 2 vida + 2 mana (≈16 min no Vale + colar épico).",
+    "Venda à Nessa (sell): comum 6, raro 18, épico 40 — vender a arma inicial paga ~1 min de caça; vender um raro, ~2-4 min."
+  ],
   "gold_drop": {
     "base": 2,
-    "per_level": 2,
+    "per_level": 0.5,
     "kinds": {
       "frog": 1,
       "spider": 2,

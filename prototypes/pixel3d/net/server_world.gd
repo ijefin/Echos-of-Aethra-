@@ -211,12 +211,39 @@ func region_of(pos: Vector3) -> String:
 ##   "q"/"r"  sinônimos de blink/ring;  "potion" (kind hp|mana);  "light" (core skill Luz)
 ##   "interact" (target) · "equip" (item) · "unequip" (slot) · "buy" (kind) · "sell" (item)
 ##   "drop" (item) · "take" (gid) · "trade_ask" (target) · "trade_add"/"trade_remove" (item)
-##   "trade_ok" · "trade_cancel"
+##   "trade_set" (what gold|hp|mana, n) · "trade_ok" · "trade_cancel"
 ## Devolve "" se aceita, ou o motivo da recusa (o servidor não confia em nada do cliente).
+## Se a ação mudou o que aparece no modelo (arma/escudo/cabeça/peito), avisa quem está perto
+## (evento "gear") para os outros clientes redesenharem o personagem.
 func player_action(eid: int, act: Dictionary) -> String:
 	if not players.has(eid):
 		return "no_player"
 	var p: Dictionary = players[eid]
+	var before := gear_look(p)
+	var err := _player_action(p, act)
+	var after := gear_look(p)
+	if after != before:
+		events.append({"to": -1, "type": "gear", "eid": int(p.eid), "gear": after, "at": [p.ms.pos.x, p.ms.pos.z]})
+	return err
+
+
+## Slots do equipamento que aparecem no modelo dos outros jogadores.
+const LOOK_SLOTS := ["weapon", "shield", "head", "chest"]
+
+
+## O equipamento visível do jogador (vai no entity_info e no evento "gear").
+func gear_look(p: Dictionary) -> Dictionary:
+	var out := {}
+	if not p.has("inv"):
+		return out
+	var eq: Dictionary = (p.inv as RefCounted).equipped
+	for s: String in LOOK_SLOTS:
+		if not String(eq.get(s, "")).is_empty():
+			out[s] = String(eq[s])
+	return out
+
+
+func _player_action(p: Dictionary, act: Dictionary) -> String:
 	var a := String(act.get("act", ""))
 	combat.col = _col(p)   # alcance/visão/destino no andar do jogador
 	match a:
@@ -248,6 +275,8 @@ func player_action(eid: int, act: Dictionary) -> String:
 			return trade.ask(p, int(act.get("target", 0)))
 		"trade_add", "trade_remove":
 			return trade.offer(p, String(act.get("item", "")), a == "trade_add")
+		"trade_set":
+			return trade.set_amount(p, String(act.get("what", "")), int(act.get("n", 0)))
 		"trade_ok":
 			return trade.confirm(p)
 		"trade_cancel":
@@ -923,7 +952,7 @@ func entity_info(id: int) -> Dictionary:
 	if players.has(id):
 		var pl: Dictionary = players[id]
 		return {"id": id, "kind": Protocol.KIND_PLAYER, "name": String(pl.name), "level": int(pl.state.level),
-			"vocation": String(pl.vocation), "light_left": light_left(pl)}
+			"vocation": String(pl.vocation), "light_left": light_left(pl), "gear": gear_look(pl)}
 	if monsters.has(id):
 		return {"id": id, "kind": Protocol.KIND_MONSTER, "name": String(monsters[id].name), "monster": String(monsters[id].kind),
 			"level": int(monsters[id].level)}

@@ -18,11 +18,12 @@ static func load_data() -> Dictionary:
 	return _cache
 
 
-## Moedas de um abate: valor do tipo (ou base) + per_level por nível da caçada acima do 1.
+## Moedas de um abate: arredonda(valor do tipo (ou base) + per_level × (nível da caçada − 1)).
+## per_level pode ser fracionário (0,5 = +1 moeda a cada 2 níveis). Conta do balanço: shop.json "_balance".
 static func gold_drop(data: Dictionary, kind: String, level: int) -> int:
 	var g: Dictionary = data.get("gold_drop", {})
-	var base := int((g.get("kinds", {}) as Dictionary).get(kind, g.get("base", 0)))
-	return maxi(0, base + int(g.get("per_level", 0)) * maxi(0, level - 1))
+	var base := float((g.get("kinds", {}) as Dictionary).get(kind, g.get("base", 0)))
+	return maxi(0, roundi(base + float(g.get("per_level", 0)) * maxi(0, level - 1)))
 
 
 ## NPC comerciante (id usado por interact) e raio de troca.

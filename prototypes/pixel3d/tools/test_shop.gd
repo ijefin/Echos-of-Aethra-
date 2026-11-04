@@ -45,6 +45,9 @@ class FakeOnline:
 	func ground_near(_p: Vector3) -> int:
 		return 0
 
+	func trade_set(what: String, n: int) -> void:
+		asked.append("trade_set:%s=%d" % [what, n])
+
 
 func run() -> void:
 	Engine.set_meta("aethra_class", "mage")
@@ -124,6 +127,33 @@ func run() -> void:
 	check(hud.shop_sell("iron_sword") and fake.asked.back() == "sell:iron_sword" and "iron_sword" in a.inventory.items, "online: venda só pede ao servidor")
 	hud.shop_refused()
 	check(hud._reject_fx.has("sell:iron_sword"), "online: recusa do servidor treme a célula")
+	# --- troca entre jogadores: ouro e poções na oferta (o HUD só pede; o servidor valida)
+	a.gold = 25
+	a.potions = {"hp": 2, "mana": 0}
+	hud.trade = {"op": "state", "name": "Bia", "mine": [], "theirs": [], "my_gold": 0, "my_pots": {"hp": 0, "mana": 0}}
+	check(hud.trade_amount("gold", true) and fake.asked.back() == "trade_set:gold=10", "troca: clique no ouro oferece 10 moedas")
+	hud.trade.my_gold = 20
+	check(hud.trade_amount("gold", true) and fake.asked.back() == "trade_set:gold=25", "troca: mais um clique oferece o resto (25 de 25)")
+	hud.trade.my_gold = 25
+	hud._reject_fx.clear()
+	check(not hud.trade_amount("gold", true) and hud._reject_fx.has("trade:src:gold"), "troca: sem mais ouro a fonte treme")
+	check(hud.trade_amount("gold", false) and fake.asked.back() == "trade_set:gold=15", "troca: tirar devolve 10 moedas")
+	check(hud.trade_amount("hp", true) and fake.asked.back() == "trade_set:hp=1", "troca: clique na poção de vida oferece 1")
+	check(not hud.trade_amount("mana", true) and hud._reject_fx.has("trade:src:mana"), "troca: sem poção de mana a fonte treme")
+	hud.trade = {}
 	a.online = null
+	# --- balanço (shop.json _balance): 25 abates (~10 min) em cada caçada, no meio da faixa de
+	# nível, pagam "algumas poções" (4 a 14 poções de vida) — nem migalha, nem loja de graça
+	var regions: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://prototypes/pixel3d/data/world_regions.json"))
+	var hp_price := Economy.buy_price(shop, "hp")
+	for h: Dictionary in regions.hunts:
+		var lv: Array = h.level
+		var spawns: Array = h.spawns
+		var per_kill := 0.0
+		for spawn: Array in spawns:
+			per_kill += (Economy.gold_drop(shop, String(spawn[2]), int(lv[0])) + Economy.gold_drop(shop, String(spawn[2]), int(lv[1]))) * 0.5
+		per_kill /= spawns.size()
+		var n_pots := 25.0 * per_kill / hp_price
+		check(n_pots >= 4.0 and n_pots <= 14.0, "balanço: 10 min em %s (nv %d-%d) ≈ %.0f moedas = %.1f poções de vida" % [String(h.id), int(lv[0]), int(lv[1]), 25.0 * per_kill, n_pots])
 	print("TEST_SHOP: %s (%d PASS, %d FAIL)" % ["OK" if fails == 0 else "FAIL", passes, fails])
 	quit(0 if fails == 0 else 1)
