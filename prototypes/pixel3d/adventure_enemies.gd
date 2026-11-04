@@ -56,7 +56,9 @@ func _spider(parent: Node3D) -> Array[Node3D]:
 func _spawn(id: String, kind: String, at: Vector3, cave: bool) -> void:
 	var cfg: Dictionary = adventure.config.enemy[kind]
 	var body := CharacterBody3D.new()
-	body.motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
+	body.motion_mode = CharacterBody3D.MOTION_MODE_GROUNDED
+	body.floor_max_angle = deg_to_rad(46.0)
+	body.floor_snap_length = 0.35
 	body.collision_layer = 8
 	body.collision_mask = 1 | 4
 	body.set_meta("kind", "enemy")
@@ -181,6 +183,7 @@ func update(delta: float, t: float) -> void:
 		direction.y = 0
 		var moving := direction.length() > (0.95 if chase else 0.15)
 		body.velocity = direction.normalized() * float(cfg.speed) if moving else Vector3.ZERO
+		body.velocity.y = -0.5 if body.is_on_floor() else -9.0  # volta ao chão depois de pedras
 		body.move_and_slide()
 		if moving:
 			body.rotation.y = lerp_angle(body.rotation.y, atan2(-direction.x, -direction.z), 1.0 - exp(-delta * 8.0))

@@ -16,6 +16,11 @@ const FRICTION_T := 0.08
 const DODGE_T := 0.24
 const DODGE_SPEED := 11.0
 const ATTACK_T := 0.42
+const GRAVITY := 22.0
+const MAX_FALL := 18.0
+## Altura de voo da bola de fogo acima do pé do mago (meio do peito).
+const SHOT_HEIGHT := 0.85
+const SHOT_SPEED := 13.0
 const BLINK_RANGE := 7.0
 const BLINK_OUT := 0.12        # some (dissolve 0→1)
 const BLINK_IN := 0.2          # reaparece no destino
@@ -78,6 +83,9 @@ var _dodge_t := -1.0
 var _dodge_dir := Vector3.FORWARD
 var _aim := Vector3.FORWARD
 var _attack_target := Vector3.FORWARD * 5.0
+## Corpo mirado no clique (inimigo/tocha); a mira segue a posição dele até o disparo.
+var _attack_node: Node3D = null
+var _hover_node: Node3D = null
 var _auto := false
 var _projectiles: Array = []
 var _help: Label
@@ -554,7 +562,11 @@ const LOOPED := ["Idle", "Running_A", "Walking_A", "2H_Melee_Idle"]
 
 func _build_player() -> void:
 	_player = CharacterBody3D.new()
-	_player.motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
+	# Modo de chão: detecta piso, desce de pedras e não sobe paredes íngremes.
+	_player.motion_mode = CharacterBody3D.MOTION_MODE_GROUNDED
+	_player.floor_max_angle = deg_to_rad(46.0)
+	_player.floor_snap_length = 0.35
+	_player.floor_stop_on_slope = true
 	_player.collision_mask = 1 | Dressing.WATER_LAYER
 	var col := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
@@ -854,6 +866,7 @@ func _mouse_ground() -> Vector3:
 		query.exclude = [_player.get_rid()]
 		var hit := _player.get_world_3d().direct_space_state.intersect_ray(query)
 		if not hit.is_empty() and String(hit.collider.get_meta("kind", "")) in ["enemy", "quest_torch"]:
+			_hover_node = hit.collider as Node3D
 			return (hit.collider as Node3D).global_position
 	if absf(d.y) < 0.0001:
 		return _player.global_position
@@ -862,11 +875,12 @@ func _mouse_ground() -> Vector3:
 
 
 func _start_attack() -> void:
+	_hover_node = null
 	var tgt := _mouse_ground() if not _auto else _player.global_position + Vector3(1, 0, -0.4)
-	_attack_at(tgt)
+	_attack_at(tgt, _hover_node)
 
 
-func _attack_at(tgt: Vector3) -> void:
+func _attack_at(tgt: Vector3, node: Node3D = null) -> void:
 	if _adventure != null and _adventure.hud.any_open():
 		return
 	if _attack_t >= 0.0 or _dodge_t >= 0.0 or _blink_t >= 0.0:
@@ -874,6 +888,7 @@ func _attack_at(tgt: Vector3) -> void:
 	if _adventure != null and not _adventure.spend("fire"):
 		return
 	_attack_target = tgt
+	_attack_node = node
 	var d := tgt - _player.global_position
 	d.y = 0
 	if d.length() > 0.01:
@@ -931,11 +946,19 @@ func _physics_process(delta: float) -> void:
 		var horizontal := Vector3(_player.velocity.x, 0, _player.velocity.z).move_toward(target * slow, rate * delta)
 		_player.velocity.x = horizontal.x
 		_player.velocity.z = horizontal.z
-	if _adventure != null and _adventure.in_cave and _blink_t < 0.0:
-		_player.velocity.y -= 22.0 * delta
-	else:
+	# Gravidade sempre (superfície e gruta): quem sobe numa pedra volta ao chão.
+	if _blink_t >= 0.0:
 		_player.velocity.y = 0.0
+	elif _player.is_on_floor():
+		_player.velocity.y = -0.5  # mantém contato sem acumular queda
+	else:
+		_player.velocity.y = maxf(_player.velocity.y - GRAVITY * delta, -MAX_FALL)
 	_player.move_and_slide()
+	# rede de segurança: nunca abaixo do piso do andar atual
+	var floor_y: float = _adventure.ground_height() if _adventure != null else 0.0
+	if _player.global_position.y < floor_y - 0.5:
+		_player.global_position.y = floor_y
+		_player.velocity.y = 0.0
 	_animate(delta, input)
 	_update_projectiles(delta)
 	_update_camera(delta)
@@ -1006,7 +1029,15 @@ func _fireball() -> void:
 	var n := Node3D.new()
 	_vp.add_child(n)
 	var tip := (_p.staff as Node3D).global_position
-	n.global_position = Vector3(tip.x, _player.global_position.y + 0.9, tip.z) + _aim * 0.3
+	var chest := _player.global_position + Vector3(0, SHOT_HEIGHT, 0)
+	var spawn := Vector3(tip.x, chest.y, tip.z) + _aim * 0.3
+	# mira no centro do volume do alvo, na posição ATUAL (ele andou durante o gesto)
+	var aim_point := _attack_target
+	if is_instance_valid(_attack_node) and _attack_node.is_inside_tree():
+		aim_point = _target_center(_attack_node)
+	else:
+		aim_point.y = chest.y  # chão: voa na altura do peito, sem mergulhar no piso
+	n.global_position = spawn
 	var core := SphereMesh.new()
 	core.radius = 0.13
 	core.height = 0.26
@@ -1034,8 +1065,20 @@ func _fireball() -> void:
 	q.material = _flame_draw
 	trail.draw_pass_1 = q
 	n.add_child(trail)
-	var shot := Vector3(_attack_target.x - n.global_position.x, 0, _attack_target.z - n.global_position.z).normalized()
-	_projectiles.append({"node": n, "vel": shot * 13.0, "life": 0.8})
+	var shot := aim_point - chest
+	if Vector2(shot.x, shot.z).length() < 0.05:
+		shot = _aim
+	shot = shot.normalized()
+	# o trecho peito → ponta do cajado também é testado: alvo colado no mago é atingido
+	_projectiles.append({"node": n, "vel": shot * SHOT_SPEED, "life": 0.8, "from": chest})
+
+
+## Centro do volume de colisão de um corpo (cápsula do monstro, tocha...).
+func _target_center(body: Node3D) -> Vector3:
+	for c in body.get_children():
+		if c is CollisionShape3D:
+			return (c as CollisionShape3D).global_position
+	return body.global_position + Vector3(0, 0.6, 0)
 
 
 func _update_projectiles(delta: float) -> void:
@@ -1052,7 +1095,10 @@ func _update_projectiles(delta: float) -> void:
 			vel.z *= 1.0 - 2.2 * delta
 			pr.vel = vel
 		var from := n.global_position
-		var to := from + vel * delta
+		if pr.has("from"):
+			from = pr.from  # 1º passo: do peito do mago até onde a bola nasceu
+			pr.erase("from")
+		var to := n.global_position + vel * delta
 		var q := PhysicsRayQueryParameters3D.create(from, to)
 		q.exclude = [_player.get_rid()]
 		q.collision_mask = 1 | 8  # cenário e inimigos; margens d'água ficam de fora
