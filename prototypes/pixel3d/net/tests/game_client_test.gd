@@ -121,7 +121,30 @@ func run() -> void:
 	check(String(adv.inventory.equipped.get("weapon", "")) == "fire_staff", "bolsa online: arma segue a do servidor")
 	adv.inventory.items.erase("sentinel_staff")
 	check(not adv.hud.drop_on_slot("iron_sword", "weapon"), "bolsa online: item de outra vocação recusado no cliente")
+	# desequipar online: o slot pulsa até o servidor confirmar
+	var hat := String(adv.inventory.equipped.get("head", ""))
+	check(adv.hud.unequip_slot("head") and adv.hud.pending_unequip == "head" and adv.inventory.equipped.has("head"), "bolsa online: desequipar só pede ao servidor (%s)" % hat)
+	check(await wait_until(func() -> bool: return adv.hud.pending_unequip == "" and not adv.inventory.equipped.has("head"), 5.0) and hat in adv.inventory.items,
+		"bolsa online: servidor tirou o chapéu e a bolsa veio dele")
 	adv.hud.panel = ""
+	# troca com a Nessa (online): falar de novo abre a troca; vender o chapéu dá ouro do servidor
+	adv.interact()
+	check(await wait_until(func() -> bool: return adv.hud.panel == "shop", 5.0), "Nessa: segunda conversa abre a troca (servidor manda shop)")
+	var g0: int = adv.gold
+	adv.hud.shop_sell(hat)
+	check(await wait_until(func() -> bool: return adv.gold > g0 and not (hat in adv.inventory.items), 5.0), "troca online: vendeu o chapéu, ouro %d → %d (servidor)" % [g0, adv.gold])
+	adv.hud.panel = ""
+	# largar no chão: o próprio cliente também desenha o item (evento ground do servidor)
+	var robe := String(adv.inventory.equipped.get("chest", ""))
+	adv.hud.unequip_slot("chest")
+	await wait_until(func() -> bool: return robe in adv.inventory.items, 5.0)
+	online.drop(robe)
+	check(await wait_until(func() -> bool: return not online.ground.is_empty(), 5.0) and not (robe in adv.inventory.items), "largou o robe: saquinho no chão (gid %s)" % str(online.ground.keys()))
+	if not online.ground.is_empty():
+		var gid: int = online.ground.keys()[0]
+		check(adv.interact_target() == "ground:%d" % gid, "perto do item: E pede para pegar (%s)" % adv.interact_target())
+		adv.interact()
+		check(await wait_until(func() -> bool: return online.ground.is_empty() and robe in adv.inventory.items, 5.0), "E pegou o robe de volta (servidor)")
 	# caçar: andar até um monstro e atirar pelo caminho normal do jogo (_attack_at)
 	var killed := await _hunt(45.0)
 	check(killed, "abate de monstro pelo cliente do jogo (evento do servidor)")

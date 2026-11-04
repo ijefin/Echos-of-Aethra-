@@ -15,6 +15,7 @@ const Combat := preload("res://prototypes/pixel3d/net/combat_rules.gd")
 const Interest := preload("res://prototypes/pixel3d/net/interest_grid.gd")
 const AdventureState := preload("res://prototypes/pixel3d/first_adventure_state.gd")
 const Content := preload("res://prototypes/pixel3d/net/server_content.gd")
+const Trade := preload("res://prototypes/pixel3d/net/server_trade.gd")
 
 const NPC := Vector3(-14, 0, -25)
 const ENTRANCE := Vector3(-38, 0, -28)
@@ -44,6 +45,8 @@ var floors: Dictionary = {}
 var combat: RefCounted
 ## Missões, segredos, bolsa, equipamento e recompensas (server_content.gd).
 var content: RefCounted
+## Itens no chão e troca entre jogadores (server_trade.gd).
+var trade: RefCounted
 var interest: RefCounted
 var now := 0.0
 var tick := 0
@@ -76,6 +79,7 @@ func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCoun
 		float((cfg.get("combat", {}) as Dictionary).get("interact_tolerance_m", 1.2)))
 	content.nessa = NPC
 	content.chest = CHEST
+	trade = Trade.new(self, content.shop)
 	_mcfg = cfg.get("monsters", {})
 	_mv = cfg.get("move", {})
 	_radius = float(cfg.get("player_radius", 0.35))
@@ -172,6 +176,7 @@ func character_data(eid: int) -> Dictionary:
 
 
 func remove_player(eid: int) -> Dictionary:
+	trade.on_leave(eid)   # troca aberta fecha para o outro lado
 	var data := character_data(eid)
 	players.erase(eid)
 	interest.forget(eid)
@@ -204,6 +209,9 @@ func region_of(pos: Vector3) -> String:
 ##   "blink"  Q da vocação (mago: Eco; guerreiro: Investida; arqueiro: Salto Evasivo)
 ##   "ring"   R da vocação (mago: Anel de Brasa; guerreiro: Redemoinho; arqueiro: Flecha Perfurante)
 ##   "q"/"r"  sinônimos de blink/ring;  "potion" (kind hp|mana);  "light" (core skill Luz)
+##   "interact" (target) · "equip" (item) · "unequip" (slot) · "buy" (kind) · "sell" (item)
+##   "drop" (item) · "take" (gid) · "trade_ask" (target) · "trade_add"/"trade_remove" (item)
+##   "trade_ok" · "trade_cancel"
 ## Devolve "" se aceita, ou o motivo da recusa (o servidor não confia em nada do cliente).
 func player_action(eid: int, act: Dictionary) -> String:
 	if not players.has(eid):
@@ -226,6 +234,24 @@ func player_action(eid: int, act: Dictionary) -> String:
 			return _content_result(p, content.interact(p, String(act.get("target", ""))))
 		"equip":
 			return _content_result(p, content.equip(p, String(act.get("item", ""))))
+		"unequip":
+			return _content_result(p, content.unequip(p, String(act.get("slot", ""))))
+		"buy":
+			return _content_result(p, content.buy(p, String(act.get("kind", ""))))
+		"sell":
+			return _content_result(p, content.sell(p, String(act.get("item", ""))))
+		"drop":
+			return trade.drop(p, String(act.get("item", "")))
+		"take":
+			return trade.take(p, int(act.get("gid", 0)))
+		"trade_ask":
+			return trade.ask(p, int(act.get("target", 0)))
+		"trade_add", "trade_remove":
+			return trade.offer(p, String(act.get("item", "")), a == "trade_add")
+		"trade_ok":
+			return trade.confirm(p)
+		"trade_cancel":
+			return trade.cancel(p)
 		"light":
 			# core skill de luz ("utevo vis lux"): mana + recarga de core_skills.json; relançar renova.
 			var err: String = combat.can_use(p, "light", now)
@@ -518,6 +544,7 @@ func step(dt: float) -> void:
 		for m: Dictionary in monsters.values():
 			_monster_ai(m, dt)
 	_step_projectiles(dt)
+	trade.step()
 
 
 func _sync_monster_shots() -> void:
@@ -716,8 +743,10 @@ func _damage_monster(m: Dictionary, amount: int, by: int) -> void:
 	var old_level: int = st.level
 	if st.record_kill(String(m.key), String(m.kind), floor_of((m.home as Vector3).y) < 0, int(m.xp)):
 		p.kills = int(p.kills) + 1
+		var gold: int = content.kill_gold(p, String(m.kind), int(m.get("level", 1)))   # moedas pelo nível da caçada
 		events.append({"to": by, "type": "kill", "target": int(m.eid), "name": String(m.name), "xp": int(m.xp),
-			"kind": String(m.kind), "hunt": String(m.get("hunt", "")), "at": [m.pos.x, m.pos.z]})
+			"kind": String(m.kind), "hunt": String(m.get("hunt", "")), "at": [m.pos.x, m.pos.z],
+			"gold": gold, "gold_total": int(p.gold)})
 		_content_event(p, content.on_kill(p, String(m.kind), String(m.get("hunt", "")), Vector2(m.pos.x, m.pos.z)))
 		if st.level > old_level:
 			p.hp = float(st.max_hp())

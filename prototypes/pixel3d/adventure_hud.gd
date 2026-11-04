@@ -15,7 +15,8 @@ const MUTED := Color(0.7, 0.68, 0.62)
 const GOLD := Color(1.0, 0.82, 0.38)
 const HP_COL := Color(0.78, 0.2, 0.18)
 const MP_COL := Color(0.25, 0.48, 0.9)
-const PANELS := ["help", "quest", "char", "bag", "vocation", "friends"]
+const PANELS := ["help", "quest", "char", "bag", "vocation", "friends", "shop", "trade"]
+const Economy := preload("res://prototypes/pixel3d/economy.gd")
 
 var adventure
 var panel := ""
@@ -72,9 +73,18 @@ func update() -> void:
 			fx[key] = float(fx[key]) - dt
 			if float(fx[key]) <= 0.0:
 				fx.erase(key)
+	_gold_fx = maxf(0.0, _gold_fx - dt)
+	if int(adventure.gold) != _gold_seen:
+		if _gold_seen >= 0:
+			_gold_fx = 0.6
+		_gold_seen = int(adventure.gold)
 	if panel != "bag":
 		_drag_id = ""
+		_drag_slot = ""
 		_drag_live = false
+	if panel != "trade" and not trade.is_empty() and adventure.online != null:
+		adventure.online.trade_cancel()   # fechou o painel: a troca cancela para os dois
+		trade = {}
 	queue_redraw()
 
 
@@ -162,6 +172,10 @@ func _draw() -> void:
 			_vocation_panel()
 		"friends":
 			_friends_panel()
+		"shop":
+			_shop_panel()
+		"trade":
+			_trade_panel()
 	if _friend_input != null:
 		_friend_input.visible = panel == "friends"
 
@@ -358,8 +372,8 @@ func _clip_square(pts: PackedVector2Array, r: Rect2) -> PackedVector2Array:
 
 # ------------------------------------------------------------------ painéis (atalhos)
 
-func _panel_rect(w: float, h: float) -> Rect2:
-	var r := Rect2(size * 0.5 - Vector2(_px(w), _px(h)) * 0.5, Vector2(_px(w), _px(h)))
+func _panel_rect(w: float, h: float, drop := 0.0) -> Rect2:
+	var r := Rect2(size * 0.5 - Vector2(_px(w), _px(h)) * 0.5 + Vector2(0, _px(drop)), Vector2(_px(w), _px(h)))
 	_frame(r)
 	return r
 
@@ -477,7 +491,17 @@ var _reject_fx: Dictionary = {}
 var _accept_fx: Dictionary = {}
 ## Online: item pedido ao servidor, ainda sem resposta (célula pulsando).
 var pending_equip := ""
+## Online: slot pedido para desequipar, ainda sem resposta.
+var pending_unequip := ""
 var _stat_fx := 0.0
+## Arraste saindo de um slot do boneco (desequipar soltando na grade).
+var _drag_slot := ""
+## Área da grade e do painel no último quadro (soltar na grade / fora do painel).
+var _grid_rect := Rect2()
+var _bag_rect := Rect2()
+## Brilho do ouro quando o total muda.
+var _gold_fx := 0.0
+var _gold_seen := -1
 
 
 func _rarity_color(it: Dictionary) -> Color:
@@ -491,9 +515,11 @@ static func _arr_color(a: Variant, fallback: Color) -> Color:
 	return fallback
 
 
-## O que a bolsa mostra, na ordem: poções, itens de missão, equipamento guardado.
+## O que a bolsa mostra, na ordem: moedas, poções, itens de missão, equipamento guardado.
 func bag_entries() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if int(adventure.gold) > 0:
+		out.append({"kind": "gold", "id": "gold", "count": int(adventure.gold)})
 	for k: String in ["hp", "mana"]:
 		if int(adventure.potions.get(k, 0)) > 0:
 			out.append({"kind": "potion", "id": k, "count": int(adventure.potions[k])})
@@ -509,16 +535,19 @@ func _bag_panel() -> void:
 	var inv = adventure.inventory
 	var cell := _px(44)
 	var gap := _px(5)
-	var rows := ceili(float(inv.capacity()) / BAG_COLS)
+	var entries := bag_entries()
+	var rows := ceili(float(maxi(inv.capacity(), entries.size())) / BAG_COLS)
 	var doll_w := cell * 3 + gap * 2
 	var grid_w := cell * BAG_COLS + gap * (BAG_COLS - 1)
 	var r := _panel_rect((22 + 30 + 22) + (doll_w + grid_w) / _ui, 48 + 22 + (cell * rows + gap * (rows - 1)) / _ui)
 	var y := _title(r, "BOLSA", "I") - _px(18)
+	_bag_rect = r
 	var mouse := get_local_mouse_position()
 	var t := Time.get_ticks_msec() / 1000.0
 	_bag_cells.clear()
 	_doll_rects.clear()
 	var drag_it: Dictionary = inv.item(_drag_id) if _drag_live else {}
+	var from_slot := not _drag_slot.is_empty()
 	# --- boneco do equipamento
 	var dx := r.position.x + _px(22)
 	var hover := {}
@@ -532,9 +561,10 @@ func _bag_panel() -> void:
 		if id.is_empty():
 			_item_icon(rect, {"slot": slot, "color": [0.6, 0.6, 0.6]}, 0.16)
 		else:
-			_item_icon(rect, inv.item(id), 1.0)
-			draw_rect(rect.grow(-1.0), Color(_rarity_color(inv.item(id)), 0.55), false, 1.0)
-		if not drag_it.is_empty() and String(drag_it.get("slot", "")) == slot and inv.can_use(_drag_id) == "":
+			var sa := 0.3 if (_drag_live and _drag_slot == slot) else (0.55 + 0.45 * absf(sin(t * 6.0)) if pending_unequip == slot else 1.0)
+			_item_icon(rect, inv.item(id), sa)
+			draw_rect(rect.grow(-1.0), Color(_rarity_color(inv.item(id)), 0.55 * sa), false, 1.0)
+		if not from_slot and not drag_it.is_empty() and String(drag_it.get("slot", "")) == slot and inv.can_use(_drag_id) == "":
 			draw_rect(rect.grow(_px(2)), Color(GOLD, 0.6 + 0.3 * sin(t * 8.0)), false, _px(2))
 		_fx_border(rect, slot)
 		if rect.has_point(mouse) and not id.is_empty():
@@ -549,7 +579,9 @@ func _bag_panel() -> void:
 	_text("%d%%" % roundi(adventure.armor_ratio() * 100.0), Vector2(dx, sy + _px(17)), 11, sc, true, HORIZONTAL_ALIGNMENT_RIGHT, doll_w)
 	# --- grade da bolsa
 	var gx := dx + doll_w + _px(30)
-	var entries := bag_entries()
+	_grid_rect = Rect2(gx, y, grid_w, cell * rows + gap * (rows - 1))
+	if from_slot and _drag_live:   # tirando do boneco: a grade acende onde ele vai cair
+		draw_rect(_grid_rect.grow(_px(3)), Color(GOLD, 0.45 + 0.3 * sin(t * 8.0)), false, _px(2))
 	for i in rows * BAG_COLS:
 		var rect := Rect2(gx + (i % BAG_COLS) * (cell + gap), y + (i / BAG_COLS) * (cell + gap), cell, cell)
 		draw_rect(rect, Color(0.03, 0.035, 0.05, 0.85))
@@ -563,6 +595,9 @@ func _bag_panel() -> void:
 		var dragging_this: bool = _drag_live and _drag_id == id and e.kind == "item"
 		var a := 0.3 if dragging_this else 1.0
 		match String(e.kind):
+			"gold":
+				_coin_icon(rect, a)
+				_text("%d" % int(e.count), Vector2(rect.position.x, rect.end.y - _px(3)), 11, CREAM.lerp(GOLD, clampf(_gold_fx / 0.4, 0, 1)), true, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - _px(3))
 			"potion":
 				_slot_potion(rect, id, a)
 				_text("%d" % int(e.count), Vector2(rect.position.x, rect.end.y - _px(3)), 11, CREAM, true, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - _px(3))
@@ -609,6 +644,8 @@ func _entry_info(e: Dictionary) -> Dictionary:
 	match String(e.kind):
 		"potion":
 			return {"name": "Poção de vida" if e.id == "hp" else "Poção de mana"}
+		"gold":
+			return {"name": "%d moedas de ouro" % int(e.count)}
 		"quest":
 			return {"name": adventure.quests.item_name(String(e.id))}
 	return adventure.inventory.item(String(e.id))
@@ -731,6 +768,10 @@ func _item_icon(rect: Rect2, it: Dictionary, a: float) -> void:
 
 ## Mouse do painel I: arrastar item até um slot, duplo clique veste/bebe. true = consumiu.
 func bag_mouse(event: InputEvent) -> bool:
+	if panel == "shop":
+		return _shop_mouse(event)
+	if panel == "trade":
+		return _trade_mouse(event)
 	if panel != "bag":
 		return false
 	if event is InputEventMouseMotion:
@@ -741,9 +782,24 @@ func bag_mouse(event: InputEvent) -> bool:
 		return false
 	var mb := event as InputEventMouseButton
 	if mb.pressed:
+		var slot_hit := _slot_at(mb.position)
+		if not slot_hit.is_empty():
+			# boneco: duplo clique tira; arrastar até a grade também
+			if adventure.inventory.equipped.has(slot_hit):
+				if mb.double_click:
+					_drag_id = ""
+					_drag_slot = ""
+					_drag_live = false
+					unequip_slot(slot_hit)
+				else:
+					_drag_id = String(adventure.inventory.equipped[slot_hit])
+					_drag_slot = slot_hit
+					_drag_press = mb.position
+					_drag_live = false
+			return true
 		var cell := _cell_at(mb.position)
 		if cell.is_empty():
-			return true   # clique dentro do painel não ataca
+			return _bag_rect.has_point(mb.position)   # clique dentro do painel não ataca
 		if mb.double_click:
 			_drag_id = ""
 			_drag_live = false
@@ -751,21 +807,73 @@ func bag_mouse(event: InputEvent) -> bool:
 			return true
 		if cell.kind == "item":
 			_drag_id = String(cell.id)
+			_drag_slot = ""
 			_drag_press = mb.position
 			_drag_live = false
 		return true
 	# soltou
 	var id := _drag_id
+	var from := _drag_slot
 	var live := _drag_live
 	_drag_id = ""
+	_drag_slot = ""
 	_drag_live = false
 	if id.is_empty() or not live:
+		return true
+	if not from.is_empty():
+		if _grid_rect.grow(_px(6)).has_point(mb.position):
+			unequip_slot(from)
 		return true
 	for slot: String in _doll_rects:
 		if (_doll_rects[slot] as Rect2).has_point(mb.position):
 			drop_on_slot(id, slot)
-			break
+			return true
+	if not _bag_rect.has_point(mb.position):
+		drop_outside(id, mb.position)   # fora da bolsa: chão ou outro jogador (online)
 	return true
+
+
+func _slot_at(p: Vector2) -> String:
+	for slot: String in _doll_rects:
+		if (_doll_rects[slot] as Rect2).has_point(p):
+			return slot
+	return ""
+
+
+## Desequipar (duplo clique ou arrastar o slot até a grade). Bolsa cheia: o slot treme em
+## vermelho. Online espera o servidor (o slot pulsa).
+func unequip_slot(slot: String) -> bool:
+	var err: String = adventure.unequip_item(slot)
+	if err != "":
+		_reject_fx[slot] = 0.5
+		return false
+	if adventure.online != null:
+		pending_unequip = slot
+	else:
+		unequip_done(slot)
+	return true
+
+
+func unequip_done(slot := "") -> void:
+	if slot.is_empty():
+		slot = pending_unequip
+	pending_unequip = ""
+	if not slot.is_empty():
+		_accept_fx[slot] = 0.5
+	_stat_fx = 0.6
+
+
+func unequip_refused() -> void:
+	if not pending_unequip.is_empty():
+		_reject_fx[pending_unequip] = 0.5
+	pending_unequip = ""
+
+
+## Item arrastado para fora da bolsa. Online: sobre outro jogador pede troca (com o item já
+## oferecido); no chão, larga. Offline não há para onde ir: o item treme e volta.
+func drop_outside(id: String, at: Vector2) -> void:
+	if adventure.online == null or not adventure.drop_item(id, at):
+		_reject_fx[id] = 0.5
 
 
 func _cell_at(p: Vector2) -> Dictionary:
@@ -822,6 +930,276 @@ func equip_done(slot := "") -> void:
 	if not slot.is_empty():
 		_accept_fx[slot] = 0.5
 	_stat_fx = 0.6
+
+
+## Moedas de ouro empilhadas (estilo Tibia).
+func _coin_icon(rect: Rect2, a: float, small := false) -> void:
+	var c := rect.get_center()
+	var k := rect.size.x / 42.0 * (2.2 if small else 1.0)
+	var offs: Array = [Vector2(-5, 5), Vector2(4, 4), Vector2(-1, -2)] if not small else [Vector2(0, 0)]
+	for o: Vector2 in offs:
+		var p := c + o * k
+		draw_circle(p, 6.5 * k, Color(0.55, 0.38, 0.1, a))
+		draw_circle(p + Vector2(-0.6, -0.8) * k, 5.6 * k, Color(1.0, 0.8, 0.28, a))
+		draw_circle(p + Vector2(-0.6, -0.8) * k, 3.4 * k, Color(0.92, 0.66, 0.18, a))
+		draw_circle(p + Vector2(-2.2, -2.6) * k, 1.3 * k, Color(1, 1, 0.85, 0.8 * a))
+
+
+# ------------------------------------------------------------------ troca com a Nessa (estilo Tibia)
+## Abre ao falar com a Nessa (fora dos momentos da missão). À esquerda o que ela vende, à
+## direita o que ela compra da bolsa (com o preço); duplo clique compra/vende um. Recusa (sem
+## ouro, longe) = a célula treme em vermelho; aceite = brilho dourado e o ouro acende.
+
+## Células do último quadro: {rect, kind: buy|sell, id}.
+var _shop_cells: Array[Dictionary] = []
+var _shop_last := ""
+
+
+func open_shop() -> void:
+	panel = "shop"
+
+
+func _shop_panel() -> void:
+	var inv = adventure.inventory
+	var shop: Dictionary = adventure.shop
+	var cell := _px(42)
+	var gap := _px(5)
+	var cols := 5
+	var sell_rows := maxi(2, ceili(float(inv.items.size()) / cols))
+	# um pouco abaixo do centro: a Nessa (e a fala sobre a cabeça dela) continua visível
+	var r := _panel_rect(22 + 150 + 30 + (cols * 42 + (cols - 1) * 5) + 22, 66 + 18 + sell_rows * 47 + 46, 95)
+	var y := _title(r, "NESSA", "E") - _px(10)
+	var mouse := get_local_mouse_position()
+	_shop_cells.clear()
+	var hover := {}
+	var lx := r.position.x + _px(22)
+	_text("Comprar", Vector2(lx, y), 11, MUTED, true)
+	var ry := y + _px(10)
+	for kind: String in Economy.POTIONS:
+		var price := Economy.buy_price(shop, kind)
+		if price < 0:
+			continue
+		var rect := Rect2(lx, ry, cell, cell)
+		rect.position.x += _shake("buy:" + kind)
+		draw_rect(rect, Color(0.03, 0.035, 0.05, 0.85))
+		draw_rect(rect, Color(BRASS_DIM, 0.45), false, 1.0)
+		_slot_potion(rect, kind, 1.0)
+		_fx_border(rect, "buy:" + kind)
+		var row := Rect2(rect.position, Vector2(_px(150), cell))
+		_text("Poção de vida" if kind == "hp" else "Poção de mana", Vector2(rect.end.x + _px(8), ry + _px(17)), 11, CREAM)
+		var afford: bool = int(adventure.gold) >= price
+		_coin_icon(Rect2(Vector2(rect.end.x + _px(6), ry + _px(22)), Vector2(_px(18), _px(18))), 1.0, true)
+		_text("%d" % price, Vector2(rect.end.x + _px(26), ry + _px(36)), 11, GOLD if afford else Color(MUTED, 0.8), true)
+		_shop_cells.append({"rect": row, "kind": "buy", "id": kind})
+		if row.has_point(mouse):
+			draw_rect(row.grow(_px(1)), Color(GOLD, 0.25), false, 1.0)
+		ry += cell + gap
+	# --- vender: a bolsa (só o que não está vestido) com o preço de cada um
+	var sx := lx + _px(150 + 30)
+	_text("Vender", Vector2(sx, y), 11, MUTED, true)
+	var gy := y + _px(10)
+	for i in sell_rows * cols:
+		var rect := Rect2(sx + (i % cols) * (cell + gap), gy + (i / cols) * (cell + gap), cell, cell)
+		draw_rect(rect, Color(0.03, 0.035, 0.05, 0.85))
+		draw_rect(rect, Color(BRASS_DIM, 0.45), false, 1.0)
+		if i >= inv.items.size():
+			continue
+		var id := String(inv.items[i])
+		rect.position.x += _shake("sell:" + id)
+		var it: Dictionary = inv.item(id)
+		_item_icon(rect, it, 1.0)
+		draw_rect(rect.grow(-1.0), Color(_rarity_color(it), 0.6), false, 1.0)
+		_text("%d" % Economy.sell_price(shop, id, it), Vector2(rect.position.x, rect.end.y - _px(3)), 10, GOLD, true, HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - _px(3))
+		_fx_border(rect, "sell:" + id)
+		_shop_cells.append({"rect": rect, "kind": "sell", "id": id})
+		if rect.has_point(mouse):
+			hover = it
+	# --- ouro do jogador no pé
+	var fy := r.end.y - _px(34)
+	draw_line(Vector2(lx, fy - _px(6)), Vector2(r.end.x - _px(22), fy - _px(6)), BRASS_DIM, 1.0)
+	_coin_icon(Rect2(Vector2(lx, fy), Vector2(_px(26), _px(26))), 1.0)
+	_text("%d" % int(adventure.gold), Vector2(lx + _px(32), fy + _px(18)), 13, CREAM.lerp(GOLD, clampf(_gold_fx / 0.4, 0, 1)), true)
+	if not hover.is_empty():
+		_tooltip(mouse, hover)
+
+
+func _shop_mouse(event: InputEvent) -> bool:
+	if not (event is InputEventMouseButton) or (event as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT:
+		return false
+	var mb := event as InputEventMouseButton
+	if not mb.pressed:
+		return true
+	for c: Dictionary in _shop_cells:
+		if (c.rect as Rect2).has_point(mb.position):
+			if mb.double_click:
+				if String(c.kind) == "buy":
+					shop_buy(String(c.id))
+				else:
+					shop_sell(String(c.id))
+			return true
+	return true
+
+
+## Compra uma poção (duplo clique). true = feito/pedido.
+func shop_buy(kind: String) -> bool:
+	_shop_last = "buy:" + kind
+	if adventure.buy_potion(kind) != "":
+		_reject_fx[_shop_last] = 0.5
+		return false
+	if adventure.online == null:
+		shop_done()
+	return true
+
+
+## Vende um item da bolsa (duplo clique). true = feito/pedido.
+func shop_sell(id: String) -> bool:
+	_shop_last = "sell:" + id
+	if adventure.sell_item(id) != "":
+		_reject_fx[_shop_last] = 0.5
+		return false
+	if adventure.online == null:
+		shop_done()
+	return true
+
+
+func shop_done() -> void:
+	if _shop_last.begins_with("buy:"):
+		_accept_fx[_shop_last] = 0.5
+	_gold_fx = 0.6
+
+
+func shop_refused() -> void:
+	if not _shop_last.is_empty():
+		_reject_fx[_shop_last] = 0.5
+
+
+# ------------------------------------------------------------------ troca entre jogadores (online)
+## Abre para os dois quando um arrasta um item da bolsa até o outro. Em cima: a sua oferta e a
+## do outro (moldura verde = confirmou). Embaixo: a sua bolsa; duplo clique põe/tira da oferta.
+## Botões só com ícone: ✓ confirma, ✕ cancela. Mudar a oferta desfaz as confirmações.
+
+## {with, name, mine, theirs, my_ok, their_ok} vindo do servidor; {} = sem troca.
+var trade: Dictionary = {}
+var _trade_cells: Array[Dictionary] = []
+var _trade_ok_rect := Rect2()
+var _trade_x_rect := Rect2()
+
+
+func _offer_box(at: Vector2, title: String, items: Array, ok: bool, mine: bool, cell: float, gap: float) -> void:
+	var box := Rect2(at, Vector2(cell * 3 + gap * 2 + _px(12), cell * 2 + gap + _px(30)))
+	draw_rect(box, Color(0.02, 0.025, 0.035, 0.7))
+	draw_rect(box, Color(0.35, 0.85, 0.4, 0.95) if ok else BRASS_DIM, false, _px(2) if ok else 1.0)
+	_text(title, box.position + Vector2(_px(6), _px(15)), 11, Color(0.6, 1.0, 0.6) if ok else CREAM, true)
+	for i in 6:
+		var rect := Rect2(box.position + Vector2(_px(6) + (i % 3) * (cell + gap), _px(22) + (i / 3) * (cell + gap)), Vector2(cell, cell))
+		draw_rect(rect, Color(0.03, 0.035, 0.05, 0.85))
+		draw_rect(rect, Color(BRASS_DIM, 0.45), false, 1.0)
+		if i < items.size():
+			var it: Dictionary = adventure.inventory.item(String(items[i]))
+			_item_icon(rect, it, 1.0)
+			draw_rect(rect.grow(-1.0), Color(_rarity_color(it), 0.6), false, 1.0)
+			_trade_cells.append({"rect": rect, "kind": "mine" if mine else "theirs", "id": String(items[i])})
+
+
+func _trade_panel() -> void:
+	var cell := _px(40)
+	var gap := _px(5)
+	var r := _panel_rect(22 + 2 * (3 * 40 + 2 * 5 + 12) + 20 + 22, 66 + 2 * 40 + 5 + 30 + 20 + 3 * 45 + 50)
+	var y := _title(r, "TROCA", "Esc") - _px(18)
+	var mouse := get_local_mouse_position()
+	_trade_cells.clear()
+	var x := r.position.x + _px(22)
+	var mine: Array = trade.get("mine", [])
+	var theirs: Array = trade.get("theirs", [])
+	_offer_box(Vector2(x, y), "Você", mine, bool(trade.get("my_ok", false)), true, cell, gap)
+	var bw := cell * 3 + gap * 2 + _px(12)
+	_offer_box(Vector2(x + bw + _px(20), y), String(trade.get("name", "")), theirs, bool(trade.get("their_ok", false)), false, cell, gap)
+	# --- a sua bolsa (menos o que já está na oferta)
+	var gy := y + cell * 2 + gap + _px(30) + _px(20)
+	var left: Array = (adventure.inventory.items as Array).duplicate()
+	for id: Variant in mine:
+		left.erase(id)
+	var cols := 6
+	for i in 3 * cols:
+		var rect := Rect2(x + (i % cols) * (cell + gap), gy + (i / cols) * (cell + gap), cell, cell)
+		draw_rect(rect, Color(0.03, 0.035, 0.05, 0.85))
+		draw_rect(rect, Color(BRASS_DIM, 0.45), false, 1.0)
+		if i >= left.size():
+			continue
+		var id := String(left[i])
+		var it: Dictionary = adventure.inventory.item(id)
+		rect.position.x += _shake("trade:" + id)
+		_item_icon(rect, it, 1.0)
+		draw_rect(rect.grow(-1.0), Color(_rarity_color(it), 0.6), false, 1.0)
+		_fx_border(rect, "trade:" + id)
+		_trade_cells.append({"rect": rect, "kind": "bag", "id": id})
+	# --- botões (só ícones)
+	var by := r.end.y - _px(46)
+	_trade_ok_rect = Rect2(r.end.x - _px(22) - cell * 2 - gap, by, cell, cell)
+	_trade_x_rect = Rect2(r.end.x - _px(22) - cell, by, cell, cell)
+	var ok_on := bool(trade.get("my_ok", false))
+	_frame(_trade_ok_rect, Color(0.08, 0.2, 0.1, 0.95) if ok_on else Color(0.05, 0.055, 0.075, 0.9))
+	var c := _trade_ok_rect.get_center()
+	var k := cell / 42.0
+	draw_polyline(PackedVector2Array([c + Vector2(-9, 0) * k, c + Vector2(-3, 7) * k, c + Vector2(10, -8) * k]), Color(0.4, 0.95, 0.45), 3.5 * k)
+	_frame(_trade_x_rect)
+	c = _trade_x_rect.get_center()
+	draw_line(c + Vector2(-8, -8) * k, c + Vector2(8, 8) * k, REJECT, 3.5 * k)
+	draw_line(c + Vector2(8, -8) * k, c + Vector2(-8, 8) * k, REJECT, 3.5 * k)
+	for b: Rect2 in [_trade_ok_rect, _trade_x_rect]:
+		if b.has_point(mouse):
+			draw_rect(b.grow(_px(1)), Color(GOLD, 0.5), false, 1.0)
+	for tc: Dictionary in _trade_cells:
+		if (tc.rect as Rect2).has_point(mouse):
+			_tooltip(mouse, adventure.inventory.item(String(tc.id)))
+			break
+
+
+func _trade_mouse(event: InputEvent) -> bool:
+	if not (event is InputEventMouseButton) or (event as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT:
+		return false
+	var mb := event as InputEventMouseButton
+	if not mb.pressed or adventure.online == null:
+		return true
+	if _trade_ok_rect.has_point(mb.position):
+		adventure.online.trade_ok()
+		return true
+	if _trade_x_rect.has_point(mb.position):
+		adventure.online.trade_cancel()
+		trade = {}
+		panel = ""
+		return true
+	if not mb.double_click:
+		return true
+	for tc: Dictionary in _trade_cells:
+		if (tc.rect as Rect2).has_point(mb.position):
+			match String(tc.kind):
+				"bag":
+					if (trade.get("mine", []) as Array).size() >= int(adventure.shop.get("trade_max_items", 6)):
+						_reject_fx["trade:" + String(tc.id)] = 0.5
+					else:
+						adventure.online.trade_add(String(tc.id))
+				"mine":
+					adventure.online.trade_remove(String(tc.id))
+			break
+	return true
+
+
+## Estado da troca vindo do servidor (net_play): abre/atualiza/fecha o painel.
+func trade_state(ev: Dictionary) -> void:
+	match String(ev.get("op", "")):
+		"open", "state":
+			trade = ev.duplicate()
+			panel = "trade"
+		"done":
+			trade = {}
+			if panel == "trade":
+				panel = "bag"   # a bolsa abre mostrando o que chegou
+			_stat_fx = 0.6
+		"close":
+			trade = {}
+			if panel == "trade":
+				panel = ""
 
 
 

@@ -13,6 +13,7 @@ const BUBBLE_TIME := 10.0
 const ItemInventory := preload("res://src/core/inventory.gd")
 const Quests := preload("res://prototypes/pixel3d/quests.gd")
 const NetPlay := preload("res://prototypes/pixel3d/net/net_play.gd")
+const Economy := preload("res://prototypes/pixel3d/economy.gd")
 ## Atributos do equipamento que mexem no jogo (diferença para o equipamento inicial).
 const POWER_STATS := ["attack_power", "spell_power"]
 ## Cada ponto de armadura do equipamento reduz 2 % do dano recebido (teto ARMOR_CAP).
@@ -36,6 +37,10 @@ var hp := 60.0
 var mana := 40.0
 ## Poções na bolsa (contagem).
 var potions := {"hp": 0, "mana": 0}
+## Moedas de ouro (caem de monstros, missões, venda à Nessa). Online vêm do servidor.
+var gold := 0
+## data/shop.json (economy.gd).
+var shop: Dictionary = {}
 var _potion_cd := 0.0
 var in_cave := false
 var ring_cd := 0.0
@@ -104,11 +109,14 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	if state.has_reward():
 		_equip_reward()
 	potions = {"hp": int(config.potion.start_hp), "mana": int(config.potion.start_mana)}
+	shop = Economy.load_data()
 	quests = Quests.new(Quests.load_data())
 	quests.restore(state.content)
 	_restore_content(state.content)
 	if args.has("give"):  # prints/testes: --give=id,id (itens extras na bolsa, de qualquer vocação)
 		inventory.give(Array(String(args.give).split(",")))
+	if args.has("gold"):  # prints/testes: --gold=N moedas na bolsa
+		gold = maxi(0, int(args.gold))
 	if args.has("equip"):  # prints: --equip=id,id veste da bolsa (com --give)
 		for id: String in String(args.equip).split(","):
 			inventory.equip(id)
@@ -190,13 +198,15 @@ func _refresh_stats() -> void:
 
 ## Bolsa e poções do save (equipamento ganho em missões/segredos volta vestido).
 func _restore_content(content: Dictionary) -> void:
-	inventory.give(quests.owned)
-	var eq: Variant = content.get("equipped", {})
-	if eq is Dictionary:
-		for slot: String in eq:
-			var id := String(eq[slot])
-			if id in inventory.items:
-				inventory.equip(id)
+	gold = maxi(0, int(content.get("gold", 0)))
+	if not Economy.restore_bag(inventory, content):   # save antigo: refaz pela regra das recompensas
+		inventory.give(quests.owned)
+		var eq: Variant = content.get("equipped", {})
+		if eq is Dictionary:
+			for slot: String in eq:
+				var id := String(eq[slot])
+				if id in inventory.items:
+					inventory.equip(id)
 	var saved: Variant = content.get("potions", {})
 	if saved is Dictionary and not (saved as Dictionary).is_empty():
 		potions = {"hp": maxi(0, int(saved.get("hp", 0))), "mana": maxi(0, int(saved.get("mana", 0)))}
@@ -311,6 +321,8 @@ func content_snapshot() -> Dictionary:
 	var out: Dictionary = quests.snapshot()
 	out["potions"] = potions.duplicate()
 	out["equipped"] = inventory.equipped.duplicate()
+	out["bag"] = inventory.items.duplicate()
+	out["gold"] = gold
 	return out
 
 func say(text: String, seconds := 5.0) -> void:
@@ -343,6 +355,92 @@ func equip_item(id: String) -> String:
 	return ""
 
 
+## Tirar o item do slot para a bolsa (painel I). "" = feito/pedido; "slot" vazio; "full" bolsa
+## cheia. Offline recalcula os bônus na hora; online pede ao servidor ({act: "unequip"}).
+func unequip_item(slot: String) -> String:
+	var id := String(inventory.equipped.get(slot, ""))
+	if id.is_empty():
+		return "slot"
+	if inventory.items.size() >= inventory.capacity():
+		return "full"
+	if online != null:
+		online.unequip(slot)
+		return ""
+	inventory.unequip(slot)
+	_refresh_stats()
+	demo.apply_gear_look()
+	chat.post("Servidor", "Você desequipou: %s." % String(inventory.item(id).get("name", id)))
+	_save()
+	return ""
+
+
+# ------------------------------------------------------------------ ouro e troca com a Nessa
+
+## Moedas ganhas (abate/missão/venda): número dourado subindo e linha no Servidor.
+func gain_gold(amount: int, at: Vector3, total := -1) -> void:
+	gold = total if total >= 0 else gold + amount
+	if amount <= 0:
+		return
+	floating("%d" % amount, at + Vector3(0.35, 1.25, 0), Color(1.0, 0.82, 0.3))
+	chat.post("Servidor", "Você encontrou %d moedas de ouro." % amount, Color(1.0, 0.82, 0.38))
+
+
+## A comerciante (Nessa) está perto o bastante para trocar?
+func near_merchant() -> bool:
+	return not in_cave and demo._player.global_position.distance_to(World.NPC) <= Economy.merchant_radius(shop) + 0.2
+
+
+## Comprar uma poção. "" = feito/pedido; senão o motivo (range, gold, kind).
+func buy_potion(kind: String) -> String:
+	var price := Economy.buy_price(shop, kind)
+	if price < 0:
+		return "kind"
+	if not near_merchant():
+		return "range"
+	if gold < price:
+		return "gold"
+	if online != null:
+		online.buy(kind)
+		return ""
+	gold -= price
+	potions[kind] = int(potions.get(kind, 0)) + 1
+	_save()
+	return ""
+
+
+## Vender um item da bolsa (não vestido). "" = feito/pedido; senão o motivo (range, item).
+func sell_item(id: String) -> String:
+	if not (id in inventory.items):
+		return "item"
+	var price := Economy.sell_price(shop, id, inventory.item(id))
+	if price <= 0:
+		return "item"
+	if not near_merchant():
+		return "range"
+	if online != null:
+		online.sell(id)
+		return ""
+	inventory.items.erase(id)
+	gold += price
+	chat.post("Servidor", "Você vendeu %s por %d moedas de ouro." % [String(inventory.item(id).get("name", id)), price])
+	_save()
+	return ""
+
+
+## Online: item arrastado para fora da bolsa. Sobre outro jogador perto → pede troca já com o
+## item na oferta; senão larga no chão. false = não deu (offline, item vestido).
+func drop_item(id: String, screen_pos: Vector2) -> bool:
+	if online == null or not (id in inventory.items):
+		return false
+	var at: Vector3 = demo._mouse_ground()
+	var who: int = online.player_near(at, 1.3)
+	if who > 0 and demo._player.global_position.distance_to(online.ground_pos_of_player(who)) <= float(shop.get("trade_radius_m", 3.0)) + 0.5:
+		online.trade_ask(who, id)
+		return true
+	online.drop(id)
+	return true
+
+
 func _equip_reward() -> void:
 	var id := String(config.reward_item)
 	if inventory.equipped.get("neck", "") != id:
@@ -366,6 +464,7 @@ func on_enemy_killed(id: String, kind: String, cave: bool, at: Vector3) -> void:
 	# Como no Tibia: número branco de XP subindo de onde o monstro morreu.
 	floating("%d" % xp_gain, at + Vector3(0, 1.6, 0), Color(1, 1, 1))
 	chat.post("Servidor", "Você derrotou %s. Ganhou %d de experiência." % [String(cfg.name), xp_gain])
+	gain_gold(Economy.gold_drop(shop, kind, int(actor.get("level", 1))), at)
 	_quest_events(quests.on_kill(kind, String(actor.get("hunt", ""))), at)
 	_level_feedback(old_level)
 	_save()
@@ -497,6 +596,11 @@ var prompt_at := Vector3.INF
 func prompt() -> String:
 	var p: Vector3 = demo._player.global_position
 	prompt_at = Vector3.INF
+	if online != null:
+		var gid: int = online.ground_near(p)
+		if gid > 0:
+			prompt_at = online.ground_pos(gid) + Vector3(0, 1.45, 0)
+			return "E — pegar"
 	if not in_cave:
 		if p.distance_to(World.NPC) < 2.8:
 			prompt_at = World.NPC + Vector3(0, 3.5, 0)
@@ -654,6 +758,9 @@ func _apply_reward(reward: Dictionary, title: String, sub := "") -> void:
 	for k: String in pots:
 		potions[k] = int(potions.get(k, 0)) + int(pots[k])
 		chat.post("Servidor", "Você recebeu %d poções de %s." % [int(pots[k]), "vida" if k == "hp" else "mana"], Color(1.0, 0.82, 0.38))
+	if int(reward.get("gold", 0)) > 0:
+		gold += int(reward.gold)
+		chat.post("Servidor", "Você recebeu %d moedas de ouro." % int(reward.gold), Color(1.0, 0.82, 0.38))
 	var old_level: int = state.level
 	if int(reward.get("xp", 0)) > 0:
 		gain_xp(int(reward.xp))
@@ -696,6 +803,10 @@ func _talk_content(id: String) -> void:
 ## confere a distância e responde com o resultado (net_play._on_content).
 func interact_target() -> String:
 	var p: Vector3 = demo._player.global_position
+	if online != null:
+		var gid: int = online.ground_near(p)
+		if gid > 0:
+			return "ground:%d" % gid
 	if not in_cave:
 		for id: String in world.npcs:
 			if p.distance_to(world.npcs[id].pos) < 2.8:
@@ -716,6 +827,9 @@ func interact_target() -> String:
 
 
 func interact() -> void:
+	if hud.panel == "shop":   # E de novo fecha a troca com a Nessa
+		hud.panel = ""
+		return
 	if online != null:
 		online.interact(interact_target())
 		return
@@ -744,8 +858,10 @@ func interact() -> void:
 				chat.post("Servidor", "Missão concluída: As Três Brasas.", Color(1.0, 0.82, 0.38))
 			elif state.stage == "complete":
 				npc_talk(NESSA_AFTER.pick_random())
+				hud.open_shop()
 			else:
 				npc_talk(NESSA_WAITING.pick_random())
+				hud.open_shop()
 			_save()
 		return
 	if p.distance_to(World.CHEST) < 2.2:
@@ -871,6 +987,8 @@ func update(delta: float, t: float) -> void:
 			_talk_time = 0.0
 			_speech().text = ""
 	_update_content()
+	if hud.panel == "shop" and (in_cave or demo._player.global_position.distance_to(World.NPC) > Economy.merchant_radius(shop) + 1.5):
+		hud.panel = ""   # afastou da Nessa: a troca fecha (como no Tibia)
 	_invulnerable = maxf(0, _invulnerable - delta)
 	_hurt_time += delta
 	if online != null:

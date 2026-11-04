@@ -13,6 +13,7 @@ extends RefCounted
 
 const Quests := preload("res://prototypes/pixel3d/quests.gd")
 const ItemInventory := preload("res://src/core/inventory.gd")
+const Economy := preload("res://prototypes/pixel3d/economy.gd")
 const ITEMS_PATH := "res://assets/data/items.json"
 const REGIONS_PATH := "res://prototypes/pixel3d/data/world_regions.json"
 ## Iguais a pixel3d_adventure.gd (POWER_STATS, ARMOR_PER_POINT, ARMOR_CAP, raios de interação).
@@ -26,6 +27,8 @@ const EMPTY_QUESTS := {"quests": [], "npcs": {}, "items": {}, "secrets": {}}
 
 var quest_data: Dictionary
 var item_db: Dictionary
+## data/shop.json: ouro por abate, preços da comerciante (economy.gd).
+var shop: Dictionary
 var classes: Dictionary
 var tuning: Dictionary
 var combat: RefCounted
@@ -39,7 +42,7 @@ var chest := Vector3(-33, -8, -56.2)
 
 ## quests.json, items.json e world_regions.json (o mundo injeta; os testes também podem).
 static func load_data() -> Dictionary:
-	return {"quests": _json(Quests.PATH), "items": _json(ITEMS_PATH), "regions": _json(REGIONS_PATH)}
+	return {"quests": _json(Quests.PATH), "items": _json(ITEMS_PATH), "regions": _json(REGIONS_PATH), "shop": _json(Economy.PATH)}
 
 
 static func _json(path: String) -> Dictionary:
@@ -53,6 +56,7 @@ func _init(data: Dictionary, classes_data: Dictionary, adventure_tuning: Diction
 	var qd: Dictionary = data.get("quests", {})
 	quest_data = qd if qd.has("quests") else EMPTY_QUESTS.duplicate(true)
 	item_db = data.get("items", {})
+	shop = data.get("shop", {}) if data.has("shop") else Economy.load_data()
 	classes = classes_data.get("classes", {})
 	tuning = adventure_tuning
 	combat = combat_rules
@@ -78,15 +82,17 @@ func attach(p: Dictionary) -> void:
 	p.baseline = inv.bonus()
 	p.quests = q
 	p.inv = inv
-	if st.has_reward():
-		_wear(p, String(tuning.get("reward_item", "")))
-	inv.give(q.owned)
-	var eq: Variant = st.content.get("equipped", {})
-	if eq is Dictionary:
-		for slot: Variant in eq:
-			var id := String(eq[slot])
-			if id in inv.items:
-				inv.equip(id)
+	p.gold = maxi(0, int(st.content.get("gold", 0)))
+	if not Economy.restore_bag(inv, st.content):   # save antigo: refaz a bolsa pelas recompensas
+		if st.has_reward():
+			_wear(p, String(tuning.get("reward_item", "")))
+		inv.give(q.owned)
+		var eq: Variant = st.content.get("equipped", {})
+		if eq is Dictionary:
+			for slot: Variant in eq:
+				var id := String(eq[slot])
+				if id in inv.items:
+					inv.equip(id)
 	refresh(p)
 	save(p)
 
@@ -120,6 +126,8 @@ func save(p: Dictionary) -> void:
 		return
 	var out: Dictionary = (p.quests as RefCounted).snapshot()
 	out["equipped"] = ((p.inv as RefCounted).equipped as Dictionary).duplicate()
+	out["bag"] = ((p.inv as RefCounted).items as Array).duplicate()
+	out["gold"] = int(p.get("gold", 0))
 	if p.has("potions"):
 		out["potions"] = (p.potions as Dictionary).duplicate()
 	(p.state as RefCounted).content = out
@@ -130,7 +138,8 @@ func client_state(p: Dictionary) -> Dictionary:
 	var st: RefCounted = p.state
 	return {"quests": (p.quests as RefCounted).snapshot(), "bag": ((p.inv as RefCounted).items as Array).duplicate(),
 		"equipped": ((p.inv as RefCounted).equipped as Dictionary).duplicate(), "stage": String(st.stage),
-		"lit": (st.lit as Array).duplicate(), "guardians": (st.cave_kills as Dictionary).keys()}
+		"lit": (st.lit as Array).duplicate(), "guardians": (st.cave_kills as Dictionary).keys(),
+		"gold": int(p.get("gold", 0))}
 
 
 # ------------------------------------------------------------------ recompensas
@@ -171,7 +180,11 @@ func reward(p: Dictionary, r: Dictionary) -> Dictionary:
 	var st: RefCounted = p.state
 	var q: RefCounted = p.quests
 	var inv: RefCounted = p.inv
-	var out := {"xp": 0, "item": "", "item_name": "", "gains": [], "potions": {}, "perm": {}, "level_from": int(st.level), "level_to": int(st.level)}
+	var out := {"xp": 0, "gold": 0, "item": "", "item_name": "", "gains": [], "potions": {}, "perm": {}, "level_from": int(st.level), "level_to": int(st.level)}
+	var gold := maxi(0, int(r.get("gold", 0)))
+	if gold > 0:
+		p.gold = int(p.get("gold", 0)) + gold
+		out.gold = gold
 	var items: Dictionary = r.get("items", {})
 	var item_id := String(items.get(String(p.vocation), ""))
 	if not item_id.is_empty() and not (inv.item(item_id) as Dictionary).is_empty():
@@ -286,7 +299,8 @@ func interact(p: Dictionary, target: String) -> Dictionary:
 				res = "finish"
 			elif String(st.stage) == "complete":
 				res = "after"
-			return _ok(p, {"what": "nessa", "result": res})
+			# fora dos momentos da missão, a Nessa também abre a troca (comerciante do acampamento)
+			return _ok(p, {"what": "nessa", "result": res, "shop": res in ["after", "waiting"] and Economy.merchant(shop) == "nessa"})
 		"chest":
 			if fl != -1:
 				return _no("floor")
@@ -335,3 +349,72 @@ func equip(p: Dictionary, id: String) -> Dictionary:
 	refresh(p)
 	var it: Dictionary = (p.inv as RefCounted).item(id)
 	return _ok(p, {"what": "equip", "item": id, "item_name": String(it.get("name", id)), "gains": gains(before, _stats(p))})
+
+
+## Tirar o item do slot e devolver à bolsa. Recusas: "slot" (vazio/desconhecido), "full".
+func unequip(p: Dictionary, slot: String) -> Dictionary:
+	if not p.has("inv"):
+		return _no("slot")
+	var inv: RefCounted = p.inv
+	var id := String(inv.equipped.get(slot, ""))
+	if id.is_empty():
+		return _no("slot")
+	if (inv.items as Array).size() >= int(inv.capacity()):
+		return _no("full")
+	var before := _stats(p)
+	inv.unequip(slot)
+	refresh(p)
+	return _ok(p, {"what": "unequip", "slot": slot, "item": id, "item_name": String(inv.item(id).get("name", id)), "gains": gains(before, _stats(p))})
+
+
+# ------------------------------------------------------------------ ouro e comércio
+
+## Moedas de um abate do servidor (somadas ao jogador). Devolve quantas.
+func kill_gold(p: Dictionary, kind: String, level: int) -> int:
+	var g := Economy.gold_drop(shop, kind, level)
+	if g > 0:
+		p.gold = int(p.get("gold", 0)) + g
+	return g
+
+
+## A comerciante está perto o bastante (posição do servidor, superfície)? "" = sim.
+func _near_merchant(p: Dictionary) -> String:
+	if int(p.get("floor", 0)) != 0:
+		return "floor"
+	var me: Vector3 = p.ms.pos
+	if Vector2(me.x, me.z).distance_to(Vector2(nessa.x, nessa.z)) > Economy.merchant_radius(shop) + tolerance:
+		return "range"
+	return ""
+
+
+## Comprar uma poção da comerciante. Recusas: kind, range, floor, gold.
+func buy(p: Dictionary, kind: String) -> Dictionary:
+	var price := Economy.buy_price(shop, kind)
+	if price < 0 or not p.has("potions"):
+		return _no("kind")
+	var near := _near_merchant(p)
+	if near != "":
+		return _no(near)
+	if int(p.get("gold", 0)) < price:
+		return _no("gold")
+	p.gold = int(p.gold) - price
+	p.potions[kind] = int(p.potions.get(kind, 0)) + 1
+	return _ok(p, {"what": "buy", "kind": kind, "price": price})
+
+
+## Vender um item da bolsa (não vestido). Recusas: item, range, floor.
+func sell(p: Dictionary, id: String) -> Dictionary:
+	if not p.has("inv"):
+		return _no("item")
+	var inv: RefCounted = p.inv
+	if not (id in inv.items):
+		return _no("item")
+	var price := Economy.sell_price(shop, id, inv.item(id))
+	if price <= 0:
+		return _no("item")
+	var near := _near_merchant(p)
+	if near != "":
+		return _no(near)
+	(inv.items as Array).erase(id)
+	p.gold = int(p.get("gold", 0)) + price
+	return _ok(p, {"what": "sell", "item": id, "item_name": String(inv.item(id).get("name", id)), "price": price})

@@ -1,0 +1,33 @@
+{
+  "_doc": "Ouro e comércio (economy.gd). gold_drop: moedas por abate = kinds[tipo] (ou base) + per_level × (nível da caçada − 1). Missões dão ouro em reward.gold (quests.json). merchant: NPC que abre a troca ao interagir (raio radius_m). buy: preço de cada poção. sell: preço pago por item da bolsa (não vestido), pela raridade de items.json (sem raridade = basic); sell_items sobrescreve por id. ground_item_s: tempo de um item largado no chão (online). trade_*: troca direta entre jogadores (online).",
+  "gold_drop": {
+    "base": 2,
+    "per_level": 2,
+    "kinds": {
+      "frog": 1,
+      "spider": 2,
+      "wolf": 3,
+      "wolf_elite": 30
+    }
+  },
+  "merchant": {
+    "npc": "nessa",
+    "radius_m": 2.8
+  },
+  "buy": {
+    "hp": 10,
+    "mana": 12
+  },
+  "sell": {
+    "basic": 2,
+    "common": 6,
+    "rare": 18,
+    "epic": 40
+  },
+  "sell_items": {},
+  "ground_item_s": 60.0,
+  "ground_take_m": 1.6,
+  "trade_radius_m": 3.0,
+  "trade_break_m": 6.0,
+  "trade_max_items": 6
+}

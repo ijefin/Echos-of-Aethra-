@@ -368,6 +368,7 @@ func _enter_world(id: int, c: Dictionary, key: String, resumed: bool) -> void:
 	if not token.is_empty():
 		welcome["token"] = token
 	welcome["content"] = world.content.client_state(world.players[eid])   # diário, bolsa, Nessa
+	welcome["ground"] = world.trade.ground_list()   # itens largados no chão agora
 	_send_control(id, Protocol.S_WELCOME, welcome)
 	_deliver_friend_events(friends.set_presence(key, true, world.region_of(world.players[eid].ms.pos)))
 	_send_control(id, Protocol.S_FRIENDS, friends.list(key))

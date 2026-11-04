@@ -68,7 +68,25 @@ O código fica em `prototypes/pixel3d/net/`. Esta pasta guarda só os arquivos d
 - **Equipamento (autoritativo):** `{"act": "equip", "item": id}` — o inventário confere bolsa,
   slot e vocação. O servidor calcula o bônus acima do equipamento inicial com a mesma conta do
   cliente: dano (`attack_power` + `spell_power`), armadura (2 % por ponto, teto 80 %), vida e
-  mana máximas (com as relíquias). Sem painel de equipar no cliente ainda: `net_play.equip(id)`.
+  mana máximas (com as relíquias). `{"act": "unequip", "slot": s}` devolve à bolsa (recusas
+  `slot`, `full`). A bolsa (`content.bag`) e o ouro (`content.gold`) são salvos; saves antigos
+  sem bolsa são refeitos pelas recompensas.
+- **Ouro e loja (autoritativos, `data/shop.json` + `economy.gd`):** cada abate do servidor soma
+  moedas pelo tipo e pelo nível da caçada (evento `kill` leva `gold` e `gold_total`); missões e
+  segredos com `reward.gold` também. A Nessa abre a troca (`shop: true` no evento `nessa` fora
+  do aceite/entrega). `{"act": "buy", "kind": "hp"|"mana"}` e `{"act": "sell", "item": id}`
+  conferem andar e distância da Nessa (raio + folga), ouro e se o item está na bolsa (vestido não
+  vende). Recusas: `kind`, `range`, `floor`, `gold`, `item`.
+- **Itens no chão e troca entre jogadores (`net/server_trade.gd`):**
+  - `{"act": "drop", "item": id}` tira da bolsa e deixa o item um passo à frente do corpo por
+    `ground_item_s` (60 s); todos recebem `ground` (`op: add/del`) e o `welcome` traz a lista.
+    `{"act": "take", "gid": n}` pega (mesmo andar, `ground_take_m` + folga, bolsa com espaço).
+    Recusas: `item`, `trade`, `gone`, `floor`, `range`, `full`.
+  - Troca: `trade_ask` (target = eid, perto: `trade_radius_m` + folga) abre para os dois;
+    `trade_add`/`trade_remove` (item da bolsa, até 6) desfazem as confirmações; com os dois
+    `trade_ok` o servidor confere tudo de novo (itens ainda na bolsa, espaço) e troca no mesmo
+    passo. Afastar além de `trade_break_m` (6 m), mudar de andar, morrer, sair ou
+    `trade_cancel` fecham para os dois. Eventos `trade` com `op: open/state/done/close`.
 - **Investida e salto remotos:** o servidor resolve o deslocamento no tick do pedido; o cliente
   desenha o corpo deslizando de `from` até o destino no tempo da habilidade (ease-out,
   `net/dash_motion.gd`), tanto para o próprio jogador quanto para os outros. O Eco do mago
@@ -135,9 +153,12 @@ Sem `--connect`, o jogo roda offline como sempre: nada da rede é criado.
 "$G" --headless --path . -s res://tests/unit/net/vocation_rules_test.gd     # VOCATION_RULES: OK (44)
 "$G" --headless --path . -s res://tests/unit/net/server_content_test.gd     # SERVER_CONTENT: OK (43)
 "$G" --headless --path . -s res://tests/unit/net/dash_motion_test.gd        # DASH_MOTION: OK (9)
+"$G" --headless --path . -s res://tests/unit/net/server_economy_test.gd     # SERVER_ECONOMY: OK (58)
 bash tools/net_unit_tests.sh          # todos os tests/unit/net/*_test.gd de uma vez
-bash tools/net_session_test.sh        # 1 servidor + 5 bots: 66 PASS (~6 min)
-bash tools/net_game_client_test.sh    # servidor + bot + CLIENTE REAL do jogo (--connect): 23 PASS
+bash tools/net_session_test.sh        # 1 servidor + 7 bots: 94 PASS (~6 min)
+bash tools/net_trade_test.sh          # só Tara + Teo: loja, troca concluída, chão, troca cancelada: 28 PASS
+bash tools/net_game_client_test.sh    # servidor + bot + CLIENTE REAL do jogo (--connect): 34 PASS
+bash tools/net_drop_shot.sh           # 2 clientes em janela; item largado pela Ana visto pelo Davi
 bash tools/net_two_clients_shot.sh    # 2 clientes em janela; prints em production/qa/evidence/pixel3d-net-client-*.png
 bash prototypes/pixel3d/tools/run_world_tests.sh test_quests test_world_reach test_vocations test_mage_combat test_floors test_day_night test_core_light test_enemy_ai
 ```
@@ -257,10 +278,9 @@ Depois de um reinício, a volta é com senha, porque o token vive em memória.
 
 ## O que ainda falta
 
-- **Painel de equipar no cliente:** o servidor já aceita `equip`, mas o HUD só mostra o que
-  está vestido; trocar de item online ainda não tem tecla/painel (`net_play.equip(id)` existe).
-- **Bolsa cheia / soltar item:** o inventário recusa acima da capacidade, mas não há "largar"
-  nem troca entre jogadores.
+- **Itens no chão:** somem só por tempo (não há limite por área) e todos os jogadores recebem os
+  eventos, sem área de interesse; para muitos jogadores, filtrar por distância.
+- **Troca:** só itens de equipamento (ouro, poções e itens de missão ainda não entram na troca).
 - **Q de guerreiro e arqueiro:** o deslizamento é só visual (o servidor resolve tudo no tick do
   pedido, inclusive o dano). Um dash simulado tick a tick no servidor (com predição) daria
   colisão com monstros no meio do caminho mais fiel.
