@@ -947,7 +947,7 @@ func _physics_process(delta: float) -> void:
 		if _dodge_t >= DODGE_T:
 			_dodge_t = -1.0
 	else:
-		var slow := 0.35 if _attack_t >= 0.0 else 1.0
+		var slow: float = (0.35 if _attack_t >= 0.0 else 1.0) * (_adventure.enemies.player_speed_factor() if _adventure != null else 1.0)
 		var rate := SPEED / (ACCEL_T if input != Vector2.ZERO else FRICTION_T)
 		var horizontal := Vector3(_player.velocity.x, 0, _player.velocity.z).move_toward(target * slow, rate * delta)
 		_player.velocity.x = horizontal.x

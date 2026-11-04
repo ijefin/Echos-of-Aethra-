@@ -259,7 +259,7 @@ func warp(to: Vector3, cave: bool) -> void:
 	demo._attack_t = -1.0
 	demo._dodge_t = -1.0
 	demo._set_dissolve(0.0)
-	demo._player.motion_mode = CharacterBody3D.MOTION_MODE_GROUNDED if cave else CharacterBody3D.MOTION_MODE_FLOATING
+	demo._player.motion_mode = CharacterBody3D.MOTION_MODE_GROUNDED  # superfície e gruta: sempre com chão
 	demo._player.global_position = to
 	demo._player.velocity = Vector3.ZERO
 	demo._cam_focus = to + Vector3(0, 0.6, 0)

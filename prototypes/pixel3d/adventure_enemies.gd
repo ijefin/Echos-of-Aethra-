@@ -323,10 +323,7 @@ func _apply_slow() -> void:
 		return
 	_web.global_position = p.global_position + Vector3(0, 0.05, 0)
 	_web.rotation.y += 0.05
-	if float(demo._dodge_t) >= 0.0 or float(demo._blink_t) >= 0.0:
-		return
-	var step := p.get_position_delta()
-	p.global_position -= Vector3(step.x, 0, step.z) * (1.0 - factor)
+	# o lento em si é aplicado na velocidade do jogador (pixel3d_demo._physics_process)
 
 # ------------------------------------------------------------------ apresentação
 
