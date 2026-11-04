@@ -382,6 +382,15 @@ func _buddy() -> void:
 	c.chat("local", "ola Tester")
 	check(await wait_until(func() -> bool: return has_event(friend_events, "op", "request"), 40.0), "recebe o pedido de amizade do Tester")
 	c.friend("accept", "Tester")
+	# guarda a arma e veste de novo: o Tester vê a arma sumir e voltar no modelo (evento gear)
+	await wait(1.5)
+	var n0 := events.size()
+	c.action("unequip", {"slot": "weapon"})
+	await wait(5.0)
+	var off: Array = content_since(n0, "unequip")
+	check(not off.is_empty(), "guardou a arma (%s)" % (String(off[0].get("item", "")) if not off.is_empty() else "recusado"))
+	if not off.is_empty():
+		c.action("equip", {"item": String(off[0].item)})
 	var end := Time.get_ticks_msec() + int(stay * 1000.0)
 	while Time.get_ticks_msec() < end:
 		if _chat_from("Tester", "pronto"):

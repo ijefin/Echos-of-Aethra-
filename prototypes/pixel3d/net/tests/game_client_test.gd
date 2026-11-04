@@ -96,6 +96,11 @@ func run() -> void:
 	check(await wait_until(func() -> bool: return _friend_online("Bia"), 20.0), "Bia aceitou: aparece online no painel de amigos")
 	await process_frame
 	adv.hud.panel = ""
+	# equipamento dos outros: a Bia guarda a arma e veste de novo (evento "gear" do servidor)
+	var bia_vv = bia.get("vv")
+	check(bia_vv != null and bia_vv.gear_visible("weapon") and bia_vv.gear_visible("head"), "Bia chegou com arma e elmo no modelo (entity_info.gear)")
+	check(bia_vv != null and await wait_until(func() -> bool: return not bia_vv.gear_visible("weapon"), 10.0), "Bia guardou a arma: some do modelo dela")
+	check(bia_vv != null and await wait_until(func() -> bool: return bia_vv.gear_visible("weapon"), 10.0), "Bia vestiu a arma de novo: volta no modelo")
 	# conversar com a Nessa (tecla E): o servidor aceita a missão; o cliente só mostra
 	var npc: Vector3 = AdvWorld.NPC
 	var t_end := Time.get_ticks_msec() + 10000
@@ -126,6 +131,7 @@ func run() -> void:
 	check(adv.hud.unequip_slot("head") and adv.hud.pending_unequip == "head" and adv.inventory.equipped.has("head"), "bolsa online: desequipar só pede ao servidor (%s)" % hat)
 	check(await wait_until(func() -> bool: return adv.hud.pending_unequip == "" and not adv.inventory.equipped.has("head"), 5.0) and hat in adv.inventory.items,
 		"bolsa online: servidor tirou o chapéu e a bolsa veio dele")
+	check(not demo._voc.gear_visible("head") and demo._voc.gear_visible("weapon"), "modelo online: sem chapéu na cabeça, cajado na mão")
 	adv.hud.panel = ""
 	# troca com a Nessa (online): falar de novo abre a troca; vender o chapéu dá ouro do servidor
 	adv.interact()

@@ -625,6 +625,14 @@ func _on_event(ev: Dictionary) -> void:
 			if int(ev.get("eid", 0)) == my_id():
 				_light_left = float(ev.get("left", 0.0))
 				adventure.core.set_effects({"light": _light_left})
+		"gear":
+			# outro jogador trocou arma/elmo/peitoral: redesenha o modelo dele
+			var gid := int(ev.get("eid", 0))
+			var gear: Dictionary = ev.get("gear", {})
+			if net.client.infos.has(gid):
+				(net.client.infos[gid] as Dictionary)["gear"] = gear
+			if gid != my_id() and remotes.has(gid) and remotes[gid].has("vv"):
+				remotes[gid].vv.apply_gear(gear, adventure.inventory.item)
 		"refused":
 			if String(ev.get("reason", "")) == "mana":
 				adventure.hud.flash_mana()
@@ -720,6 +728,8 @@ func _make_player(r: Dictionary, root: Node3D, info: Dictionary) -> void:
 	v.build_model(holder)
 	r.anim = demo._anim
 	r.voc = v.cfg
+	r.vv = v
+	v.apply_gear(info.get("gear", {}), adventure.inventory.item)
 	demo._anim = keep_anim
 	demo._p.staff = keep_staff
 	r.model = holder

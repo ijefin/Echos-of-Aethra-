@@ -20,6 +20,14 @@ var _charge_hit: Array = []
 ## Material da arma no modelo (espada do Guerreiro / madeira do arco do Arqueiro): o item vestido tinge.
 var weapon_mat: ShaderMaterial
 var weapon_base := Color.WHITE
+## Peças que dependem do equipamento (classes.json "gear"): slot → nós que só aparecem com o
+## slot ocupado; materiais tingidos pelo "tint" do item da cabeça/peito; "body" = corpo tingido
+## pelo peitoral (bare_tint sem peitoral).
+var gear_nodes := {}
+var gear_mats := {}
+## Arqueiro: [MeshInstance3D da cabeça, malha/skin com capuz, malha/skin sem capuz].
+var _head_swap: Array = []
+static var _bare_heads := {}
 
 
 static func load_all() -> Dictionary:
@@ -53,6 +61,76 @@ func apply_weapon(it: Dictionary) -> void:
 	weapon_mat.set_shader_parameter("emission_energy", energy)
 
 
+## Liga as peças do modelo `body` (já com material_override toon) aos slots de cfg.gear.
+## Chamado por build_model e pelo mago local de pixel3d_demo.gd.
+func bind_gear(body: Node3D) -> void:
+	var g: Dictionary = cfg.get("gear", {})
+	for slot: String in ["weapon", "shield", "head", "chest", "body"]:
+		for n: Variant in g.get(slot, []):
+			var mi := body.find_child(String(n), true, false) as MeshInstance3D
+			if mi == null:
+				continue
+			if slot != "body":
+				(gear_nodes.get_or_add(slot, []) as Array).append(mi)
+			if mi.material_override is ShaderMaterial:
+				(gear_mats.get_or_add(slot, []) as Array).append(mi.material_override)
+				if slot == "weapon" and weapon_mat == null:
+					weapon_mat = mi.material_override
+	var hs: Dictionary = g.get("head_swap", {})
+	if not hs.is_empty():
+		var head := body.find_child(String(hs.mesh), true, false) as MeshInstance3D
+		var bare: Array = _bare_head(String(hs.bare_model), String(hs.bare_mesh))
+		if head != null and not bare.is_empty():
+			_head_swap = [head, head.mesh, head.skin, bare[0], bare[1]]
+
+
+## Malha + skin da cabeça sem capuz de outro modelo do pacote (mesmo esqueleto), em cache.
+static func _bare_head(model: String, mesh_name: String) -> Array:
+	var key := model + "/" + mesh_name
+	if not _bare_heads.has(key):
+		var sc := (load(CHAR_DIR + model + ".glb") as PackedScene).instantiate() as Node3D
+		var mi := sc.find_child(mesh_name, true, false) as MeshInstance3D
+		_bare_heads[key] = [mi.mesh, mi.skin] if mi != null else []
+		sc.free()
+	return _bare_heads[key]
+
+
+## Visual do equipamento no modelo: arma/escudo/elmo/capa somem com o slot vazio e voltam ao
+## vestir; elmo/chapéu e capa tomam o "tint" do item; o corpo toma o tint do peitoral (ou
+## bare_tint sem peitoral). `lookup(id)` devolve o item de items.json.
+func apply_gear(eq: Dictionary, lookup: Callable) -> void:
+	for slot: String in ["weapon", "shield", "head", "chest"]:
+		var id := String(eq.get(slot, ""))
+		var on := not id.is_empty()
+		var it: Dictionary = lookup.call(id) if on else {}
+		for n: Node3D in gear_nodes.get(slot, []):
+			n.visible = on
+		var t: Array = it.get("tint", [1, 1, 1])
+		var tc := Color(float(t[0]), float(t[1]), float(t[2]))
+		if slot == "head" or slot == "chest":
+			for m: ShaderMaterial in gear_mats.get(slot, []):
+				m.set_shader_parameter("tint", tc)
+		if slot == "chest":
+			var b: Array = t if on else cfg.get("gear", {}).get("bare_tint", [1, 1, 1])
+			for m: ShaderMaterial in gear_mats.get("body", []):
+				m.set_shader_parameter("tint", Color(float(b[0]), float(b[1]), float(b[2])))
+		if slot == "head" and not _head_swap.is_empty():
+			var head: MeshInstance3D = _head_swap[0]
+			head.mesh = _head_swap[1] if on else _head_swap[3]
+			head.skin = _head_swap[2] if on else _head_swap[4]
+			(head.material_override as ShaderMaterial).set_shader_parameter("tint", tc if on else Color.WHITE)
+		if slot == "weapon" and on:
+			apply_weapon(it)
+
+
+## Slots com peça visível no modelo agora (testes e prints).
+func gear_visible(slot: String) -> bool:
+	if slot == "head" and not _head_swap.is_empty():
+		return (_head_swap[0] as MeshInstance3D).mesh == _head_swap[1]
+	var nodes: Array = gear_nodes.get(slot, [])
+	return not nodes.is_empty() and (nodes[0] as Node3D).visible
+
+
 func is_mage() -> bool:
 	return id == "mage"
 
@@ -67,10 +145,13 @@ func build_model(holder: Node3D) -> void:
 	body.rotation.y = PI  # o glTF olha para +Z; o jogo assume -Z
 	var keep: Array = cfg.get("keep_meshes", [])
 	var parts := String(cfg.model).split("_")[0]  # "Knight", "Rogue"
+	var scales: Dictionary = cfg.get("scale_meshes", {})
 	for mi in body.find_children("*", "MeshInstance3D", true, false):
 		var n := String(mi.name)
 		# corpo sempre; acessórios só os listados em keep_meshes
 		(mi as MeshInstance3D).visible = n.begins_with(parts + "_") and not n.contains("Cape") or n in keep
+		if scales.has(n):
+			(mi as Node3D).scale = Vector3.ONE * float(scales[n])
 	var top := 0.0
 	for mi in body.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
@@ -86,8 +167,7 @@ func build_model(holder: Node3D) -> void:
 			mat.set_shader_parameter("albedo_tex", src.albedo_texture)
 			mat.set_shader_parameter("use_tex", true)
 		m.material_override = mat
-		if String(m.name) == "1H_Sword":
-			weapon_mat = mat
+	bind_gear(body)
 	demo._anim = body.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	for a: String in ["Idle", "Running_A", "Walking_A", "Blocking"]:
 		if demo._anim.has_animation(a):
@@ -113,6 +193,7 @@ func _build_bow(hand: Node3D) -> void:
 	_string_mat = demo._toon(Color(0.9, 0.88, 0.8))
 	var bow := Node3D.new()
 	hand.add_child(bow)
+	(gear_nodes.get_or_add("weapon", []) as Array).append(bow)
 	bow.rotation_degrees = Vector3(0, 90, 0)
 	var segs := 7
 	var half_h := 0.78
