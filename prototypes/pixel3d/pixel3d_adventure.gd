@@ -115,6 +115,8 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	_restore_content(state.content)
 	if args.has("give"):  # prints/testes: --give=id,id (itens extras na bolsa, de qualquer vocação)
 		inventory.give(Array(String(args.give).split(",")))
+	if args.has("gold"):  # prints/testes: --gold=N moedas na bolsa
+		gold = maxi(0, int(args.gold))
 	if args.has("equip"):  # prints: --equip=id,id veste da bolsa (com --give)
 		for id: String in String(args.equip).split(","):
 			inventory.equip(id)

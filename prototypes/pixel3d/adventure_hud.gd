@@ -372,8 +372,8 @@ func _clip_square(pts: PackedVector2Array, r: Rect2) -> PackedVector2Array:
 
 # ------------------------------------------------------------------ painéis (atalhos)
 
-func _panel_rect(w: float, h: float) -> Rect2:
-	var r := Rect2(size * 0.5 - Vector2(_px(w), _px(h)) * 0.5, Vector2(_px(w), _px(h)))
+func _panel_rect(w: float, h: float, drop := 0.0) -> Rect2:
+	var r := Rect2(size * 0.5 - Vector2(_px(w), _px(h)) * 0.5 + Vector2(0, _px(drop)), Vector2(_px(w), _px(h)))
 	_frame(r)
 	return r
 
@@ -935,7 +935,7 @@ func equip_done(slot := "") -> void:
 ## Moedas de ouro empilhadas (estilo Tibia).
 func _coin_icon(rect: Rect2, a: float, small := false) -> void:
 	var c := rect.get_center()
-	var k := rect.size.x / 42.0
+	var k := rect.size.x / 42.0 * (2.2 if small else 1.0)
 	var offs: Array = [Vector2(-5, 5), Vector2(4, 4), Vector2(-1, -2)] if not small else [Vector2(0, 0)]
 	for o: Vector2 in offs:
 		var p := c + o * k
@@ -966,7 +966,8 @@ func _shop_panel() -> void:
 	var gap := _px(5)
 	var cols := 5
 	var sell_rows := maxi(2, ceili(float(inv.items.size()) / cols))
-	var r := _panel_rect(22 + 150 + 30 + (cols * 42 + (cols - 1) * 5) + 22, 66 + 18 + sell_rows * 47 + 46)
+	# um pouco abaixo do centro: a Nessa (e a fala sobre a cabeça dela) continua visível
+	var r := _panel_rect(22 + 150 + 30 + (cols * 42 + (cols - 1) * 5) + 22, 66 + 18 + sell_rows * 47 + 46, 95)
 	var y := _title(r, "NESSA", "E") - _px(10)
 	var mouse := get_local_mouse_position()
 	_shop_cells.clear()
