@@ -599,7 +599,7 @@ func prompt() -> String:
 	if online != null:
 		var gid: int = online.ground_near(p)
 		if gid > 0:
-			prompt_at = online.ground_pos(gid) + Vector3(0, 1.0, 0)
+			prompt_at = online.ground_pos(gid) + Vector3(0, 1.45, 0)
 			return "E — pegar"
 	if not in_cave:
 		if p.distance_to(World.NPC) < 2.8:

@@ -164,7 +164,7 @@ func test_ground_items() -> void:
 	var pa: Dictionary = w.players[a]
 	var pb: Dictionary = w.players[b]
 	put(a, World.NPC + Vector3(4, 0, 4))
-	put(b, World.NPC + Vector3(4, 0, 7))
+	put(b, World.NPC + Vector3(4, 0, 8.6))
 	pa.inv.give(["leather_hood"])
 	w.events.clear()
 	check(w.player_action(a, {"act": "drop", "item": "guard_sword"}) == "item", "largar item que não tem → recusado")
@@ -173,7 +173,7 @@ func test_ground_items() -> void:
 	check(String(add_b.get("op", "")) == "add" and String(add_b.get("item", "")) == "leather_hood", "o outro jogador recebe o item no chão (evento ground add)")
 	var gid := int(add_b.get("gid", 0))
 	check(w.trade.ground_list().size() == 1, "lista do chão (vai no welcome) tem o item")
-	check(w.player_action(b, {"act": "take", "gid": gid}) == "range", "pegar a 3 m → recusado (range)")
+	check(w.player_action(b, {"act": "take", "gid": gid}) == "range", "pegar a 3,9 m → recusado (range)")
 	put(b, World.NPC + Vector3(4, 0, 5))
 	w.events.clear()
 	check(w.player_action(b, {"act": "take", "gid": gid}) == "" and "leather_hood" in pb.inv.items, "qualquer um perto pega: vai para a bolsa do Beto")

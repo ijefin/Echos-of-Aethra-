@@ -80,6 +80,17 @@ func _offered(p: Dictionary, id: String) -> bool:
 	return not tr.is_empty() and id in (tr.offer as Array)
 
 
+## Onde o item cai: um passo à frente do corpo (na direção da câmera, para não sumir sob o
+## boneco), empurrado para fora de árvores/rochas pela colisão do andar.
+func _drop_spot(p: Dictionary) -> Vector3:
+	var me: Vector3 = p.ms.pos
+	var spot := Vector2(me.x, me.z + 0.7)
+	var col: RefCounted = world._col(p)
+	if col != null and col.has_method("resolve"):
+		spot = col.resolve(spot, 0.25)
+	return Vector3(spot.x, me.y, spot.y)
+
+
 ## Largar um item da bolsa no chão. Recusas: dead, item, trade (está na troca).
 func drop(p: Dictionary, id: String) -> String:
 	if float(p.get("hp", 1.0)) <= 0.0:
@@ -90,7 +101,7 @@ func drop(p: Dictionary, id: String) -> String:
 		return "trade"
 	_bag(p).erase(id)
 	var gid: int = world._id()
-	ground[gid] = {"gid": gid, "item": id, "pos": p.ms.pos, "floor": int(p.get("floor", 0)),
+	ground[gid] = {"gid": gid, "item": id, "pos": _drop_spot(p), "floor": int(p.get("floor", 0)),
 		"until": float(world.now) + _f("ground_item_s", 60.0), "by": int(p.eid)}
 	var info := _ground_info(ground[gid])
 	info["type"] = "ground"

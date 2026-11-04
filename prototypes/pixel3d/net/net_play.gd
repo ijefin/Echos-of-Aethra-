@@ -89,6 +89,18 @@ func _auto_q() -> void:
 	q(demo._player.global_position + dir * 6.0)
 
 
+## Print do chão (tools/net_drop_shot.sh): --auto_drop=S tira o item da cabeça S segundos depois
+## de entrar e larga no chão (o outro cliente fotografa o saquinho com o nome).
+func _auto_drop() -> void:
+	await get_tree().create_timer(float(_args.get("auto_drop", 6.0))).timeout
+	var id := String(adventure.inventory.equipped.get("head", ""))
+	if id.is_empty():
+		return
+	unequip("head")
+	await get_tree().create_timer(1.0).timeout
+	drop(id)
+
+
 func _dash_shot() -> void:
 	if not _args.has("dash_shot") or _args.has("_dash_shot_done"):
 		return
@@ -123,6 +135,8 @@ func _on_welcome(w: Dictionary) -> void:
 			_ground_add(g)
 	if _args.has("auto_q"):
 		_auto_q()
+	if _args.has("auto_drop"):
+		_auto_drop()
 
 
 # ------------------------------------------------------------------ conteúdo (servidor manda)
@@ -379,18 +393,18 @@ func _ground_add(g: Dictionary) -> void:
 	node.position = pos
 	var mi := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.42, 0.16, 0.3)
+	mesh.size = Vector3(0.55, 0.22, 0.4)
 	mi.mesh = mesh
 	var mat := StandardMaterial3D.new()
 	var c: Array = it.get("color", [0.6, 0.5, 0.35])
-	mat.albedo_color = Color(float(c[0]), float(c[1]), float(c[2])).lightened(0.15)
+	mat.albedo_color = Color(float(c[0]), float(c[1]), float(c[2])).lightened(0.35)
 	mat.emission_enabled = true
-	mat.emission = mat.albedo_color * 0.25
+	mat.emission = mat.albedo_color * 0.6
 	mi.material_override = mat
 	mi.position = Vector3(0, 0.08, 0)
 	mi.rotation.y = float(gid % 7) * 0.7
 	node.add_child(mi)
-	var lab: Label3D = adventure.world.label(node, String(it.get("name", id)), Vector3(0, 0.75, 0), adventure.hud._rarity_color(it) if it.has("slot") else Color(1, 1, 1), 28)
+	var lab: Label3D = adventure.world.label(node, String(it.get("name", id)), Vector3(0, 0.5, 0), adventure.hud._rarity_color(it) if it.has("slot") else Color(1, 1, 1), 28)
 	lab.visible = false
 	ground[gid] = {"item": id, "pos": pos, "floor": int(g.get("floor", 0)), "node": node, "label": lab}
 
