@@ -54,7 +54,7 @@ func _init(net_cfg: Dictionary, adventure_tuning: Dictionary, collision: RefCoun
 	_rng.seed = seed_value
 	var i := 0
 	for e: Dictionary in tuning.get("field_enemies", []):
-		spawn_monster("field%d" % i, String(e.kind), Vector3(float(e.x), 0, float(e.z)), int(e.get("level", 1)))
+		spawn_monster("field%d" % i, String(e.kind), Vector3(float(e.x), 0, float(e.z)), int(e.get("level", 1)), String(e.get("hunt", "")))
 		i += 1
 	# matilhas de lobos (mesmos pontos do cliente: enemy.wolf.spawns [x, z])
 	var wolves: Array = ((tuning.get("enemy", {}) as Dictionary).get("wolf", {}) as Dictionary).get("spawns", [])
@@ -514,8 +514,26 @@ func _step_projectiles(dt: float) -> void:
 
 # ------------------------------------------------------------------ monstros
 
-func spawn_monster(key: String, kind: String, at: Vector3, level := 1) -> int:
-	var def: Dictionary = (tuning.get("enemy", {}) as Dictionary).get(kind, {})
+## Atributos do tipo escalados pelo nível da caçada (igual a adventure_enemies.scaled_cfg):
+## vida, dano de todos os golpes e XP crescem por nível acima do 1 (tuning `enemy_level`).
+func scaled_cfg(kind: String, level: int) -> Dictionary:
+	var base: Dictionary = (tuning.get("enemy", {}) as Dictionary).get(kind, {})
+	if base.is_empty() or level <= 1:
+		return base
+	var k: Dictionary = tuning.get("enemy_level", {"hp": 0.15, "damage": 0.08, "xp": 0.35})
+	var out := base.duplicate()
+	var n := level - 1
+	out.hp = int(round(float(base.get("hp", 16)) * (1.0 + float(k.get("hp", 0.15)) * n)))
+	out.xp = int(round(float(base.get("xp", 1)) * (1.0 + float(k.get("xp", 0.35)) * n)))
+	for key: String in ["damage", "leap_damage", "charge_damage", "projectile_damage"]:
+		if base.has(key):
+			out[key] = int(round(float(base[key]) * (1.0 + float(k.get("damage", 0.08)) * n)))
+	out.level = level
+	return out
+
+
+func spawn_monster(key: String, kind: String, at: Vector3, level := 1, hunt := "") -> int:
+	var def: Dictionary = scaled_cfg(kind, maxi(1, level))
 	if def.is_empty():
 		return 0
 	var eid := _id()
@@ -524,7 +542,7 @@ func spawn_monster(key: String, kind: String, at: Vector3, level := 1) -> int:
 		"hp": int(def.get("hp", 16)), "max_hp": int(def.get("hp", 16)), "speed": float(def.get("speed", 1.5)),
 		"damage": int(def.get("damage", 6)), "windup": float(def.get("windup", 0.6)), "xp": int(def.get("xp", 1)),
 		"state": "idle", "target": 0, "t": 0.0, "next_attack": 0.0, "respawn_at": 0.0,
-		"level": maxi(1, level), "cfg": def}
+		"level": maxi(1, level), "cfg": def, "hunt": hunt, "respawn_s": float(def.get("respawn", _mcfg.get("respawn_s", 15.0)))}
 	if ai != null:
 		ai.add_monster(monsters[eid], def)
 	return eid
@@ -547,16 +565,17 @@ func _damage_monster(m: Dictionary, amount: int, by: int) -> void:
 	if ai != null:
 		ai.on_killed(m)
 	m.target = 0
-	m.respawn_at = now + float(_mcfg.get("respawn_s", 15.0))
+	m.respawn_at = now + float(m.get("respawn_s", _mcfg.get("respawn_s", 15.0)))
 	if not players.has(by):
 		return
 	# Recompensa calculada SÓ aqui: o cliente apenas recebe o resultado.
 	var p: Dictionary = players[by]
 	var st: RefCounted = p.state
 	var old_level: int = st.level
-	if st.record_kill(String(m.key), String(m.kind), false):
+	if st.record_kill(String(m.key), String(m.kind), false, int(m.xp)):
 		p.kills = int(p.kills) + 1
-		events.append({"to": by, "type": "kill", "target": int(m.eid), "name": String(m.name), "xp": int(m.xp), "at": [m.pos.x, m.pos.z]})
+		events.append({"to": by, "type": "kill", "target": int(m.eid), "name": String(m.name), "xp": int(m.xp),
+			"kind": String(m.kind), "hunt": String(m.get("hunt", "")), "at": [m.pos.x, m.pos.z]})
 		if st.level > old_level:
 			p.hp = float(st.max_hp())
 			p.mana = float(combat.max_mana(st.level, p))

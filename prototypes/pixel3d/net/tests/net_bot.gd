@@ -83,13 +83,14 @@ func _run() -> void:
 		"alice": await _alice()
 		"bruno": await _bruno()
 		"relogin": await _relogin()
+		"buddy": await _buddy()
 	finish()
 
 
 # ------------------------------------------------------------------ utilidades
 
 ## Vocação de cada bot (personagem novo): Alice arqueira, Bruno guerreiro.
-const VOCATION := {"Alice": "archer", "Bruno": "warrior"}
+const VOCATION := {"Alice": "archer", "Bruno": "warrior", "Bia": "warrior"}
 
 
 func login(user: String) -> bool:
@@ -355,6 +356,32 @@ func _relogin() -> void:
 	c2.login_failed.connect(func(code: String) -> void: errs.append(code))
 	c2.connect_and_login("127.0.0.1", port, "Bruno", "senha-errada", false)
 	check(await wait_until(func() -> bool: return errs.has("auth"), 10.0), "senha errada é recusada")
+	c.logout()
+	await wait(0.6)
+
+
+# ------------------------------------------------------------------ Bia (par do teste do cliente do jogo)
+
+## Companheira do teste do cliente real (tools/net_game_client_test.sh): entra, fica
+## perto da chegada, liga a Luz, fala no Local, aceita a amizade de "Tester" e espera.
+func _buddy() -> void:
+	var stay := float(NetConfig.cmdline_args().get("stay", 60.0))
+	check(await login("Bia"), "entra no servidor (cadastro/login)")
+	_move = Vector2(0.6, 0.4)
+	await wait(0.6)
+	_move = Vector2.ZERO
+	check(await wait_until(func() -> bool: return not find_player("Tester").is_empty(), 40.0), "vê o cliente do jogo (Tester) replicado")
+	c.action("light")
+	await wait(1.0)
+	c.chat("local", "ola Tester")
+	check(await wait_until(func() -> bool: return has_event(friend_events, "op", "request"), 40.0), "recebe o pedido de amizade do Tester")
+	c.friend("accept", "Tester")
+	var end := Time.get_ticks_msec() + int(stay * 1000.0)
+	while Time.get_ticks_msec() < end:
+		if _chat_from("Tester", "pronto"):
+			break
+		await wait(0.5)
+	check(_chat_from("Tester", "pronto"), "chat local do Tester chegou")
 	c.logout()
 	await wait(0.6)
 
