@@ -31,7 +31,6 @@
 		"crate": "res://assets/world/props/furniture/crate.tscn",
 		"chest": "res://assets/world/props/furniture/chest.tscn",
 		"torch_wall": "res://assets/world/props/light/torch_wall.tscn",
-		"torch_floor": "res://assets/world/props/light/torch_floor.tscn",
 		"banner": "res://assets/world/props/decor/banner.tscn",
 		"pillar": "res://assets/world/props/decor/pillar.tscn"
 	},
@@ -349,21 +348,6 @@
 				0.41,
 				0.8,
 				0.46
-			]
-		},
-		"torch_floor": {
-			"category": "light",
-			"footprint": [
-				1,
-				1
-			],
-			"blocks": false,
-			"variants": 1,
-			"scale": 0.75,
-			"size": [
-				0.41,
-				0.84,
-				0.41
 			]
 		},
 		"banner": {

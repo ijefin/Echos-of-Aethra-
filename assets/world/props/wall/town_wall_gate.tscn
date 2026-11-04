@@ -9,25 +9,25 @@ size = Vector3(1.8, 4.242087, 2.686872)
 [sub_resource type="BoxShape3D" id="BoxShape3D_c24cl"]
 size = Vector3(1.8, 4.242087, 2.686872)
 
-[node name="TownWallGate" type="Node3D" unique_id=1553766597]
+[node name="TownWallGate" type="Node3D" unique_id=1252245324]
 script = ExtResource("1_jx3hi")
 prop_id = &"town_wall_gate"
 category = &"wall"
 footprint = Vector2i(4, 2)
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=1901119305]
+[node name="Variant0" type="Node3D" parent="." unique_id=1618735029]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=1634259233 instance=ExtResource("2_52vpx")]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, -0.14343596)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=1415065882]
+[node name="Body" type="StaticBody3D" parent="." unique_id=646356421]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1702251893]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=470233020]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.1, 1.9710436, 0)
 shape = SubResource("BoxShape3D_8a22i")
 
-[node name="Shape1" type="CollisionShape3D" parent="Body" unique_id=573357023]
+[node name="Shape1" type="CollisionShape3D" parent="Body" unique_id=524882540]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.1, 1.9710436, 0)
 shape = SubResource("BoxShape3D_c24cl")

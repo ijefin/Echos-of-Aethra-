@@ -7,35 +7,35 @@
 [ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_patternA_red.gltf.glb" id="5_waebw"]
 [ext_resource type="PackedScene" path="res://assets/third_party/kaykit_dungeon_remastered/gltf/banner_shield_red.gltf.glb" id="6_mudd0"]
 
-[node name="Banner" type="Node3D" unique_id=835203234]
+[node name="Banner" type="Node3D" unique_id=1889423868]
 script = ExtResource("1_hqntq")
 prop_id = &"banner"
 category = &"decor"
 
-[node name="Variant0" type="Node3D" parent="." unique_id=282258495]
+[node name="Variant0" type="Node3D" parent="." unique_id=1515642379]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=130301230 instance=ExtResource("2_fe7ey")]
 transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
 
-[node name="Variant1" type="Node3D" parent="." unique_id=1944773550]
+[node name="Variant1" type="Node3D" parent="." unique_id=1420046926]
 visible = false
 
 [node name="Model" type="Node3D" parent="Variant1" unique_id=1458448215 instance=ExtResource("3_tn8rb")]
 transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
 
-[node name="Variant2" type="Node3D" parent="." unique_id=1796588102]
+[node name="Variant2" type="Node3D" parent="." unique_id=433043108]
 visible = false
 
 [node name="Model" type="Node3D" parent="Variant2" unique_id=1413714160 instance=ExtResource("4_lsv4q")]
 transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
 
-[node name="Variant3" type="Node3D" parent="." unique_id=1569322427]
+[node name="Variant3" type="Node3D" parent="." unique_id=718244978]
 visible = false
 
 [node name="Model" type="Node3D" parent="Variant3" unique_id=847641747 instance=ExtResource("5_waebw")]
 transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
 
-[node name="Variant4" type="Node3D" parent="." unique_id=1862628965]
+[node name="Variant4" type="Node3D" parent="." unique_id=1594261020]
 visible = false
 
 [node name="Model" type="Node3D" parent="Variant4" unique_id=1880590608 instance=ExtResource("6_mudd0")]

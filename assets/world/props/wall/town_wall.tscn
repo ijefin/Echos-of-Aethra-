@@ -6,21 +6,21 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_0wirn"]
 size = Vector3(6, 3.2999997, 2.4)
 
-[node name="TownWall" type="Node3D" unique_id=1830616220]
+[node name="TownWall" type="Node3D" unique_id=1043057828]
 script = ExtResource("1_munco")
 prop_id = &"town_wall"
 category = &"wall"
 footprint = Vector2i(4, 2)
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=2013541165]
+[node name="Variant0" type="Node3D" parent="." unique_id=1660590944]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=1697158032 instance=ExtResource("2_wh8oc")]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=710275769]
+[node name="Body" type="StaticBody3D" parent="." unique_id=1801111275]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1515139496]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=460467555]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6499999, 0)
 shape = SubResource("BoxShape3D_0wirn")

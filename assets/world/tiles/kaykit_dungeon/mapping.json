@@ -28,7 +28,6 @@
 		{ "prop_id": "crate", "category": "furniture", "blocks": true, "variants": ["box_small.gltf.glb", "box_large.gltf.glb", "crates_stacked.gltf.glb"] },
 		{ "prop_id": "chest", "category": "furniture", "blocks": true, "variants": ["chest.glb", "chest_gold.glb"] },
 		{ "prop_id": "torch_wall", "category": "light", "blocks": false, "variants": ["torch_mounted.gltf.glb"] },
-		{ "prop_id": "torch_floor", "category": "light", "blocks": false, "variants": ["torch_lit.gltf.glb"] },
 		{ "prop_id": "banner", "category": "decor", "blocks": false, "variants": ["banner_red.gltf.glb", "banner_blue.gltf.glb", "banner_green.gltf.glb", "banner_patternA_red.gltf.glb", "banner_shield_red.gltf.glb"] },
 		{ "prop_id": "pillar", "category": "decor", "blocks": true, "variants": ["pillar.gltf.glb", "column.gltf.glb"] }
 	]

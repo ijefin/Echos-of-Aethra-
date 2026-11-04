@@ -7,27 +7,27 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_tkaop"]
 size = Vector3(2.4693933, 0.75600374, 1.1897845)
 
-[node name="LumberPile" type="Node3D" unique_id=1832139988]
+[node name="LumberPile" type="Node3D" unique_id=432584846]
 script = ExtResource("1_e5tig")
 prop_id = &"lumber_pile"
 category = &"decor"
 footprint = Vector2i(2, 1)
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=222463774]
+[node name="Variant0" type="Node3D" parent="." unique_id=620495823]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=1078508276 instance=ExtResource("2_h0twi")]
 transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, 0.0056142807, 0, -0.005811453)
 
-[node name="Variant1" type="Node3D" parent="." unique_id=996474925]
+[node name="Variant1" type="Node3D" parent="." unique_id=374368440]
 visible = false
 
 [node name="Model" type="Node3D" parent="Variant1" unique_id=1678735573 instance=ExtResource("3_utf5u")]
 transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, 0, 0, 0)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=463694697]
+[node name="Body" type="StaticBody3D" parent="." unique_id=1456166710]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=872709312]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=77644776]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3779965, 0)
 shape = SubResource("BoxShape3D_tkaop")

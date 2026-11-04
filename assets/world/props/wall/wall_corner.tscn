@@ -9,24 +9,24 @@ size = Vector3(1.875, 3, 0.75)
 [sub_resource type="BoxShape3D" id="BoxShape3D_ytje0"]
 size = Vector3(0.75, 3, 1.8750458)
 
-[node name="WallCorner" type="Node3D" unique_id=64482219]
+[node name="WallCorner" type="Node3D" unique_id=2116327618]
 script = ExtResource("1_rpbxd")
 prop_id = &"wall_corner"
 category = &"wall"
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=1003027511]
+[node name="Variant0" type="Node3D" parent="." unique_id=1481243469]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=18549554 instance=ExtResource("2_ih67t")]
 transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=1369353768]
+[node name="Body" type="StaticBody3D" parent="." unique_id=1680004937]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=197004525]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=530539958]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5625, 1.5, 0)
 shape = SubResource("BoxShape3D_0v0t2")
 
-[node name="Shape1" type="CollisionShape3D" parent="Body" unique_id=804665608]
+[node name="Shape1" type="CollisionShape3D" parent="Body" unique_id=1206755665]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0.5625229)
 shape = SubResource("BoxShape3D_ytje0")

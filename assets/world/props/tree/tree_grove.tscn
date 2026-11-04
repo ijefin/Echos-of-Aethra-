@@ -8,33 +8,33 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_kwa6l"]
 size = Vector3(5.2542715, 3.8860507, 5.442837)
 
-[node name="TreeGrove" type="Node3D" unique_id=488870519]
+[node name="TreeGrove" type="Node3D" unique_id=321479499]
 script = ExtResource("1_mnqff")
 prop_id = &"tree_grove"
 category = &"tree"
 footprint = Vector2i(4, 4)
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=1498374181]
+[node name="Variant0" type="Node3D" parent="." unique_id=132256565]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=1858918726 instance=ExtResource("2_i0766")]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, -0.04276347, 0, -0.10190368)
 
-[node name="Variant1" type="Node3D" parent="." unique_id=1316468898]
+[node name="Variant1" type="Node3D" parent="." unique_id=1619754871]
 visible = false
 
 [node name="Model" type="Node3D" parent="Variant1" unique_id=674429148 instance=ExtResource("3_kk2wh")]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, -0.12102604, 0, 0.17077255)
 
-[node name="Variant2" type="Node3D" parent="." unique_id=1183724505]
+[node name="Variant2" type="Node3D" parent="." unique_id=2042904071]
 visible = false
 
 [node name="Model" type="Node3D" parent="Variant2" unique_id=563382718 instance=ExtResource("4_srep7")]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0.14198923, 0, 0.039111853)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=173638698]
+[node name="Body" type="StaticBody3D" parent="." unique_id=1536636767]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=176041250]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1343363374]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8815463, 0)
 shape = SubResource("BoxShape3D_kwa6l")

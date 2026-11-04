@@ -1,26 +1,25 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_d7ba6"]
-[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/nature/tree_single_A.gltf" id="2_1su1h"]
+[ext_resource type="PackedScene" path="res://assets/third_party/kaykit_medieval_hexagon/gltf/decoration/nature/tree_single_B.gltf" id="2_1su1h"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3qqix"]
-size = Vector3(0.54700935, 4.7857947, 0.54700935)
+size = Vector3(0.684882, 4.850709, 0.684882)
 
-[node name="TreeRound" type="Node3D" unique_id=34671071]
+[node name="TreeRound" type="Node3D" unique_id=247862103]
 script = ExtResource("1_d7ba6")
 prop_id = &"tree_round"
 category = &"tree"
-footprint = Vector2i(2, 1)
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=681483284]
+[node name="Variant0" type="Node3D" parent="." unique_id=282743873]
 
-[node name="Model" type="Node3D" parent="Variant0" unique_id=79166823 instance=ExtResource("2_1su1h")]
-transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0.0021870136, 0, 0.112846375)
+[node name="Model" type="Node3D" parent="Variant0" unique_id=653186259 instance=ExtResource("2_1su1h")]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, -3.8146973e-06, 0, 2.3841858e-07)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=1908374370]
+[node name="Body" type="StaticBody3D" parent="." unique_id=291501895]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1885589963]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9824682, 0)
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1955167455]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.025355, 0)
 shape = SubResource("BoxShape3D_3qqix")

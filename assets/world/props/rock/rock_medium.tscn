@@ -7,26 +7,26 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_y5oey"]
 size = Vector3(1.2380533, 0.7012121, 1.2391355)
 
-[node name="RockMedium" type="Node3D" unique_id=1799667107]
+[node name="RockMedium" type="Node3D" unique_id=1681109991]
 script = ExtResource("1_6ltjd")
 prop_id = &"rock_medium"
 category = &"rock"
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=86815387]
+[node name="Variant0" type="Node3D" parent="." unique_id=1803875771]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=1271327015 instance=ExtResource("2_05cln")]
 transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, 0.047935367, 0, 0.035685837)
 
-[node name="Variant1" type="Node3D" parent="." unique_id=1746922316]
+[node name="Variant1" type="Node3D" parent="." unique_id=1859141440]
 visible = false
 
 [node name="Model" type="Node3D" parent="Variant1" unique_id=1129127728 instance=ExtResource("3_mek3f")]
 transform = Transform3D(3.6, 0, 0, 0, 3.6, 0, 0, 0, 3.6, -0.004790783, 0, 0.017372936)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=1615305222]
+[node name="Body" type="StaticBody3D" parent="." unique_id=1671190672]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1826929199]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=229680027]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3502681, 0)
 shape = SubResource("BoxShape3D_y5oey")

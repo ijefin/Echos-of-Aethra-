@@ -6,20 +6,20 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_l5ffv"]
 size = Vector3(0.714, 0.56524575, 1.517039)
 
-[node name="Cart" type="Node3D" unique_id=334921619]
+[node name="Cart" type="Node3D" unique_id=1977913919]
 script = ExtResource("1_t7g7n")
 prop_id = &"cart"
 category = &"decor"
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=543499194]
+[node name="Variant0" type="Node3D" parent="." unique_id=686100449]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=819313072 instance=ExtResource("2_ul33i")]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, -9.536743e-07, 0, -0.12011784)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=2042822184]
+[node name="Body" type="StaticBody3D" parent="." unique_id=1116684068]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1849426795]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1506386948]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28262278, 0)
 shape = SubResource("BoxShape3D_l5ffv")

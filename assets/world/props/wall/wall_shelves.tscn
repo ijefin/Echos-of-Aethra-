@@ -6,21 +6,21 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_yxpon"]
 size = Vector3(3, 3, 1.0257001)
 
-[node name="WallShelves" type="Node3D" unique_id=218252793]
+[node name="WallShelves" type="Node3D" unique_id=91604404]
 script = ExtResource("1_d174s")
 prop_id = &"wall_shelves"
 category = &"wall"
 footprint = Vector2i(2, 1)
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=1963467029]
+[node name="Variant0" type="Node3D" parent="." unique_id=1092877585]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=780243770 instance=ExtResource("2_i6kp5")]
 transform = Transform3D(0.75, 0, 0, 0, 0.75, 0, 0, 0, 0.75, 0, 0, 0)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=1119837964]
+[node name="Body" type="StaticBody3D" parent="." unique_id=674721768]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=495452533]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1594621530]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0.13785005)
 shape = SubResource("BoxShape3D_yxpon")

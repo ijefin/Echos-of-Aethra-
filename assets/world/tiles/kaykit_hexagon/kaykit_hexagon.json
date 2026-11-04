@@ -16,8 +16,8 @@
 		"fence_stone_gate": "res://assets/world/props/fence/fence_stone_gate.tscn",
 		"bridge": "res://assets/world/props/bridge/bridge.tscn",
 		"well": "res://assets/world/props/decor/well.tscn",
-		"tree_round": "res://assets/world/props/tree/tree_round.tscn",
 		"tree_pine": "res://assets/world/props/tree/tree_pine.tscn",
+		"tree_round": "res://assets/world/props/tree/tree_round.tscn",
 		"tree_grove": "res://assets/world/props/tree/tree_grove.tscn",
 		"tree_stump": "res://assets/world/props/tree/tree_stump.tscn",
 		"rock_small": "res://assets/world/props/rock/rock_small.tscn",
@@ -125,10 +125,10 @@
 				2.25
 			]
 		},
-		"tree_round": {
+		"tree_pine": {
 			"category": "tree",
 			"footprint": [
-				2,
+				1,
 				1
 			],
 			"blocks": true,
@@ -140,11 +140,11 @@
 				2.19
 			]
 		},
-		"tree_pine": {
+		"tree_round": {
 			"category": "tree",
 			"footprint": [
-				2,
-				2
+				1,
+				1
 			],
 			"blocks": true,
 			"variants": 1,

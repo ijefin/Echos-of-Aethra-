@@ -6,21 +6,21 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_d66d2"]
 size = Vector3(3.0022202, 0.699385, 0.52000093)
 
-[node name="FenceStone" type="Node3D" unique_id=305873205]
+[node name="FenceStone" type="Node3D" unique_id=860542045]
 script = ExtResource("1_4nny1")
 prop_id = &"fence_stone"
 category = &"fence"
 footprint = Vector2i(2, 1)
 blocks_movement = true
 
-[node name="Variant0" type="Node3D" parent="." unique_id=1827930490]
+[node name="Variant0" type="Node3D" parent="." unique_id=1637007458]
 
 [node name="Model" type="Node3D" parent="Variant0" unique_id=1065339796 instance=ExtResource("2_3mwvr")]
 transform = Transform3D(-1.13649605e-07, 0, 2.6, 0, 2.6, 0, -2.6, 0, -1.13649605e-07, 7.1525574e-07, 0, -2.6)
 
-[node name="Body" type="StaticBody3D" parent="." unique_id=1807143753]
+[node name="Body" type="StaticBody3D" parent="." unique_id=1816305481]
 collision_mask = 0
 
-[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=833259136]
+[node name="Shape0" type="CollisionShape3D" parent="Body" unique_id=1896864317]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.21969251, 0)
 shape = SubResource("BoxShape3D_d66d2")
