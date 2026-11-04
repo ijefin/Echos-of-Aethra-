@@ -107,6 +107,8 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 	quests = Quests.new(Quests.load_data())
 	quests.restore(state.content)
 	_restore_content(state.content)
+	if args.has("give"):  # prints/testes: --give=id,id (itens extras na bolsa, de qualquer vocação)
+		inventory.give(Array(String(args.give).split(",")))
 	if args.has("quest"):
 		_debug_quest(String(args.quest))
 	if args.has("level"):  # prints/testes
@@ -141,6 +143,7 @@ func build(owner_demo: Node, args: Dictionary) -> void:
 		online = NetPlay.new()
 		add_child(online)
 		online.start(self, args)
+	demo.apply_gear_look.call_deferred()
 
 ## Estilo Tibia: pisou na boca da caverna desce; pisou na escada sobe; sem tecla.
 func _check_stairs() -> void:
@@ -317,6 +320,25 @@ func floating(text: String, at: Vector3, color: Color) -> void:
 	tween.tween_property(label, "position:y", at.y + 0.9, 1.0)
 	tween.tween_property(label, "modulate:a", 0.0, 1.0)
 	tween.chain().tween_callback(label.queue_free)
+
+## Vestir um item da bolsa (painel I). Offline veste na hora e recalcula os bônus; online só
+## pede ao servidor (o estado volta no evento "content"). "" = feito/pedido; senão o motivo.
+func equip_item(id: String) -> String:
+	if id not in inventory.items:
+		return "Item não está no inventário"
+	var err: String = inventory.can_use(id)
+	if err != "":
+		return err
+	if online != null:
+		online.equip(id)
+		return ""
+	inventory.equip(id)
+	_refresh_stats()
+	demo.apply_gear_look()
+	chat.post("Servidor", "Você equipou: %s." % String(inventory.item(id).get("name", id)), Color(1.0, 0.82, 0.38))
+	_save()
+	return ""
+
 
 func _equip_reward() -> void:
 	var id := String(config.reward_item)
@@ -604,6 +626,7 @@ func _apply_reward(reward: Dictionary, title: String, sub := "") -> void:
 		quests.owned.append(item_id)
 		inventory.equip(item_id)
 		_refresh_stats()
+		demo.apply_gear_look()
 		var it_name := String(inventory.item(item_id).name)
 		chat.post("Servidor", "Você recebeu: %s." % it_name, Color(1.0, 0.82, 0.38))
 		var gains: Array[String] = []

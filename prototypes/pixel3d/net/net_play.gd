@@ -113,6 +113,7 @@ func _apply_content(s: Variant) -> void:
 	if eq is Dictionary:
 		inv.equipped = (eq as Dictionary).duplicate()
 	adventure._refresh_stats()
+	demo.apply_gear_look()
 	adventure._sync_secret_marks()
 
 
@@ -168,6 +169,7 @@ func _on_content(ev: Dictionary) -> void:
 			demo._shockwave(AdvWorld.CHEST)
 		"equip":
 			adventure.chat.post("Servidor", "Você equipou: %s." % String(ev.get("item_name", "")), gold)
+			adventure.hud.equip_done(String(adventure.inventory.item(String(ev.get("item", ""))).get("slot", "")))
 
 
 ## Mesma apresentação do _apply_reward offline, com os números que o servidor aplicou.
@@ -411,6 +413,8 @@ func _on_event(ev: Dictionary) -> void:
 		"refused":
 			if String(ev.get("reason", "")) == "mana":
 				adventure.hud.flash_mana()
+			if String(ev.get("act", "")) == "equip":
+				adventure.hud.equip_refused()   # servidor recusou: o slot treme em vermelho
 
 
 func _on_chat(m: Dictionary) -> void:

@@ -109,6 +109,19 @@ func run() -> void:
 	adv.interact()
 	check(await wait_until(func() -> bool: return String(adv.state.stage) == "active", 5.0), "Nessa: missão aceita pelo servidor (estágio %s)" % String(adv.state.stage))
 	check(_chat_has("Servidor", "Missão iniciada: As Três Brasas.") and not String(adv.world.npc_speech.text).is_empty(), "Nessa: aviso de missão no chat e fala sobre a cabeça")
+	# bolsa (I) online: o pedido vai ao servidor e só o estado dele vale. Um item que só existe
+	# na cópia local da bolsa é recusado pelo servidor: o equipamento não muda e o slot pisca.
+	adv.hud.panel = "bag"
+	adv.inventory.items.append("sentinel_staff")
+	var sent: bool = adv.hud.drop_on_slot("sentinel_staff", "weapon")
+	check(sent and adv.hud.pending_equip == "sentinel_staff" and String(adv.inventory.equipped.get("weapon", "")) == "fire_staff",
+		"bolsa online: soltar no slot só pede ao servidor (arma local continua %s)" % String(adv.inventory.equipped.get("weapon", "")))
+	check(await wait_until(func() -> bool: return adv.hud.pending_equip == "", 5.0) and adv.hud._reject_fx.has("weapon"),
+		"bolsa online: servidor recusou (item fora da bolsa dele) e o slot piscou")
+	check(String(adv.inventory.equipped.get("weapon", "")) == "fire_staff", "bolsa online: arma segue a do servidor")
+	adv.inventory.items.erase("sentinel_staff")
+	check(not adv.hud.drop_on_slot("iron_sword", "weapon"), "bolsa online: item de outra vocação recusado no cliente")
+	adv.hud.panel = ""
 	# caçar: andar até um monstro e atirar pelo caminho normal do jogo (_attack_at)
 	var killed := await _hunt(45.0)
 	check(killed, "abate de monstro pelo cliente do jogo (evento do servidor)")

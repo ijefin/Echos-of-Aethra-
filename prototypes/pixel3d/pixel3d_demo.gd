@@ -71,6 +71,9 @@ var _flame_draw: ShaderMaterial
 var _pyro := false
 var _pyro_nodes: Array[Node] = []
 var _crystal: ShaderMaterial
+## Malha do cajado do mago (tingida pelo cajado vestido) e força do brilho do cristal.
+var _staff_mesh: MeshInstance3D
+var _crystal_mult := 1.0
 var _crystal_light: OmniLight3D
 const WEAPON_LIGHTS := [
 	{"label": "sem luz", "energy": 0.0, "range": 0.5, "emission": 0.0},
@@ -694,6 +697,7 @@ func _build_player() -> void:
 	_model.rotation.y = PI  # começa olhando para a câmera
 	# ponta do cajado: cristal aceso + luz (origem da chama e da bola de fogo)
 	var staff := mage.find_child("2H_Staff", true, false) as MeshInstance3D
+	_staff_mesh = staff
 	var tip := Node3D.new()
 	staff.add_child(tip)
 	tip.position = Vector3(0, staff.mesh.get_aabb().end.y * 0.94, 0)
@@ -713,6 +717,28 @@ func _build_player() -> void:
 	_crystal_light.light_energy = 1.1
 	tip.add_child(_crystal_light)
 	_p.staff = tip
+
+
+## Arma vestida no modelo: cristal, luz e tom do cajado do mago; espada ou arco das outras
+## vocações (vocations.gd). Chamado ao abrir, ao equipar e quando o servidor manda o estado.
+func apply_gear_look() -> void:
+	if _adventure == null or _adventure.inventory == null:
+		return
+	var it: Dictionary = _adventure.inventory.item(String(_adventure.inventory.equipped.get("weapon", "")))
+	if not _voc.is_mage():
+		_voc.apply_weapon(it)
+		return
+	if _crystal == null:
+		return
+	var g: Array = it.get("glow", [1.0, 0.5, 0.15])
+	var glow := Color(float(g[0]), float(g[1]), float(g[2]))
+	_crystal.set_shader_parameter("albedo", glow)
+	_crystal.set_shader_parameter("emission", glow)
+	_crystal_light.light_color = glow.lerp(Color.WHITE, 0.1)
+	_crystal_mult = clampf(float(it.get("glow_energy", 1.0)), 0.4, 2.0)
+	if _staff_mesh != null and _staff_mesh.material_override is ShaderMaterial:
+		var t: Array = it.get("tint", [1, 1, 1])
+		(_staff_mesh.material_override as ShaderMaterial).set_shader_parameter("tint", Color(float(t[0]), float(t[1]), float(t[2])))
 
 
 func _build_contact_shadow() -> void:
@@ -932,6 +958,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_weapon_glow = (_weapon_glow + 1) % WEAPON_LIGHTS.size()
 			KEY_F10:
 				get_tree().quit()
+	if _adventure != null and _adventure.hud.bag_mouse(event):
+		return
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
@@ -1081,8 +1109,8 @@ func _physics_process(delta: float) -> void:
 	var profile: Dictionary = WEAPON_LIGHTS[_weapon_glow]
 	var strength := pulse * (1.2 if _pyro else 1.0) * (1.0 - _dissolve)
 	if _crystal != null:
-		_crystal.set_shader_parameter("emission_energy", float(profile.emission) * strength)
-		_crystal_light.light_energy = float(profile.energy) * strength
+		_crystal.set_shader_parameter("emission_energy", float(profile.emission) * strength * _crystal_mult)
+		_crystal_light.light_energy = float(profile.energy) * strength * _crystal_mult
 		_crystal_light.omni_range = float(profile.range)
 	for mat in _char_mats:
 		mat.set_shader_parameter("readability", minf(1.0, _sky.night * 0.45 + (_adventure.core.readability_boost() * _sky.night if _adventure != null else 0.0)))

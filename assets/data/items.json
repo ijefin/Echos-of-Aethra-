@@ -60,7 +60,18 @@
 				"INT": 2
 			},
 			"manifest": "sprites_mage_weapon.json",
-			"light": true
+			"light": true,
+			"color": [
+				0.62,
+				0.42,
+				0.24
+			],
+			"glow": [
+				1.0,
+				0.5,
+				0.15
+			],
+			"glow_energy": 1.0
 		},
 		"mage_hat": {
 			"name": "Chapéu de Mago",
@@ -72,7 +83,12 @@
 				"INT": 2,
 				"resist": 2
 			},
-			"manifest": "sprites_mage_hat.json"
+			"manifest": "sprites_mage_hat.json",
+			"color": [
+				0.35,
+				0.3,
+				0.62
+			]
 		},
 		"apprentice_hood": {
 			"name": "Capuz de Aprendiz",
@@ -83,7 +99,12 @@
 			"stats": {
 				"SPI": 2,
 				"resist": 1
-			}
+			},
+			"color": [
+				0.5,
+				0.45,
+				0.38
+			]
 		},
 		"apprentice_robe": {
 			"name": "Robe de Aprendiz",
@@ -96,7 +117,12 @@
 				"armor": 2,
 				"max_resource": 10
 			},
-			"manifest": "sprites_mage_robe.json"
+			"manifest": "sprites_mage_robe.json",
+			"color": [
+				0.4,
+				0.36,
+				0.62
+			]
 		},
 		"ember_robe": {
 			"name": "Robe de Brasa",
@@ -108,7 +134,12 @@
 				"INT": 5,
 				"armor": 3,
 				"spell_power": 3
-			}
+			},
+			"color": [
+				0.78,
+				0.34,
+				0.18
+			]
 		},
 		"ember_amulet": {
 			"name": "Colar de Brasa",
@@ -121,7 +152,12 @@
 			"stats": {
 				"spell_power": 3,
 				"crit_chance": 0.02
-			}
+			},
+			"color": [
+				1.0,
+				0.5,
+				0.15
+			]
 		},
 		"linen_trousers": {
 			"name": "Calça de Linho Encantado",
@@ -132,7 +168,12 @@
 			"stats": {
 				"VIT": 2,
 				"armor": 1
-			}
+			},
+			"color": [
+				0.78,
+				0.72,
+				0.58
+			]
 		},
 		"wanderer_boots": {
 			"name": "Botas de Andarilho",
@@ -143,7 +184,12 @@
 			"stats": {
 				"AGI": 1,
 				"move_speed": 6
-			}
+			},
+			"color": [
+				0.5,
+				0.34,
+				0.2
+			]
 		},
 		"ember_orb": {
 			"name": "Orbe de Brasa",
@@ -154,7 +200,12 @@
 			"stats": {
 				"max_resource": 15,
 				"resource_regen": 0.5
-			}
+			},
+			"color": [
+				1.0,
+				0.45,
+				0.12
+			]
 		},
 		"pyromancer_staff": {
 			"name": "Cajado do Piromante",
@@ -175,7 +226,23 @@
 				"emit_hdr": 2.6,
 				"pulse_hz": 1.6,
 				"pulse_amp": 0.45
-			}
+			},
+			"color": [
+				0.3,
+				0.12,
+				0.1
+			],
+			"glow": [
+				1.0,
+				0.22,
+				0.05
+			],
+			"glow_energy": 1.6,
+			"tint": [
+				0.75,
+				0.4,
+				0.38
+			]
 		},
 		"pyromancer_robe": {
 			"name": "Manto do Piromante",
@@ -226,7 +293,12 @@
 						-14
 					]
 				}
-			}
+			},
+			"color": [
+				0.42,
+				0.1,
+				0.08
+			]
 		},
 		"pyromancer_hood": {
 			"name": "Capuz do Piromante",
@@ -246,7 +318,12 @@
 				"emit_hdr": 2.8,
 				"pulse_hz": 0.7,
 				"pulse_amp": 0.5
-			}
+			},
+			"color": [
+				0.45,
+				0.1,
+				0.08
+			]
 		},
 		"pyromancer_amulet": {
 			"name": "Coração de Brasa",
@@ -258,7 +335,12 @@
 			"stats": {
 				"spell_power": 7,
 				"crit_chance": 0.04
-			}
+			},
+			"color": [
+				1.0,
+				0.3,
+				0.08
+			]
 		},
 		"pyromancer_trousers": {
 			"name": "Calça do Piromante",
@@ -271,7 +353,12 @@
 				"VIT": 5,
 				"armor": 3,
 				"INT": 3
-			}
+			},
+			"color": [
+				0.35,
+				0.1,
+				0.08
+			]
 		},
 		"pyromancer_boots": {
 			"name": "Passos de Cinza",
@@ -283,7 +370,12 @@
 			"stats": {
 				"AGI": 3,
 				"move_speed": 10
-			}
+			},
+			"color": [
+				0.3,
+				0.12,
+				0.08
+			]
 		},
 		"pyromancer_grimoire": {
 			"name": "Grimório Incandescente",
@@ -296,7 +388,12 @@
 				"max_resource": 25,
 				"resource_regen": 1.5,
 				"spell_power": 4
-			}
+			},
+			"color": [
+				0.55,
+				0.12,
+				0.1
+			]
 		},
 		"iron_sword": {
 			"name": "Espada de Ferro",
@@ -308,7 +405,18 @@
 			"stats": {
 				"attack_power": 4,
 				"STR": 2
-			}
+			},
+			"color": [
+				0.78,
+				0.8,
+				0.86
+			],
+			"glow": [
+				0.0,
+				0.0,
+				0.0
+			],
+			"glow_energy": 0.0
 		},
 		"round_shield": {
 			"name": "Escudo Redondo",
@@ -320,7 +428,12 @@
 			"stats": {
 				"armor": 4,
 				"block": 0.1
-			}
+			},
+			"color": [
+				0.55,
+				0.38,
+				0.22
+			]
 		},
 		"knight_helm": {
 			"name": "Elmo de Sentinela",
@@ -332,7 +445,12 @@
 			"stats": {
 				"armor": 2,
 				"VIT": 1
-			}
+			},
+			"color": [
+				0.7,
+				0.72,
+				0.78
+			]
 		},
 		"chain_mail": {
 			"name": "Cota de Malha",
@@ -344,7 +462,12 @@
 			"stats": {
 				"armor": 5,
 				"VIT": 2
-			}
+			},
+			"color": [
+				0.62,
+				0.64,
+				0.7
+			]
 		},
 		"hunting_bow": {
 			"name": "Arco de Caça",
@@ -356,7 +479,18 @@
 			"stats": {
 				"attack_power": 3,
 				"AGI": 2
-			}
+			},
+			"color": [
+				0.72,
+				0.48,
+				0.24
+			],
+			"glow": [
+				0.0,
+				0.0,
+				0.0
+			],
+			"glow_energy": 0.0
 		},
 		"leather_hood": {
 			"name": "Capuz de Couro",
@@ -368,7 +502,12 @@
 			"stats": {
 				"AGI": 1,
 				"resist": 1
-			}
+			},
+			"color": [
+				0.3,
+				0.48,
+				0.26
+			]
 		},
 		"leather_vest": {
 			"name": "Colete de Couro",
@@ -381,7 +520,12 @@
 				"armor": 2,
 				"AGI": 2,
 				"move_speed": 4
-			}
+			},
+			"color": [
+				0.48,
+				0.32,
+				0.18
+			]
 		},
 		"sentinel_staff": {
 			"name": "Cajado de Sentinela",
@@ -393,7 +537,23 @@
 			"stats": {
 				"spell_power": 7,
 				"INT": 3
-			}
+			},
+			"color": [
+				0.55,
+				0.6,
+				0.7
+			],
+			"glow": [
+				0.45,
+				0.75,
+				1.0
+			],
+			"glow_energy": 1.2,
+			"tint": [
+				0.78,
+				0.9,
+				1.15
+			]
 		},
 		"guard_sword": {
 			"name": "Espada da Guarda",
@@ -405,7 +565,23 @@
 			"stats": {
 				"attack_power": 7,
 				"STR": 3
-			}
+			},
+			"color": [
+				0.95,
+				0.8,
+				0.42
+			],
+			"glow": [
+				1.0,
+				0.78,
+				0.35
+			],
+			"glow_energy": 0.6,
+			"tint": [
+				1.15,
+				0.95,
+				0.55
+			]
 		},
 		"yew_bow": {
 			"name": "Arco de Teixo",
@@ -417,7 +593,18 @@
 			"stats": {
 				"attack_power": 6,
 				"AGI": 3
-			}
+			},
+			"color": [
+				0.42,
+				0.2,
+				0.16
+			],
+			"glow": [
+				0.5,
+				1.0,
+				0.55
+			],
+			"glow_energy": 0.55
 		},
 		"mist_mantle": {
 			"name": "Manto das Brumas",
@@ -430,7 +617,12 @@
 				"INT": 4,
 				"armor": 6,
 				"max_resource": 20
-			}
+			},
+			"color": [
+				0.55,
+				0.7,
+				0.78
+			]
 		},
 		"lair_cuirass": {
 			"name": "Couraça do Covil",
@@ -442,7 +634,12 @@
 			"stats": {
 				"armor": 10,
 				"VIT": 3
-			}
+			},
+			"color": [
+				0.45,
+				0.42,
+				0.4
+			]
 		},
 		"wolfhide_jerkin": {
 			"name": "Gibão de Pele de Lobo",
@@ -455,7 +652,12 @@
 				"armor": 6,
 				"AGI": 3,
 				"move_speed": 4
-			}
+			},
+			"color": [
+				0.55,
+				0.52,
+				0.48
+			]
 		},
 		"elder_fang_charm": {
 			"name": "Colmilho do Vigia",
@@ -470,7 +672,12 @@
 				"attack_power": 6,
 				"max_hp": 20,
 				"max_resource": 10
-			}
+			},
+			"color": [
+				0.95,
+				0.92,
+				0.8
+			]
 		},
 		"crypt_greaves": {
 			"name": "Grevas da Cripta",
@@ -484,7 +691,12 @@
 			"stats": {
 				"armor": 4,
 				"max_hp": 10
-			}
+			},
+			"color": [
+				0.45,
+				0.5,
+				0.55
+			]
 		}
 	},
 	"rarity_colors": {
