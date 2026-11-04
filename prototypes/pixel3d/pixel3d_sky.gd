@@ -5,7 +5,17 @@
 # alinhados ao sol, mais fortes de manhã e no fim da tarde.
 extends RefCounted
 
-const DAY_LENGTH := 240.0  # segundos reais por dia
+## Ciclo (2026-11-03): DIA = 20 min reais (06:00→18:00), NOITE = 7 min reais (18:00→06:00) → 27 min.
+## Amanhecer = 1,5 min no começo do dia (06:00→06:54); entardecer = 1,5 min no fim (17:06→18:00).
+## Os dois contam DENTRO dos 20 min de dia. Teste: tools/test_day_night.gd.
+const DAY_MINUTES := 20.0
+const NIGHT_MINUTES := 7.0
+const DAWN_MINUTES := 1.5
+const DUSK_MINUTES := 1.5
+const SUNRISE := 6.0
+const SUNSET := 18.0
+## Piso de luz ambiente à noite: terreno, obstáculos e ameaças próximas continuam legíveis.
+const NIGHT_AMBIENT := 0.9
 const SHAFTS := 0  # luz das copas removida a pedido do usuário (2026-11-03)
 const Dressing := preload("res://prototypes/pixel3d/pixel3d_dressing.gd")
 const AMB_DAY := Color(0.42, 0.36, 0.64)
@@ -15,6 +25,8 @@ const SUN_NOON := Color(1.0, 0.92, 0.78)
 const SUN_LOW := Color(1.0, 0.56, 0.3)
 
 var hour := 8.5
+var day_seconds := DAY_MINUTES * 60.0
+var night_seconds := NIGHT_MINUTES * 60.0
 var night := 0.0          # 0 = dia, 1 = noite (lido por lampiões, fadas, vagalumes)
 var day := 1.0
 var sun: DirectionalLight3D
@@ -111,8 +123,65 @@ func _place_shafts() -> void:
 
 ## Adianta o relógio (tecla N).
 func skip(hours: float) -> void:
-	hour = fmod(hour + hours, 24.0)
+	hour = fposmod(hour + hours, 24.0)
 	_layout_timer = 0.0
+
+
+## Para testes: muda as durações (amanhecer/entardecer mantêm a proporção 1,5/20 do dia).
+func set_cycle_minutes(day_min: float, night_min: float) -> void:
+	day_seconds = maxf(day_min, 0.01) * 60.0
+	night_seconds = maxf(night_min, 0.01) * 60.0
+
+
+func _is_day(h: float) -> bool:
+	return h >= SUNRISE and h < SUNSET
+
+
+## Duração em horas de jogo do amanhecer/entardecer (1,5 min reais → 0,9 h com dia de 20 min).
+func _edge_hours() -> float:
+	return 12.0 * DAWN_MINUTES / DAY_MINUTES
+
+
+## "dawn" / "day" / "dusk" / "night".
+func phase() -> String:
+	if not _is_day(hour):
+		return "night"
+	if hour < SUNRISE + _edge_hours():
+		return "dawn"
+	if hour >= SUNSET - _edge_hours():
+		return "dusk"
+	return "day"
+
+
+## 0 = dia pleno, 1 = noite; transição suave no amanhecer e no entardecer.
+func _night_at(h: float) -> float:
+	if not _is_day(h):
+		return 1.0
+	var edge := _edge_hours()
+	if h < SUNRISE + edge:
+		return 1.0 - smoothstep(0.0, 1.0, (h - SUNRISE) / edge)
+	if h > SUNSET - edge:
+		return smoothstep(0.0, 1.0, (h - (SUNSET - edge)) / edge)
+	return 0.0
+
+
+## Avança o relógio: dia e noite andam em velocidades diferentes, com troca exata na borda.
+func _advance(delta: float) -> void:
+	var left := delta
+	var guard := 0
+	while left > 0.0 and guard < 4:
+		guard += 1
+		var daytime := _is_day(hour)
+		var rate := 12.0 / (day_seconds if daytime else night_seconds)
+		var boundary := SUNSET if daytime else (SUNRISE if hour < SUNRISE else SUNRISE + 24.0)
+		var to_boundary := (boundary - hour) / rate
+		if left < to_boundary:
+			hour += left * rate
+			left = 0.0
+		else:
+			hour = fmod(boundary, 24.0)
+			left -= to_boundary
+	hour = fposmod(hour, 24.0)
 
 
 ## Shared solar/lunar arc: a high light casts short shadows, a low light long ones.
@@ -122,26 +191,29 @@ static func orbit_rotation(progress: float, azimuth_offset := 0.0) -> Vector3:
 
 
 func update(delta: float, viewer := Vector3.ZERO) -> void:
-	hour = fmod(hour + delta * 24.0 / DAY_LENGTH, 24.0)
+	_advance(delta)
 	var e := sin((hour - 6.0) / 12.0 * PI)          # elevação do sol: > 0 de dia
-	day = smoothstep(-0.12, 0.18, e)
-	night = 1.0 - day
+	night = _night_at(hour)
+	day = 1.0 - night
 	var low := 1.0 - smoothstep(0.12, 0.55, e)       # sol perto do horizonte = luz quente
 	var t := clampf((hour - 6.0) / 12.0, 0.0, 1.0)
-	sun.visible = e > -0.12
+	sun.visible = day > 0.005
 	sun.rotation_degrees = orbit_rotation(t)
-	sun.light_energy = 1.05 * day
+	sun.light_energy = 1.05 * pow(day, 0.6)  # o sol segura a luz até perto do fim do entardecer
 	sun.light_color = SUN_NOON.lerp(SUN_LOW, low * day)
-	var moon_hours := fposmod(hour - 18.0, 24.0)
-	var moon_elevation := sin(moon_hours / 12.0 * PI)
-	var moon_t := clampf(moon_hours / 12.0, 0.0, 1.0)
-	var moon_visibility := smoothstep(-0.12, 0.18, moon_elevation)
+	# lua: atravessa o céu durante a noite; espera no horizonte no entardecer e se põe no amanhecer
+	# (arco entre 18% e 82%: nunca rasante — sombras longas demais escondiam o chão)
+	var moon_t := 0.18
+	if not _is_day(hour):
+		moon_t = lerpf(0.18, 0.82, clampf(fposmod(hour - SUNSET, 24.0) / 12.0, 0.0, 1.0))
+	elif hour < 12.0:
+		moon_t = 0.82
 	moon.rotation_degrees = orbit_rotation(moon_t, 180.0)
-	moon.visible = night > 0.02 and moon_visibility > 0.01
-	moon.light_energy = 0.46 * night * moon_visibility
+	moon.light_energy = 0.46 * night * (0.85 + 0.15 * sin(moon_t * PI))
+	moon.visible = moon.light_energy > 0.005
 	var amb := AMB_DAY.lerp(AMB_DUSK, low * day)
 	env.ambient_light_color = amb.lerp(AMB_NIGHT, night)
-	env.ambient_light_energy = lerpf(0.5, 0.85, night)
+	env.ambient_light_energy = lerpf(0.5, NIGHT_AMBIENT, night)
 	env.glow_intensity = lerpf(0.9, 1.3, night)
 	env.adjustment_saturation = lerpf(1.15, 1.02, night)
 	RenderingServer.global_shader_parameter_set(&"sun_dir", -sun.global_transform.basis.z)
