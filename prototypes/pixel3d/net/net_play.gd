@@ -76,6 +76,27 @@ func start(owner_adventure, args: Dictionary) -> void:
 		args.has("register"), null, Callable(), String(demo._voc.id))
 
 
+## Prints de rede (tools/net_dash_shot.sh): --auto_q=S usa Q S segundos depois de entrar, na
+## direção --auto_q_dir=x,z (6 m); --dash_shot=res://x.png tira o print --dash_shot_after=S
+## depois que OUTRO jogador começa a investida/salto (pega o meio do deslizamento).
+func _auto_q() -> void:
+	await get_tree().create_timer(float(_args.get("auto_q", 6.0))).timeout
+	var d := String(_args.get("auto_q_dir", "1,0")).split(",")
+	var dir := Vector3(float(d[0]), 0, float(d[1]) if d.size() > 1 else 0.0).normalized()
+	q(demo._player.global_position + dir * 6.0)
+
+
+func _dash_shot() -> void:
+	if not _args.has("dash_shot") or _args.has("_dash_shot_done"):
+		return
+	_args["_dash_shot_done"] = true
+	await get_tree().create_timer(float(_args.get("dash_shot_after", 0.1))).timeout
+	await RenderingServer.frame_post_draw
+	var path := ProjectSettings.globalize_path(String(_args.dash_shot))
+	demo.get_viewport().get_texture().get_image().save_png(path)
+	print("DASH_SHOT ", path)
+
+
 func is_online() -> bool:
 	return net != null and net.is_online()
 
@@ -92,6 +113,8 @@ func _on_welcome(w: Dictionary) -> void:
 	demo._player.global_position = net.local_position()
 	demo._cam_focus = demo._player.global_position
 	_apply_content(w.get("content", {}))
+	if _args.has("auto_q"):
+		_auto_q()
 
 
 # ------------------------------------------------------------------ conteúdo (servidor manda)
@@ -395,6 +418,7 @@ func _on_event(ev: Dictionary) -> void:
 						var rr: Dictionary = remotes[who]
 						var rp: Vector3 = (rr.root as Node3D).position
 						rr.dash = DashMotion.start(rp, Vector3(to.x, rp.y, to.z), t)
+						_dash_shot()
 		"whirl":
 			demo._shockwave(_pos_of(int(ev.get("eid", 0)), at), float(ev.get("radius", 2.6)))
 		"torch":
