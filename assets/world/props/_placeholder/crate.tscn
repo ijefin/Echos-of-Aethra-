@@ -1,0 +1,29 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_tp1uh"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_en4ga"]
+albedo_color = Color(0.6, 0.45, 0.25, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_uyrdc"]
+material = SubResource("StandardMaterial3D_en4ga")
+size = Vector3(0.8, 0.8, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p8bsj"]
+size = Vector3(0.8, 0.8, 0.8)
+
+[node name="Crate" type="Node3D" unique_id=1993672234]
+script = ExtResource("1_tp1uh")
+prop_id = &"crate"
+category = &"furniture"
+
+[node name="Mesh0" type="MeshInstance3D" parent="." unique_id=1425035449]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("BoxMesh_uyrdc")
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=1031450092]
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Body" unique_id=754256324]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("BoxShape3D_p8bsj")

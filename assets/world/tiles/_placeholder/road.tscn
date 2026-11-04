@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bvqm0"]
+albedo_color = Color(0.55, 0.42, 0.28, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_iexor"]
+material = SubResource("StandardMaterial3D_bvqm0")
+size = Vector3(2, 0.2, 2)
+
+[node name="Road" type="Node3D" unique_id=1519527032]
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=1256631519]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+mesh = SubResource("BoxMesh_iexor")

@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_2qa3y"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5t7i1"]
+albedo_color = Color(0.25, 0.55, 0.25, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_ea3a0"]
+material = SubResource("StandardMaterial3D_5t7i1")
+bottom_radius = 0.6
+height = 0.6
+radial_segments = 8
+
+[node name="Bush" type="Node3D" unique_id=1390689867]
+script = ExtResource("1_2qa3y")
+prop_id = &"bush"
+blocks_movement = false
+
+[node name="Mesh0" type="MeshInstance3D" parent="." unique_id=1428706301]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+mesh = SubResource("CylinderMesh_ea3a0")

@@ -1,0 +1,77 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/props/world_prop.gd" id="1_30jrj"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_28f6f"]
+albedo_color = Color(0.4, 0.27, 0.15, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_8yu5h"]
+material = SubResource("StandardMaterial3D_28f6f")
+top_radius = 0.18
+bottom_radius = 0.25
+height = 1.6
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0lo1j"]
+albedo_color = Color(0.18, 0.5, 0.2, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_18rbg"]
+material = SubResource("StandardMaterial3D_0lo1j")
+top_radius = 0.0
+bottom_radius = 1.2
+height = 2.6
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bboo7"]
+albedo_color = Color(0.4, 0.27, 0.15, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_jix1i"]
+material = SubResource("StandardMaterial3D_bboo7")
+top_radius = 0.15
+bottom_radius = 0.2
+height = 1.2
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dmhxa"]
+albedo_color = Color(0.12, 0.4, 0.22, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_13haf"]
+material = SubResource("StandardMaterial3D_dmhxa")
+top_radius = 0.0
+bottom_radius = 0.9
+radial_segments = 8
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_te5r8"]
+radius = 0.35
+
+[node name="Tree" type="Node3D" unique_id=2106734923]
+script = ExtResource("1_30jrj")
+prop_id = &"tree"
+category = &"tree"
+
+[node name="Variant0" type="Node3D" parent="." unique_id=456986108]
+
+[node name="Mesh0" type="MeshInstance3D" parent="Variant0" unique_id=375314446]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("CylinderMesh_8yu5h")
+
+[node name="Mesh1" type="MeshInstance3D" parent="Variant0" unique_id=2009321074]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
+mesh = SubResource("CylinderMesh_18rbg")
+
+[node name="Variant1" type="Node3D" parent="." unique_id=747310630]
+
+[node name="Mesh0" type="MeshInstance3D" parent="Variant1" unique_id=2058681681]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("CylinderMesh_jix1i")
+
+[node name="Mesh1" type="MeshInstance3D" parent="Variant1" unique_id=930695997]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+mesh = SubResource("CylinderMesh_13haf")
+
+[node name="Body" type="StaticBody3D" parent="." unique_id=1240985546]
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape3D" parent="Body" unique_id=2144342026]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CylinderShape3D_te5r8")
