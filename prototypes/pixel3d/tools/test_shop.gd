@@ -142,5 +142,18 @@ func run() -> void:
 	check(not hud.trade_amount("mana", true) and hud._reject_fx.has("trade:src:mana"), "troca: sem poção de mana a fonte treme")
 	hud.trade = {}
 	a.online = null
+	# --- balanço (shop.json _balance): 25 abates (~10 min) em cada caçada, no meio da faixa de
+	# nível, pagam "algumas poções" (4 a 14 poções de vida) — nem migalha, nem loja de graça
+	var regions: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://prototypes/pixel3d/data/world_regions.json"))
+	var hp_price := Economy.buy_price(shop, "hp")
+	for h: Dictionary in regions.hunts:
+		var lv: Array = h.level
+		var spawns: Array = h.spawns
+		var per_kill := 0.0
+		for spawn: Array in spawns:
+			per_kill += (Economy.gold_drop(shop, String(spawn[2]), int(lv[0])) + Economy.gold_drop(shop, String(spawn[2]), int(lv[1]))) * 0.5
+		per_kill /= spawns.size()
+		var n_pots := 25.0 * per_kill / hp_price
+		check(n_pots >= 4.0 and n_pots <= 14.0, "balanço: 10 min em %s (nv %d-%d) ≈ %.0f moedas = %.1f poções de vida" % [String(h.id), int(lv[0]), int(lv[1]), 25.0 * per_kill, n_pots])
 	print("TEST_SHOP: %s (%d PASS, %d FAIL)" % ["OK" if fails == 0 else "FAIL", passes, fails])
 	quit(0 if fails == 0 else 1)

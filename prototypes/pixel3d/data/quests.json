@@ -78,7 +78,7 @@
         {"type": "kill", "kind": "frog", "hunt": "charco", "count": 5, "text": "Cale os sapos bravios do charco, a leste de Sálvia.", "log": "Sapos do charco abatidos"},
         {"type": "talk", "npc": "salvia", "text": "Volte até Sálvia, no Charco das Brumas."}
       ],
-      "reward": {"xp": 25, "gold": 20, "potions": {"hp": 3}}
+      "reward": {"xp": 25, "gold": 30, "potions": {"hp": 3}}
     },
     {
       "id": "fios_estrada",
@@ -104,7 +104,7 @@
         {"type": "collect", "item": "patrol_badge", "count": 1, "at": [-82.5, 47.5], "text": "Procure algum sinal da patrulha entre as ruínas da estrada.", "log": "Insígnia encontrada"},
         {"type": "talk", "npc": "rook", "text": "Leve o que achou ao Sargento Rook, no Posto Velho."}
       ],
-      "reward": {"xp": 45, "gold": 35, "items": {"mage": "sentinel_staff", "warrior": "guard_sword", "archer": "yew_bow"}}
+      "reward": {"xp": 45, "gold": 70, "items": {"mage": "sentinel_staff", "warrior": "guard_sword", "archer": "yew_bow"}}
     },
     {
       "id": "presas_covil",
@@ -129,7 +129,7 @@
         {"type": "kill", "kind": "spider", "hunt": "covil_bosque", "count": 3, "text": "As aranhas do Covil protegem os lobos. Abra caminho entre elas.", "log": "Aranhas do Covil abatidas"},
         {"type": "talk", "npc": "bran", "text": "Leve as presas a Bran, na Torre de Vigia, ao norte."}
       ],
-      "reward": {"xp": 60, "gold": 50, "potions": {"mana": 2}, "items": {"mage": "mist_mantle", "warrior": "lair_cuirass", "archer": "wolfhide_jerkin"}}
+      "reward": {"xp": 60, "gold": 90, "potions": {"mana": 2}, "items": {"mage": "mist_mantle", "warrior": "lair_cuirass", "archer": "wolfhide_jerkin"}}
     },
     {
       "id": "vigia_vale",
@@ -154,7 +154,7 @@
         {"type": "collect", "item": "elder_fang", "count": 1, "from": {"kind": "wolf_elite"}, "text": "Arranque o colmilho de Garra-Velha.", "log": "Colmilho"},
         {"type": "talk", "npc": "bran", "text": "Leve o colmilho a Bran, na Torre de Vigia."}
       ],
-      "reward": {"xp": 100, "gold": 90, "potions": {"hp": 2, "mana": 2}, "items": {"mage": "elder_fang_charm", "warrior": "elder_fang_charm", "archer": "elder_fang_charm"}}
+      "reward": {"xp": 100, "gold": 160, "potions": {"hp": 2, "mana": 2}, "items": {"mage": "elder_fang_charm", "warrior": "elder_fang_charm", "archer": "elder_fang_charm"}}
     }
   ],
   "secrets": {
