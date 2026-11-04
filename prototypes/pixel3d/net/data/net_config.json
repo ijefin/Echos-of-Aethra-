@@ -1,0 +1,91 @@
+{
+  "_doc": "Parâmetros de rede do Ecos de Aethra (protótipo). Alvo: 150 ms de latência, ~10 KB/s por jogador. Variáveis AETHRA_* sobrescrevem os campos marcados em net_config.gd.",
+  "port": 7777,
+  "max_players": 16,
+  "log_level": "info",
+  "data_dir": "user://aethra-server",
+
+  "tick_rate": 20,
+  "snapshot_rate": 20,
+  "input_rate": 20,
+  "input_redundancy": 3,
+  "interp_delay_ms": 110,
+  "reconcile_threshold_m": 0.15,
+  "snap_threshold_m": 2.5,
+  "correction_per_second": 10.0,
+
+  "move_budget_max_s": 0.25,
+  "max_queued_inputs": 8,
+  "teleport_tolerance": 1.15,
+
+  "interest_cell_m": 16.0,
+  "interest_enter_m": 40.0,
+  "interest_leave_m": 48.0,
+  "max_snapshot_entities": 48,
+
+  "max_inbound_packet": 512,
+  "max_outbound_packet": 1400,
+  "abuse_score_kick": 40,
+  "abuse_decay_per_second": 2.0,
+  "rate_limits": {
+    "any":    {"rate": 90.0, "burst": 120.0},
+    "input":  {"rate": 45.0, "burst": 70.0},
+    "action": {"rate": 10.0, "burst": 8.0},
+    "chat":   {"rate": 1.5,  "burst": 5.0},
+    "friend": {"rate": 2.0,  "burst": 6.0},
+    "auth":   {"rate": 0.5,  "burst": 4.0},
+    "ping":   {"rate": 4.0,  "burst": 8.0}
+  },
+  "auth_failures_before_lock": 5,
+  "auth_lock_seconds": 60,
+  "handshake_timeout_s": 15.0,
+
+  "password_iterations": 20000,
+  "name_min": 3,
+  "name_max": 16,
+  "password_min": 6,
+  "password_max": 64,
+  "chat_max": 160,
+
+  "reconnect_grace_s": 120.0,
+  "idle_timeout_s": 30.0,
+  "autosave_s": 30.0,
+
+  "spawn": [-14.0, 0.0, -22.7],
+  "spawn_spread_m": 1.5,
+  "respawn": [-14.0, 0.0, -22.7],
+  "world_half": 60.0,
+  "player_radius": 0.35,
+
+  "move": {
+    "speed": 4.2,
+    "dodge_speed": 11.0,
+    "dodge_time": 0.24,
+    "dodge_cooldown": 0.8
+  },
+  "combat": {
+    "fire_cooldown": 0.42,
+    "fire_range": 10.4,
+    "range_tolerance": 1.5,
+    "shot_speed": 13.0,
+    "shot_life": 0.8,
+    "shot_radius": 0.25,
+    "blink_range": 7.0,
+    "blink_cooldown": 3.0,
+    "ring_cooldown": 6.0,
+    "potion_cooldown": 1.0,
+    "hurt_invulnerable_s": 0.75,
+    "light_mana": 20,
+    "light_duration_s": 120.0,
+    "light_cooldown": 2.0
+  },
+  "monsters": {
+    "radius": 0.45,
+    "aggro_m": 7.0,
+    "leash_m": 14.0,
+    "attack_range_m": 1.3,
+    "hit_range_m": 1.7,
+    "attack_cooldown_s": 1.4,
+    "respawn_s": 15.0
+  }
+}
