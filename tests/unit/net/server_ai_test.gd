@@ -59,9 +59,11 @@ func run() -> void:
 	quit(0 if failures == 0 else 1)
 
 
+## Primeiro monstro vivo do tipo longe da Nessa (perto dela o jogador é alvo seguro).
 func _first(kind: String) -> Dictionary:
 	for m: Dictionary in world.monsters.values():
-		if String(m.kind) == kind and String(m.state) != "dead":
+		var h: Vector3 = m.home
+		if String(m.kind) == kind and String(m.state) != "dead" and Vector2(h.x - world.NPC.x, h.z - world.NPC.z).length() > 12.0:
 			return m
 	return {}
 
@@ -98,10 +100,12 @@ func _test_melee_chase() -> void:
 	var p := _player_near("alvo_sapo", frog.home, Vector2(3.0, 0.0))
 	var hp0 := float(p.hp)
 	var d0 := Vector2(frog.pos.x - p.ms.pos.x, frog.pos.z - p.ms.pos.z).length()
-	var min_d := d0
+	# lambdas capturam locais por valor: o estado mutável vai num Dictionary
+	var st := {"min_d": d0}
 	var got := await _steps(12.0, func() -> bool:
-		min_d = minf(min_d, Vector2(frog.pos.x - p.ms.pos.x, frog.pos.z - p.ms.pos.z).length())
+		st.min_d = minf(float(st.min_d), Vector2(frog.pos.x - p.ms.pos.x, frog.pos.z - p.ms.pos.z).length())
 		return float(p.hp) < hp0)
+	var min_d := float(st.min_d)
 	check(min_d < d0 - 0.5, "IA: sapo persegue o jogador do servidor (%.1f → %.1f m)" % [d0, min_d])
 	check(got, "IA: golpe da IA real tira vida autoritativa (%.0f → %.0f)" % [hp0, float(p.hp)])
 	check(_inside == 0, "IA: monstros não entram em obstáculos exportados (%d amostras dentro)" % _inside)
@@ -111,16 +115,16 @@ func _test_melee_chase() -> void:
 func _test_spider_web() -> void:
 	var sp := _first("spider")
 	var p := _player_near("alvo_aranha", sp.home, Vector2(0.0, 5.0))
-	var saw_shot := false
+	var st := {"saw": false}
 	var slowed := await _steps(15.0, func() -> bool:
 		if not world.monster_shots.is_empty():
 			world.index_interest()
 			var snap: Dictionary = world.snapshot_for(int(p.eid))
 			for e: Dictionary in snap.entities:
 				if int(e.kind) == Protocol.KIND_PROJECTILE and int(e.sub) == 1:
-					saw_shot = true
+					st.saw = true
 		return (p.effects as Dictionary).has("slow"))
-	check(saw_shot, "IA: teia da aranha replicada no snapshot (projétil sub 1)")
+	check(bool(st.saw), "IA: teia da aranha replicada no snapshot (projétil sub 1)")
 	check(slowed, "IA: teia aplica lento autoritativo no jogador")
 	if slowed:
 		world.index_interest()

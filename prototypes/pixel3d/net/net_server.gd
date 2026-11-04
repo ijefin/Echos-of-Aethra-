@@ -40,6 +40,7 @@ var _clock := 0.0
 var _stats := {"in": 0, "out": 0, "in_bytes": 0, "out_bytes": 0, "kicks": 0}
 var _stats_acc := 0.0
 var _data_path := ""
+var _floors: Dictionary = {}
 
 
 func setup(config: Dictionary) -> void:
@@ -54,19 +55,28 @@ func setup(config: Dictionary) -> void:
 	var floors: Dictionary = Collision.load_floors(COLLISION_PATH, float(cfg.get("world_half", 100.0)))
 	var col: RefCounted = floors[0]
 	world = World.new(cfg, tuning, col)
-	if bool(cfg.get("server_ai", true)) and is_inside_tree():
-		# IA real do jogo num World3D headless com a colisão exportada
-		var holder := Node3D.new()
-		holder.name = "AI"
-		add_child(holder)
-		world.attach_ai(ServerAI.new(holder, floors))
+	_floors = floors
+	if is_inside_tree():
+		_attach_ai()
 	_data_path = String(cfg.get("data_dir", "user://aethra-server")).path_join("accounts.json")
 	accounts = Accounts.new(cfg, Store.load_dict(_data_path))
 	friends = Friends.new(accounts)
 	sessions = Sessions.new(float(cfg.get("reconnect_grace_s", 120.0)))
 	limiter = Limiter.new(cfg.get("rate_limits", {}), float(cfg.get("abuse_score_kick", 40)), float(cfg.get("abuse_decay_per_second", 2.0)))
-	logger.write("info", "mundo: %d monstros (IA %s), %d obstáculos na superfície, %d andares; contas: %d; dados em %s" % [
-		world.monsters.size(), "real" if world.ai != null else "mínima", col.count(), floors.size(), accounts.accounts().size(), ProjectSettings.globalize_path(_data_path)])
+	logger.write("info", "mundo: %d monstros, %d obstáculos na superfície, %d andares; contas: %d; dados em %s" % [
+		world.monsters.size(), col.count(), floors.size(), accounts.accounts().size(), ProjectSettings.globalize_path(_data_path)])
+
+
+## IA real do jogo num World3D headless com a colisão exportada. Precisa do nó na árvore:
+## o setup() roda no _initialize do server_main (antes disso), então liga no 1º quadro.
+func _attach_ai() -> void:
+	if world.ai != null or not bool(cfg.get("server_ai", true)):
+		return
+	var holder := Node3D.new()
+	holder.name = "AI"
+	add_child(holder)
+	world.attach_ai(ServerAI.new(holder, _floors))
+	logger.write("info", "IA real dos monstros ligada (%d monstros, enemy_director)" % world.monsters.size())
 
 
 ## Abre a porta UDP. Devolve OK ou o erro.
@@ -86,6 +96,8 @@ func start() -> Error:
 func _process(delta: float) -> void:
 	if peer == null:
 		return
+	if world.ai == null and bool(cfg.get("server_ai", true)):
+		_attach_ai()
 	_clock += delta
 	peer.poll()
 	while peer.get_available_packet_count() > 0:
