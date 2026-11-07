@@ -135,6 +135,42 @@ func test_collision_and_motion() -> void:
 		Motion.step(b, Vector2(0.3, 0.7), 1 if i == 2 else 0, 0.05, col, MOVE, 0.35)
 	check((a.pos as Vector3).is_equal_approx(b.pos), "movimento: determinístico (predição = servidor)")
 
+	# Baseline EOA-002: contrato de locomoção antes de qualquer ajuste no controlador.
+	var open := Collision.new({"half": 60.0})
+	var axis := Motion.new_state(Vector3(0, 0, -30))
+	var diagonal := Motion.new_state(Vector3(0, 0, -30))
+	for i in 20:
+		Motion.step(axis, Vector2(1, 0), 0, 0.05, open, MOVE, 0.35)
+		Motion.step(diagonal, Vector2(1, 1), 0, 0.05, open, MOVE, 0.35)
+	var axis_dist := Vector2((axis.pos as Vector3).x, (axis.pos as Vector3).z + 30.0).length()
+	var diagonal_dist := Vector2((diagonal.pos as Vector3).x, (diagonal.pos as Vector3).z + 30.0).length()
+	check(absf(axis_dist - 4.2) < 0.01 and absf(diagonal_dist - axis_dist) < 0.01,
+		"movimento: diagonal normalizada, sem ganho de velocidade (%.2f = %.2f m)" % [diagonal_dist, axis_dist])
+
+	var reverse := Motion.new_state(Vector3(0, 0, -30))
+	for i in 10:
+		Motion.step(reverse, Vector2(1, 0), 0, 0.05, open, MOVE, 0.35)
+	for i in 10:
+		Motion.step(reverse, Vector2(-1, 0), 0, 0.05, open, MOVE, 0.35)
+	check((reverse.pos as Vector3).distance_to(Vector3(0, 0, -30)) < 0.01,
+		"movimento: inversão responde no tick e retorna ao ponto inicial")
+	var stopped_at: Vector3 = reverse.pos
+	var stopped_yaw := float(reverse.yaw)
+	for i in 10:
+		Motion.step(reverse, Vector2.ZERO, 0, 0.05, open, MOVE, 0.35)
+	check((reverse.pos as Vector3).is_equal_approx(stopped_at) and is_equal_approx(float(reverse.yaw), stopped_yaw),
+		"movimento: ao parar conserva posição e última orientação")
+
+	var dash_input := Motion.new_state(Vector3(0, 0, -30))
+	Motion.step(dash_input, Vector2(0, -1), 1, 0.05, open, MOVE, 0.35)
+	check((dash_input.dodge_dir as Vector2).is_equal_approx(Vector2(0, -1)),
+		"dash: com input usa a direção do deslocamento")
+	var dash_stopped := Motion.new_state(Vector3(0, 0, -30))
+	dash_stopped.yaw = -PI / 2.0 # última orientação para +X
+	Motion.step(dash_stopped, Vector2.ZERO, 1, 0.05, open, MOVE, 0.35)
+	check((dash_stopped.dodge_dir as Vector2).is_equal_approx(Vector2(1, 0)),
+		"dash: parado usa a orientação conservada")
+
 
 func test_move_validator() -> void:
 	var v := Validator.new({"input_rate": 20, "move_budget_max_s": 0.25, "max_queued_inputs": 8, "move": MOVE})

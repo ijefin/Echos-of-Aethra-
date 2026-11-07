@@ -34,10 +34,11 @@
 - **Evidência (2026-11-07, Linux/Godot 4.7.2):** `GODOT=godot bash tools/net_session_test.sh 17777` conectou Alice e Bruno, com visibilidade mútua e replicação autoritativa; resumo amplo: 96 PASS, 4 FAIL, 7/7 bots, 0 erros de script. Os 4 FAIL são divergências preexistentes no roteiro de ofertas de moedas/poções, fora desta história. `GODOT=godot bash tools/net_two_clients_shot.sh 17791` conectou Ana e Davi; as duas capturas em `production/qa/evidence/pixel3d-net-client-{ana,davi}.png` foram inspecionadas e cada cliente mostra o outro. O guia canônico `server/README.md` recebeu o caminho Linux; nenhuma mudança de gameplay/import/dependência.
 
 ### EOA-002 — Smoke test e referência de comportamento
-- **Tipo:** história técnica · **Estado:** READY · **Prioridade:** P0 · **Depende:** EOA-001
+- **Tipo:** história técnica · **Estado:** DONE · **Prioridade:** P0 · **Depende:** EOA-001
 - **Objetivo:** registrar uma referência curta antes de editar movimento.
 - **Tarefas:** validar Guerreiro/Mago/Arqueiro quando disponíveis; testar WASD, diagonal, inversão, parada, dash, colisões e ataque; marcar `PASS`, `FAIL` ou `NOT TESTED` com observações; registrar logs relevantes.
 - **Aceite:** checklist reproduzível e lista objetiva de divergências; sem novas mudanças de gameplay.
+- **Evidência (2026-11-07, Linux/Godot 4.7.2):** checklist em `docs/development/multiplayer-baseline.md`. `NET_RULES` 82 PASS; `COLLISION_EXPORT` 39 PASS; `VOCATION_RULES` 44 PASS; `DASH_MOTION` 9 PASS; cliente real online 39 PASS, 0 FAIL, 2/2 concluídos e zero erros de script. Sensação sob latência real ficou `NOT TESTED`; nenhuma mudança de gameplay/tuning.
 
 ## Sprint 01 — Movimento multiplayer (primeira implementação)
 

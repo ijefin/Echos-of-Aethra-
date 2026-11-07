@@ -4,6 +4,31 @@ Registre aqui trabalho com etapas ou troca de agente. Mantenha poucas tarefas
 ativas. Não crie um documento por ajuste. Estado: `pendente`, `em andamento`,
 `bloqueado`, `concluído`. Uma etapa só recebe `[x]` com evidência registrada.
 
+## EOA-002 — smoke test e referência de comportamento
+
+Estado: concluído · executor: Codex `/root` · 2026-11-07.
+Objetivo: registrar baseline online curto das três vocações antes de alterar movimento.
+
+- [x] Validar WASD, diagonal, inversão, parada, dash/esquiva e colisões.
+- [x] Validar ataque de Guerreiro, Mago e Arqueiro pelas regras autoritativas.
+- [x] Executar cliente real contra servidor e separar PASS/FAIL/NOT TESTED.
+- [x] Registrar checklist reproduzível, atualizar o card e publicar no GitHub.
+
+Aceite: checklist objetivo com evidências e divergências; nenhuma mudança de gameplay.
+Arquivos previstos: testes de movimento/cliente estritamente necessários,
+`docs/development/multiplayer-baseline.md`, `ECHOS_BACKLOG.md` e este acompanhamento.
+Alterações `.import` e `project.godot` preexistentes permanecem fora do escopo.
+
+Resultado/evidência:
+- `NET_RULES`: 82 PASS; `COLLISION_EXPORT`: 39 PASS; `VOCATION_RULES`:
+  44 PASS; `DASH_MOTION`: 9 PASS; todas com código 0.
+- `GODOT=godot bash tools/net_game_client_test.sh 17790`: 39 PASS,
+  0 FAIL, 2/2 concluídos e zero erros de script.
+- Checklist em `docs/development/multiplayer-baseline.md`: WASD, diagonal,
+  inversão, parada, dash e colisões `PASS`; ataques das três vocações `PASS`.
+- `NOT TESTED`: sensação subjetiva sob latência real, dependente de sessão humana.
+- Nenhum valor de gameplay ou tuning alterado.
+
 ## EOA-001 — reproduzir execução multiplayer local
 
 Estado: concluído · executor: Codex `/root` · 2026-11-07.
