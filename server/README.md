@@ -20,7 +20,7 @@ O código fica em `src/game/net/`. Esta pasta guarda só os arquivos de hospedag
   - O mesmo arquivo é usado pela predição do cliente.
 - **Monstros:** a IA é a mesma do jogo (`ai/enemy_director.gd`). Roda num World3D headless
   montado com essa colisão: perseguição, telegraph, salto, investida, teia com lento. Isso dá
-  42 monstros: os `field_enemies` com o `level` das caçadas (vida, dano e XP escalados por
+  57 monstros: os `field_enemies` com o `level` das caçadas (vida, dano e XP escalados por
   `enemy_level`), os lobos e a Garra-Velha.
 - **Vocações:** lidas de `data/classes.json`. O servidor valida alcance, arco, recarga, mana e
   dano.
@@ -99,9 +99,13 @@ O código fica em `src/game/net/`. Esta pasta guarda só os arquivos de hospedag
 Parâmetros de rede: `src/game/net/data/net_config.json`.
 Regras de jogo: `src/game/data/first_adventure.json`, `classes.json` e `core_skills.json`.
 
-## Passo a passo local (Windows, Git Bash)
+## Passo a passo local
 
 ```bash
+# Linux (Godot 4.7.2 no PATH)
+G="${GODOT:-godot}"
+
+# Windows com Git Bash (use esta linha no lugar da anterior)
 G="C:/Users/Jeff/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe/Godot_v4.7.2-stable_win64_console.exe"
 
 # 0) só numa cópia nova do repositório: importar os assets uma vez
@@ -114,7 +118,7 @@ G="C:/Users/Jeff/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine
 
 # 2) servidor (UDP 7777; deixe este terminal aberto)
 "$G" --headless --path . -s res://src/game/net/server_main.gd -- --port=7777
-#    → "AETHRA_SERVER_READY 7777" e "IA real dos monstros ligada (42 monstros, enemy_director)"
+#    → "AETHRA_SERVER_READY 7777" e "IA real dos monstros ligada (57 monstros, enemy_director)"
 
 # 3) dois clientes do jogo (cada um num terminal). Na 1ª vez use --register; --class só vale
 #    para personagem novo (mage | warrior | archer)
@@ -123,7 +127,19 @@ G="C:/Users/Jeff/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine
 #    das próximas vezes: sem --register (e sem --class)
 ```
 
-Sem `--connect`, o jogo roda offline como sempre: nada da rede é criado.
+Para o fluxo oficial exclusivamente online, `--connect` é obrigatório. Sem ele ainda existe
+um modo local legado/QA, mas essa execução não valida o produto multiplayer.
+
+Validação reproduzível no Linux, com dados e portas temporários:
+
+```bash
+GODOT=godot bash tools/net_session_test.sh
+GODOT=godot bash tools/net_two_clients_shot.sh
+```
+
+O primeiro comando valida servidor, clientes headless, reconexão e persistência. O segundo
+abre dois clientes reais e grava `production/qa/evidence/pixel3d-net-client-{ana,davi}.png`;
+as imagens precisam ser inspecionadas, não apenas geradas.
 
 **No jogo (online):**
 

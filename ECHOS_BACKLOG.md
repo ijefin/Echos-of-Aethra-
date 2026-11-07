@@ -26,11 +26,12 @@
 ## Sprint 00 — Baseline operacional (curta, sem auditoria global)
 
 ### EOA-001 — Reproduzir execução multiplayer local
-- **Tipo:** história técnica · **Estado:** READY · **Prioridade:** P0
+- **Tipo:** história técnica · **Estado:** DONE · **Prioridade:** P0
 - **Objetivo:** estabelecer caminho confiável para iniciar servidor e dois clientes usando as regras online reais.
 - **Tarefas:** localizar comandos/cenas vigentes; iniciar servidor e clientes; registrar portas/configuração relevante sem segredos; registrar erros preexistentes; descrever execução mínima em `docs/development/local-multiplayer.md` **somente se ainda não houver guia canônico equivalente**.
 - **Aceite:** passos reproduzíveis; cliente conecta ao servidor; dois personagens são visíveis ou a limitação fica comprovada e reportada; erros preexistentes separados de regressões.
 - **Limites:** não alterar gameplay, arquivos `.import` preexistentes ou dependências sem necessidade; não fazer commit/push.
+- **Evidência (2026-11-07, Linux/Godot 4.7.2):** `GODOT=godot bash tools/net_session_test.sh 17777` conectou Alice e Bruno, com visibilidade mútua e replicação autoritativa; resumo amplo: 96 PASS, 4 FAIL, 7/7 bots, 0 erros de script. Os 4 FAIL são divergências preexistentes no roteiro de ofertas de moedas/poções, fora desta história. `GODOT=godot bash tools/net_two_clients_shot.sh 17791` conectou Ana e Davi; as duas capturas em `production/qa/evidence/pixel3d-net-client-{ana,davi}.png` foram inspecionadas e cada cliente mostra o outro. O guia canônico `server/README.md` recebeu o caminho Linux; nenhuma mudança de gameplay/import/dependência.
 
 ### EOA-002 — Smoke test e referência de comportamento
 - **Tipo:** história técnica · **Estado:** READY · **Prioridade:** P0 · **Depende:** EOA-001

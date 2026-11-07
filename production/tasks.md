@@ -4,6 +4,35 @@ Registre aqui trabalho com etapas ou troca de agente. Mantenha poucas tarefas
 ativas. Não crie um documento por ajuste. Estado: `pendente`, `em andamento`,
 `bloqueado`, `concluído`. Uma etapa só recebe `[x]` com evidência registrada.
 
+## EOA-001 — reproduzir execução multiplayer local
+
+Estado: concluído · executor: Codex `/root` · 2026-11-07.
+Objetivo: comprovar servidor autoritativo + dois clientes locais pelas rotas atuais,
+sem alterar gameplay nem os imports preexistentes.
+
+- [x] Confirmar comandos, porta e configuração vigente.
+- [x] Executar integração local e comprovar conexão de dois clientes.
+- [x] Inspecionar evidência visual e registrar erros preexistentes/regressões.
+- [x] Ajustar somente a documentação canônica necessária para reprodução no Linux.
+
+Aceite: passos reproduzíveis; clientes conectados; dois personagens visíveis ou
+limitação comprovada; erros preexistentes separados de regressões.
+Arquivos previstos: `ECHOS_BACKLOG.md`, `production/tasks.md`, `server/README.md`
+e evidências geradas em `production/qa/evidence/`. Sem mudanças de gameplay,
+`.import`, dependências, commit, push ou deploy.
+
+Resultado/evidência:
+- `GODOT=godot bash tools/net_session_test.sh 17777`: Alice e Bruno conectados e
+  mutuamente replicados; 96 PASS, 4 FAIL, 7/7 bots, zero erros de script.
+- Os 4 FAIL são preexistentes e restritos às ofertas de moedas/poções da troca;
+  nenhuma mudança de gameplay ocorreu nesta história.
+- `GODOT=godot bash tools/net_two_clients_shot.sh 17791`: Ana e Davi conectados;
+  duas capturas inspecionadas, cada cliente renderiza o outro personagem.
+- Guia canônico Linux atualizado em `server/README.md`; porta UDP padrão 7777,
+  portas isoladas 17777/17791 usadas na validação, dados temporários sem segredos.
+
+Pendência fora do escopo: investigar os 4 FAIL do roteiro de troca em tarefa própria.
+
 ## CTX-001 — adotar o 3D e organizar o contexto
 
 Estado: concluído · autorização: usuário, 2026-11-06.
