@@ -1,8 +1,9 @@
 # Guia de Estilo — 3D com visual de pixel art
 
 **Status:** aprovado pelo usuário em 2026-11-03 ("o visual tá legal, gostei da estética, vamos gravar esse padrão").
-**Substitui** a direção 2D (sprites 48 px em 8 direções) de `design/art/art-bible.md` e `design/game-brief.md` § Art & audio direction no que diz respeito a render, câmera e personagens. Paleta e tom da art bible continuam valendo.
-**Referência viva:** `prototypes/pixel3d/` (shaders e parâmetros abaixo saem de lá). Pesquisa de técnicas: `docs/research/pixel3d-visual-techniques.md`.
+**Escopo vigente:** direção visual do jogo oficial 3D. A documentação 2D foi arquivada; não é leitura necessária.
+**Tuning:** valores abaixo descrevem a referência visual; confira o sistema afetado antes de alterá-los.
+**Referência viva:** `src/game/` (shaders e parâmetros abaixo saem de lá). Pesquisa de técnicas: `docs/research/pixel3d-visual-techniques.md`.
 
 ## 1. Render
 | Item | Valor | Por quê |
@@ -17,7 +18,7 @@
 - **Toon em 3 faixas** (`toon_bands 3`, `toon_bias 0.35`) em todo material sólido; luz direcional sem divisão por π.
 - **Sol:** cor (1.0, 0.92, 0.78), energia 1.0, rotação (-52°, -38°), sombras ortogonais duras.
 - **Ambiente:** cor roxa fria (0.42, 0.36, 0.64), energia 0.5 — as sombras são roxas, nunca pretas.
-- **Sombras de nuvem:** ruído global `cloud_noise` rolando devagar, escurece o sol até 50 % (ler com `textureLod(..., 0.0)`).
+- **Sombras de nuvem:** ruído global `cloud_noise` rolando devagar, escurece o sol até 7 % (`mix(0.93, 1.0, ...)` no shader atual).
 - **Pós:** glow aditivo, limiar HDR 1.4 (folhagem clara não brilha; emissivos de magia ficam em 3–5), intensidade 0.9; saturação 1.15, contraste 1.06; tonemap linear.
 - **Luzes pontuais** (lampiões, fogueiras, magia): quentes, alcance curto (2–4 u), piscando por seno; sem sombra. Máx. ~8 por tela.
 

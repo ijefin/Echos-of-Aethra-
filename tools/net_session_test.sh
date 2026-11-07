@@ -21,7 +21,7 @@ run_godot() { # nome args...
 
 start_server() { # nome
 	local pid
-	pid=$(run_godot "$1" -s res://prototypes/pixel3d/net/server_main.gd -- --port="$PORT" --data_dir="$DATA" --log_level=info)
+	pid=$(run_godot "$1" -s res://src/game/net/server_main.gd -- --port="$PORT" --data_dir="$DATA" --log_level=info)
 	for _ in $(seq 1 150); do
 		grep -q AETHRA_SERVER_READY "$WORK/$1.out.log" 2>/dev/null && { echo "$pid"; return 0; }
 		sleep 0.2
@@ -31,7 +31,7 @@ start_server() { # nome
 	return 1
 }
 
-bot() { run_godot "bot-$1" -s res://prototypes/pixel3d/net/tests/net_bot.gd -- --role="$1" --port="$PORT" --state="$STATE"; }
+bot() { run_godot "bot-$1" -s res://src/game/net/tests/net_bot.gd -- --role="$1" --port="$PORT" --state="$STATE"; }
 
 wait_pids() { # timeout pids...
 	local limit="$1"; shift

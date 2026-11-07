@@ -3,7 +3,7 @@ extends SceneTree
 ##   godot --headless --path . -s res://tests/unit/net/net_rules_test.gd
 ## Saída: uma linha PASS/FAIL por verificação e "NET_RULES: OK" no fim.
 
-const N := "res://prototypes/pixel3d/net/"
+const N := "res://src/game/net/"
 const Protocol := preload(N + "net_protocol.gd")
 const NetConfig := preload(N + "net_config.gd")
 const Limiter := preload(N + "rate_limiter.gd")

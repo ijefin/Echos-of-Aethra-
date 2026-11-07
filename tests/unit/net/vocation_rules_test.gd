@@ -4,14 +4,14 @@ extends SceneTree
 ## Fixtures: data/classes.json e data/core_skills.json do protótipo (fonte da verdade do
 ## cliente) + tuning mínimo e colisão montada no próprio teste.
 
-const N := "res://prototypes/pixel3d/net/"
+const N := "res://src/game/net/"
 const World := preload(N + "server_world.gd")
 const Collision := preload(N + "world_collision.gd")
 const NetConfig := preload(N + "net_config.gd")
 const Protocol := preload(N + "net_protocol.gd")
 const Motion := preload(N + "player_motion.gd")
-const CLASSES := "res://prototypes/pixel3d/data/classes.json"
-const CORE := "res://prototypes/pixel3d/data/core_skills.json"
+const CLASSES := "res://src/game/data/classes.json"
+const CORE := "res://src/game/data/core_skills.json"
 
 var failures := 0
 var passes := 0

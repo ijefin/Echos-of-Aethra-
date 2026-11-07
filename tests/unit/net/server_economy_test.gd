@@ -6,14 +6,14 @@ extends SceneTree
 ##   godot --headless --path . -s res://tests/unit/net/server_economy_test.gd
 ## Sem física (IA mínima); fixtures = dados do protótipo (shop.json, items.json, classes.json).
 
-const N := "res://prototypes/pixel3d/net/"
+const N := "res://src/game/net/"
 const World := preload(N + "server_world.gd")
 const Collision := preload(N + "world_collision.gd")
 const NetConfig := preload(N + "net_config.gd")
 const Store := preload(N + "json_store.gd")
-const Economy := preload("res://prototypes/pixel3d/economy.gd")
-const TUNING := "res://prototypes/pixel3d/data/first_adventure.json"
-const CLASSES := "res://prototypes/pixel3d/data/classes.json"
+const Economy := preload("res://src/game/economy.gd")
+const TUNING := "res://src/game/data/first_adventure.json"
+const CLASSES := "res://src/game/data/classes.json"
 
 var failures := 0
 var passes := 0

@@ -16,19 +16,19 @@ RUN useradd --system --create-home --home-dir /home/aethra --uid 10001 aethra &&
 
 WORKDIR /app
 COPY project.godot /app/project.godot
-COPY prototypes/pixel3d/first_adventure_state.gd /app/prototypes/pixel3d/first_adventure_state.gd
-COPY prototypes/pixel3d/data/first_adventure.json /app/prototypes/pixel3d/data/first_adventure.json
-COPY prototypes/pixel3d/data/classes.json /app/prototypes/pixel3d/data/classes.json
-COPY prototypes/pixel3d/data/core_skills.json /app/prototypes/pixel3d/data/core_skills.json
+COPY src/game/first_adventure_state.gd /app/src/game/first_adventure_state.gd
+COPY src/game/data/first_adventure.json /app/src/game/data/first_adventure.json
+COPY src/game/data/classes.json /app/src/game/data/classes.json
+COPY src/game/data/core_skills.json /app/src/game/data/core_skills.json
 # conteúdo autoritativo (net/server_content.gd): missões, segredos, itens e bolsa
-COPY prototypes/pixel3d/quests.gd /app/prototypes/pixel3d/quests.gd
-COPY prototypes/pixel3d/data/quests.json /app/prototypes/pixel3d/data/quests.json
-COPY prototypes/pixel3d/data/world_regions.json /app/prototypes/pixel3d/data/world_regions.json
+COPY src/game/quests.gd /app/src/game/quests.gd
+COPY src/game/data/quests.json /app/src/game/data/quests.json
+COPY src/game/data/world_regions.json /app/src/game/data/world_regions.json
 COPY assets/data/items.json /app/assets/data/items.json
 COPY src/core/inventory.gd /app/src/core/inventory.gd
 COPY src/core/json_data.gd /app/src/core/json_data.gd
-COPY prototypes/pixel3d/ai/ /app/prototypes/pixel3d/ai/
-COPY prototypes/pixel3d/net/ /app/prototypes/pixel3d/net/
+COPY src/game/ai/ /app/src/game/ai/
+COPY src/game/net/ /app/src/game/net/
 RUN chown -R aethra:aethra /app
 
 USER aethra
@@ -37,4 +37,4 @@ VOLUME ["/data"]
 EXPOSE 7777/udp
 
 # Primeira execução importa o projeto (só scripts); depois sobe o servidor.
-CMD ["godot", "--headless", "--path", "/app", "-s", "res://prototypes/pixel3d/net/server_main.gd"]
+CMD ["godot", "--headless", "--path", "/app", "-s", "res://src/game/net/server_main.gd"]

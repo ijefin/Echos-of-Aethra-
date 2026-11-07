@@ -11,7 +11,7 @@ Group=aethra
 EnvironmentFile=/etc/aethra/aethra.env
 Environment=XDG_DATA_HOME=/var/lib/aethra/.godot-user
 WorkingDirectory=/opt/aethra/app
-ExecStart=/opt/aethra/godot --headless --path /opt/aethra/app -s res://prototypes/pixel3d/net/server_main.gd
+ExecStart=/opt/aethra/godot --headless --path /opt/aethra/app -s res://src/game/net/server_main.gd
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=10

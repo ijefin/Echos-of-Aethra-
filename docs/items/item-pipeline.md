@@ -42,7 +42,7 @@ Como um item nasce: **dados** (`assets/data/items.json`), depois a **arte** (`as
    | `color` | não | Cor do desenho de reserva da bolsa, usado quando o item não tem ícone. |
    | `model` / `icon` / `icon_view` | não | Sobrepõem o que vem de `item_models.json` e da convenção de ícone. |
 
-   **Balanço de referência** (veja `prototypes/pixel3d/data/shop.json` `_balance`):
+   **Balanço de referência** (veja `src/game/data/shop.json` `_balance`):
    - Arma comum: ataque ou poder mágico de 3 a 4, mais 1 a 2 de atributo.
    - Arma rara: 6 a 8, mais 3.
    - Arma épica: cerca de 14, mais 6.

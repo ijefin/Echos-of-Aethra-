@@ -17,8 +17,7 @@ production/session-logs/
 # Ephemeral per-session checkpoint. directory-structure.md documents this as
 # gitignored; the rule was missing, so active.md would have been committed.
 production/session-state/*
-# Handoffs entre sessões são o registro do estado do projeto — versionados.
-!production/session-state/HANDOFF-*.md
+# Tarefas compartilhadas: production/tasks.md. Histórico versionado: docs/history/.
 .scratch/
 # Per-agent working memory written at runtime — not release material
 .claude/agent-memory/

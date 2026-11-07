@@ -1,0 +1,21 @@
+# Discovery only: tracked files are preserved. Use an explicit path or rg --no-ignore
+# for a task that actually needs one of these directories/resources.
+/.git/
+/.godot/
+/.scratch/
+/.playwright-mcp/
+/builds/
+/build/
+/dist/
+/reports/
+/test-results/
+/legacy/
+/tools/studio/
+/docs/history/
+/production/session-logs/
+/production/qa/evidence/
+/assets/third_party/
+**/__pycache__/
+*.import
+*.uid
+*.log

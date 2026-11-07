@@ -1,8 +1,8 @@
 class_name AttributeSet
 extends RefCounted
 ## Monta os atributos derivados de uma classe ou inimigo a partir de dados
-## (assets/data/combat_classes.json, combat_enemies.json). Adicionar uma classe nova
-## é só adicionar JSON.
+## (dicionários de atributos e fórmulas fornecidos pelo sistema consumidor).
+## Adicionar uma classe nova é só fornecer seus dados.
 ##
 ## Uso:
 ##   var stats := AttributeSet.build(classes["fire_mage"], 1, derived)

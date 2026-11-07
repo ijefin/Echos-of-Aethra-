@@ -1,6 +1,6 @@
 extends SceneTree
 ## Boundary and sequence tests for the playable first quest; no rendering or save IO.
-const State := preload("res://prototypes/pixel3d/first_adventure_state.gd")
+const State := preload("res://src/game/first_adventure_state.gd")
 const CONFIG := {"xp_first": 10, "xp_step": 8, "max_level": 20, "player_hp": 60, "hp_per_level": 8, "blink_level": 2, "ring_level": 3, "torch_order": [0, 2, 1], "cave_guardians": 4, "enemy": {"frog": {"xp": 3}, "spider": {"xp": 3}}}
 var failures := 0
 

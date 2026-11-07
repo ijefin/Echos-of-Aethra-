@@ -16,12 +16,12 @@ EVID="$ROOT/production/qa/evidence"
 rm -f "$EVID/pixel3d-net-dash-ana.png" "$EVID/pixel3d-net-dash-davi.png"
 
 # 1) cria as contas (servidor sai sozinho e grava)
-"$GODOT" --headless --path "$ROOT" -s res://prototypes/pixel3d/net/server_main.gd -- --port="$PORT" --data_dir="$WORK_G/data" --quit_after=14 >"$WORK/server0.log" 2>&1 &
+"$GODOT" --headless --path "$ROOT" -s res://src/game/net/server_main.gd -- --port="$PORT" --data_dir="$WORK_G/data" --quit_after=14 >"$WORK/server0.log" 2>&1 &
 S=$!
 for _ in $(seq 1 150); do grep -q AETHRA_SERVER_READY "$WORK/server0.log" 2>/dev/null && break; sleep 0.2; done
 for who in "Ana archer" "Davi warrior"; do
 	set -- $who
-	"$GODOT" --headless --path "$ROOT" --quit-after 400 res://prototypes/pixel3d/pixel3d_demo.tscn -- --connect=127.0.0.1:"$PORT" --user="$1" --pass=senha123 --register --class="$2" --mute --no_save >"$WORK/reg-$1.log" 2>&1 &
+	"$GODOT" --headless --path "$ROOT" --quit-after 400 res://src/game/pixel3d_demo.tscn -- --connect=127.0.0.1:"$PORT" --user="$1" --pass=senha123 --register --class="$2" --mute --no_save >"$WORK/reg-$1.log" 2>&1 &
 done
 wait "$S"
 # 2) Davi no nível 3 (Investida liberada no nível 2)
@@ -41,14 +41,14 @@ print("Davi nível 3")
 EOF
 [ $? -eq 0 ] || { echo "falhou ao preparar contas — $WORK"; exit 1; }
 # 3) servidor + 2 clientes janelados
-"$GODOT" --headless --path "$ROOT" -s res://prototypes/pixel3d/net/server_main.gd -- --port="$PORT" --data_dir="$WORK_G/data" >"$WORK/server.log" 2>&1 &
+"$GODOT" --headless --path "$ROOT" -s res://src/game/net/server_main.gd -- --port="$PORT" --data_dir="$WORK_G/data" >"$WORK/server.log" 2>&1 &
 S=$!
 for _ in $(seq 1 150); do grep -q AETHRA_SERVER_READY "$WORK/server.log" 2>/dev/null && break; sleep 0.2; done
-"$GODOT" --path "$ROOT" --resolution 1280x720 res://prototypes/pixel3d/pixel3d_demo.tscn -- --connect=127.0.0.1:"$PORT" --user=Ana --pass=senha123 --class=archer --mute \
+"$GODOT" --path "$ROOT" --resolution 1280x720 res://src/game/pixel3d_demo.tscn -- --connect=127.0.0.1:"$PORT" --user=Ana --pass=senha123 --class=archer --mute \
 	--hour=11 --dash_shot="$EVID/pixel3d-net-dash-ana.png" --dash_shot_after="$AFTER" --shot="$WORK_G/ana-end.png" --shot_delay=24 >"$WORK/ana.log" 2>&1 &
 A=$!
 sleep 2
-"$GODOT" --path "$ROOT" --resolution 1280x720 res://prototypes/pixel3d/pixel3d_demo.tscn -- --connect=127.0.0.1:"$PORT" --user=Davi --pass=senha123 --class=warrior --mute \
+"$GODOT" --path "$ROOT" --resolution 1280x720 res://src/game/pixel3d_demo.tscn -- --connect=127.0.0.1:"$PORT" --user=Davi --pass=senha123 --class=warrior --mute \
 	--hour=11 --auto_q=12 --auto_q_dir=1,0.3 --shot="$WORK_G/davi-end.png" --shot_delay=22 >"$WORK/davi.log" 2>&1 &
 D=$!
 for _ in $(seq 1 300); do (kill -0 "$A" 2>/dev/null || kill -0 "$D" 2>/dev/null) || break; sleep 0.2; done

@@ -36,13 +36,13 @@ function Wait-Ready([string]$name, [int]$sec) {
 }
 
 function Start-Server([string]$name) {
-	$p = Start-Godot $name @("-s", "res://prototypes/pixel3d/net/server_main.gd", "--", "--port=$Port", "--data_dir=$data", "--log_level=info")
+	$p = Start-Godot $name @("-s", "res://src/game/net/server_main.gd", "--", "--port=$Port", "--data_dir=$data", "--log_level=info")
 	if (-not (Wait-Ready $name 30)) { throw "servidor $name não ficou pronto (veja $work)" }
 	return $p
 }
 
 function Start-Bot([string]$role) {
-	return Start-Godot "bot-$role" @("-s", "res://prototypes/pixel3d/net/tests/net_bot.gd", "--", "--role=$role", "--port=$Port", "--state=$state")
+	return Start-Godot "bot-$role" @("-s", "res://src/game/net/tests/net_bot.gd", "--", "--role=$role", "--port=$Port", "--state=$state")
 }
 
 function Wait-All($procs, [int]$sec) {

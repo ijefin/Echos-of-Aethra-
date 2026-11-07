@@ -3,7 +3,7 @@ extends SceneTree
 ## ponto de partida até o destino do servidor no tempo da habilidade, sem teleporte.
 ##   godot --headless --path . -s res://tests/unit/net/dash_motion_test.gd
 
-const DashMotion := preload("res://prototypes/pixel3d/net/dash_motion.gd")
+const DashMotion := preload("res://src/game/net/dash_motion.gd")
 const DT := 1.0 / 60.0
 
 var failures := 0

@@ -1,16 +1,16 @@
 # Só o necessário para o servidor entra na imagem (o repositório tem centenas de MB de arte).
 *
 !project.godot
-!prototypes/pixel3d/first_adventure_state.gd
-!prototypes/pixel3d/data/first_adventure.json
-!prototypes/pixel3d/data/classes.json
-!prototypes/pixel3d/data/core_skills.json
-!prototypes/pixel3d/ai/
-!prototypes/pixel3d/net/
-!prototypes/pixel3d/quests.gd
-!prototypes/pixel3d/data/quests.json
-!prototypes/pixel3d/data/world_regions.json
+!src/game/first_adventure_state.gd
+!src/game/data/first_adventure.json
+!src/game/data/classes.json
+!src/game/data/core_skills.json
+!src/game/ai/
+!src/game/net/
+!src/game/quests.gd
+!src/game/data/quests.json
+!src/game/data/world_regions.json
 !assets/data/items.json
 !src/core/inventory.gd
 !src/core/json_data.gd
-prototypes/pixel3d/net/tests/
+src/game/net/tests/

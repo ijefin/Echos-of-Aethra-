@@ -4,7 +4,7 @@ Status: Aceito (2026-11-04) · Código: `src/world/` · Guia: `docs/world/world-
 
 ## Contexto
 
-O mundo do protótipo (`prototypes/pixel3d/`) é gerado por código (floresta, casas,
+O mundo do protótipo (`src/game/`) é gerado por código (floresta, casas,
 trilhas) a partir de coordenadas fixas. Isso impede criar cenários novos, cidades e
 casas no editor, e obriga IA, missões e o servidor a conhecer coordenadas literais.
 O jogo precisa de um módulo de produção reutilizável, independente do protótipo e do
@@ -45,7 +45,7 @@ estilo visual (pixel-art/toon é injetado pelo jogo).
 - **Floresta**: `PropScatter` (Poisson + ruído + exclusões, semente) com bake.
 - **Servidor**: `WorldCollisionExporter` gera o mesmo JSON de `collision_surface.json`
   (versão 2) a partir de StaticBody das camadas 1/4 e de GridMap.
-- O módulo **não importa nada de `prototypes/`** (verificado por teste de integração).
+- O módulo **não importa nada de `src/game/` ou `legacy/`** (verificado por teste de integração).
 
 ## Consequências
 
@@ -57,4 +57,7 @@ estilo visual (pixel-art/toon é injetado pelo jogo).
 - (-) GridMap não faz relevo; relevo exigirá a alternativa 3 depois.
 - (-) A colisão do servidor é aproximada (círculos/caixas/polígonos convexos na faixa
   de altura do jogador), como no protótipo.
-- O protótipo continua como está; a migração do jogo para regiões é trabalho futuro.
+- O cenário atual em `src/game/` permanece procedural; sua integração com regiões é trabalho futuro.
+
+Nota de manutenção (2026-11-06): o 3D foi adotado e movido para `src/game/`.
+A fronteira de independência deste módulo permanece; apenas o caminho foi atualizado.

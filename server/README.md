@@ -1,11 +1,10 @@
-# Ecos de Aethra — servidor dedicado (protótipo 3D)
+# Ecos de Aethra — servidor dedicado do jogo 3D
 
-> **Hospedagem: PENDENTE DE APROVAÇÃO DO USUÁRIO.** Duas decisões são dele: hospedar código
-> de protótipo (`.claude/rules/prototype-code.md` diz que protótipos "não são publicados") e
-> subir um container separado na VPS de produção, abrindo UDP 7777. Até agora nada foi
-> instalado em servidor nenhum. Tudo foi testado só em 127.0.0.1.
+> **Hospedagem externa: PENDENTE DE APROVAÇÃO DO USUÁRIO.** O 3D é o jogo oficial.
+> Instalar um container na VPS e abrir UDP 7777 exige autorização específica.
+> Esta reorganização não autoriza deploy; a validação usa somente 127.0.0.1.
 
-O código fica em `prototypes/pixel3d/net/`. Esta pasta guarda só os arquivos de hospedagem
+O código fica em `src/game/net/`. Esta pasta guarda só os arquivos de hospedagem
 (Dockerfile, compose, unidade systemd).
 
 ## O que é
@@ -97,8 +96,8 @@ O código fica em `prototypes/pixel3d/net/`. Esta pasta guarda só os arquivos d
   `net/dash_motion.gd`), tanto para o próprio jogador quanto para os outros. O Eco do mago
   continua teleporte.
 
-Parâmetros de rede: `prototypes/pixel3d/net/data/net_config.json`.
-Regras de jogo: `prototypes/pixel3d/data/first_adventure.json`, `classes.json` e `core_skills.json`.
+Parâmetros de rede: `src/game/net/data/net_config.json`.
+Regras de jogo: `src/game/data/first_adventure.json`, `classes.json` e `core_skills.json`.
 
 ## Passo a passo local (Windows, Git Bash)
 
@@ -109,18 +108,18 @@ G="C:/Users/Jeff/AppData/Local/Microsoft/WinGet/Packages/GodotEngine.GodotEngine
 "$G" --headless --path . --import
 
 # 1) (só se o mapa mudou) exportar a colisão do mundo para o servidor
-"$G" --headless --path . -s res://prototypes/pixel3d/net/tools/export_collision.gd -- --no_save --mute
-#    → "EXPORT_COLLISION: OK -> res://prototypes/pixel3d/net/data/collision_surface.json"
+"$G" --headless --path . -s res://src/game/net/tools/export_collision.gd -- --no_save --mute
+#    → "EXPORT_COLLISION: OK -> res://src/game/net/data/collision_surface.json"
 #    Faça o commit do JSON: o servidor e a predição do cliente usam o mesmo arquivo.
 
 # 2) servidor (UDP 7777; deixe este terminal aberto)
-"$G" --headless --path . -s res://prototypes/pixel3d/net/server_main.gd -- --port=7777
+"$G" --headless --path . -s res://src/game/net/server_main.gd -- --port=7777
 #    → "AETHRA_SERVER_READY 7777" e "IA real dos monstros ligada (42 monstros, enemy_director)"
 
 # 3) dois clientes do jogo (cada um num terminal). Na 1ª vez use --register; --class só vale
 #    para personagem novo (mage | warrior | archer)
-"$G" --path . res://prototypes/pixel3d/pixel3d_demo.tscn -- --connect=127.0.0.1:7777 --user=Ana  --pass=senha123 --register --class=archer
-"$G" --path . res://prototypes/pixel3d/pixel3d_demo.tscn -- --connect=127.0.0.1:7777 --user=Davi --pass=senha123 --register --class=warrior
+"$G" --path . res://src/game/pixel3d_demo.tscn -- --connect=127.0.0.1:7777 --user=Ana  --pass=senha123 --register --class=archer
+"$G" --path . res://src/game/pixel3d_demo.tscn -- --connect=127.0.0.1:7777 --user=Davi --pass=senha123 --register --class=warrior
 #    das próximas vezes: sem --register (e sem --class)
 ```
 
@@ -166,7 +165,7 @@ bash tools/net_game_client_test.sh    # servidor + bot + CLIENTE REAL do jogo (-
 bash tools/net_trade_shot.sh          # 2 clientes em janela; painel de troca aberto (itens + ouro + poções)
 bash tools/net_drop_shot.sh           # 2 clientes em janela; item largado pela Ana visto pelo Davi
 bash tools/net_two_clients_shot.sh    # 2 clientes em janela; prints em production/qa/evidence/pixel3d-net-client-*.png
-bash prototypes/pixel3d/tools/run_world_tests.sh test_quests test_world_reach test_vocations test_mage_combat test_floors test_day_night test_core_light test_enemy_ai
+bash src/game/tools/run_world_tests.sh test_quests test_world_reach test_vocations test_mage_combat test_floors test_day_night test_core_light test_enemy_ai
 ```
 
 **Bot Quinn (arqueira) no `net_session_test.sh`:** sobe ao nível 2, anda (BFS na colisão, longe
@@ -266,10 +265,10 @@ docker compose logs -f aethra          # "AETHRA_SERVER_READY 7777"
 sudo useradd --system --home /var/lib/aethra aethra
 sudo mkdir -p /opt/aethra/app /var/lib/aethra /etc/aethra && sudo chown aethra: /var/lib/aethra
 # binário Godot_v4.7.2-stable_linux.x86_64 → /opt/aethra/godot (chmod +x)
-# copie para /opt/aethra/app: project.godot, prototypes/pixel3d/first_adventure_state.gd,
-#   prototypes/pixel3d/data/{first_adventure,classes,core_skills}.json,
-#   prototypes/pixel3d/ai/ e prototypes/pixel3d/net/, prototypes/pixel3d/quests.gd,
-#   prototypes/pixel3d/data/{quests,world_regions}.json, assets/data/items.json,
+# copie para /opt/aethra/app: project.godot, src/game/first_adventure_state.gd,
+#   src/game/data/{first_adventure,classes,core_skills}.json,
+#   src/game/ai/ e src/game/net/, src/game/quests.gd,
+#   src/game/data/{quests,world_regions}.json, assets/data/items.json,
 #   src/core/{inventory,json_data}.gd
 # /etc/aethra/aethra.env com as variáveis (AETHRA_DATA_DIR=/var/lib/aethra), chmod 600
 sudo cp server/aethra-server.service /etc/systemd/system/
@@ -280,7 +279,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now aethra-server
 Depois de um reinício, a volta é com senha, porque o token vive em memória.
 
 **Amigos pela internet:**
-`Ecos-de-Aethra.exe res://prototypes/pixel3d/pixel3d_demo.tscn -- --connect=HOST:7777 --user=Nome --pass=senha [--register --class=archer]`.
+`Ecos-de-Aethra.exe res://src/game/pixel3d_demo.tscn -- --connect=HOST:7777 --user=Nome --pass=senha [--register --class=archer]`.
 
 ## O que ainda falta
 

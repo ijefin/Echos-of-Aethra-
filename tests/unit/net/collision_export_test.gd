@@ -7,11 +7,11 @@ extends SceneTree
 ##   a partir da chegada, e os pontos dentro da serra continuam bloqueados.
 ## O JSON é um artefato versionado (fixture); regenerar com net/tools/export_collision.gd.
 
-const N := "res://prototypes/pixel3d/net/"
+const N := "res://src/game/net/"
 const Collision := preload(N + "world_collision.gd")
 const Motion := preload(N + "player_motion.gd")
 const NetConfig := preload(N + "net_config.gd")
-const WorldLayout := preload("res://prototypes/pixel3d/world/world_layout.gd")
+const WorldLayout := preload("res://src/game/world/world_layout.gd")
 const PATH := N + "data/collision_surface.json"
 const CELL := 0.5
 const SNAP := 2.0

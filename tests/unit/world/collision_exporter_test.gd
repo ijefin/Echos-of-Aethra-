@@ -1,8 +1,8 @@
 extends SceneTree
 ## WorldCollisionExporter: formato idêntico ao do servidor.
 ##   godot --headless --path . -s res://tests/unit/world/collision_exporter_test.gd
-const SERVER_JSON := "res://prototypes/pixel3d/net/data/collision_surface.json"
-const Collision := preload("res://prototypes/pixel3d/net/world_collision.gd")
+const SERVER_JSON := "res://src/game/net/data/collision_surface.json"
+const Collision := preload("res://src/game/net/world_collision.gd")
 var failures := 0
 var passes := 0
 

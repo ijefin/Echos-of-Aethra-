@@ -51,7 +51,7 @@ func fire_torch(index: int) -> void:
 	await wait_seconds(0.65)
 
 func run() -> void:
-	demo = (load("res://prototypes/pixel3d/pixel3d_demo.tscn") as PackedScene).instantiate()
+	demo = (load("res://src/game/pixel3d_demo.tscn") as PackedScene).instantiate()
 	root.add_child(demo)
 	demo._capture = true
 	adventure = demo._adventure
@@ -133,7 +133,7 @@ func run() -> void:
 	adventure._save()
 	adventure._persist = false
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(adventure.save_path))
-	var restored := preload("res://prototypes/pixel3d/first_adventure_state.gd").new(adventure.config)
+	var restored := preload("res://src/game/first_adventure_state.gd").new(adventure.config)
 	restored.restore(data)
 	check(restored.snapshot() == adventure.state.snapshot(), "save file restores XP, unlocks, quest and reward in an isolated slot")
 	print("PLAYTHROUGH %s" % ("OK" if failures == 0 else "%d failures" % failures))

@@ -11,13 +11,13 @@ WORK_G="$WORK"
 if command -v cygpath >/dev/null 2>&1; then WORK_G="$(cygpath -m "$WORK")"; fi
 echo "dados do teste: $WORK"
 
-"$GODOT" --headless --path "$ROOT" -s res://prototypes/pixel3d/net/server_main.gd -- --port="$PORT" --data_dir="$WORK_G/data" --log_level=info >"$WORK/server.out.log" 2>"$WORK/server.err.log" &
+"$GODOT" --headless --path "$ROOT" -s res://src/game/net/server_main.gd -- --port="$PORT" --data_dir="$WORK_G/data" --log_level=info >"$WORK/server.out.log" 2>"$WORK/server.err.log" &
 S=$!
 for _ in $(seq 1 150); do grep -q AETHRA_SERVER_READY "$WORK/server.out.log" 2>/dev/null && break; sleep 0.2; done
-"$GODOT" --headless --path "$ROOT" -s res://prototypes/pixel3d/net/tests/net_bot.gd -- --role=buddy --port="$PORT" --stay=90 >"$WORK/bia.out.log" 2>"$WORK/bia.err.log" &
+"$GODOT" --headless --path "$ROOT" -s res://src/game/net/tests/net_bot.gd -- --role=buddy --port="$PORT" --stay=90 >"$WORK/bia.out.log" 2>"$WORK/bia.err.log" &
 B=$!
 sleep 0.5
-"$GODOT" --headless --path "$ROOT" -s res://prototypes/pixel3d/net/tests/game_client_test.gd -- --connect=127.0.0.1:"$PORT" --user=Tester --pass=senha123 --register --class=mage --no_save --mute >"$WORK/game.out.log" 2>"$WORK/game.err.log" &
+"$GODOT" --headless --path "$ROOT" -s res://src/game/net/tests/game_client_test.gd -- --connect=127.0.0.1:"$PORT" --user=Tester --pass=senha123 --register --class=mage --no_save --mute >"$WORK/game.out.log" 2>"$WORK/game.err.log" &
 G=$!
 for _ in $(seq 1 900); do kill -0 "$G" 2>/dev/null || break; sleep 0.2; done
 kill "$G" 2>/dev/null

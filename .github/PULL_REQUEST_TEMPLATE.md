@@ -1,27 +1,11 @@
-## Summary
+## Resultado
 
-Brief description of what this PR does.
+Qual comportamento do jogo mudou e por quê?
 
-## Type of Change
+## Verificação
 
-- [ ] New agent
-- [ ] New skill
-- [ ] New hook or rule
-- [ ] Bug fix
-- [ ] Documentation improvement
-- [ ] Other:
+Comandos e resultados; captura inspecionada quando houver alteração visual.
 
-## Changes
+## Pendências
 
--
--
--
-
-## Checklist
-
-- [ ] I've tested this in a Claude Code session
-- [ ] New agents include the Collaboration Protocol section
-- [ ] New skills use the subdirectory format (`.claude/skills/<name>/SKILL.md`)
-- [ ] Reference docs are updated (agent-roster, skills-reference, hooks-reference, rules-reference)
-- [ ] Hooks use `grep -E` (POSIX) and fail gracefully without jq/python
-- [ ] No hardcoded paths or platform-specific assumptions
+Limitações, riscos ou verificações não executadas. Referencie a tarefa, se houver.

@@ -4,13 +4,13 @@ extends SceneTree
 ##   godot --headless --path . -s res://tests/unit/net/server_ai_test.gd
 ## (Usa física 3D do Godot, então roda como SceneTree; dados = fixtures versionados.)
 
-const N := "res://prototypes/pixel3d/net/"
+const N := "res://src/game/net/"
 const World := preload(N + "server_world.gd")
 const ServerAI := preload(N + "server_ai.gd")
 const Collision := preload(N + "world_collision.gd")
 const NetConfig := preload(N + "net_config.gd")
 const Protocol := preload(N + "net_protocol.gd")
-const TUNING := "res://prototypes/pixel3d/data/first_adventure.json"
+const TUNING := "res://src/game/data/first_adventure.json"
 const DT := 0.05
 
 var failures := 0

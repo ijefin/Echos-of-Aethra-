@@ -1,5 +1,5 @@
 extends SceneTree
-## Integração do módulo de mundo: vilarejo na árvore, peças e isolamento do protótipo.
+## Integração do módulo de mundo: vilarejo, peças e independência do jogo e legado.
 ##   godot --headless --path . -s res://tests/integration/world/world_module_test.gd
 var failures := 0
 var passes := 0
@@ -17,7 +17,8 @@ func check(cond: bool, what: String) -> void:
 func _scan(dir: String, hits: Array[String]) -> void:
 	for f in DirAccess.get_files_at(dir):
 		if f.get_extension() in ["gd", "tscn", "tres", "json"]:
-			if FileAccess.get_file_as_string(dir.path_join(f)).contains("prototypes/"):
+			var contents := FileAccess.get_file_as_string(dir.path_join(f))
+			if contents.contains("src/game/") or contents.contains("legacy/"):
 				hits.append(dir.path_join(f))
 	for d in DirAccess.get_directories_at(dir):
 		_scan(dir.path_join(d), hits)
@@ -31,7 +32,7 @@ func run() -> void:
 	var hits: Array[String] = []
 	for d in ["res://src/world", "res://assets/world", "res://data/world"]:
 		_scan(d, hits)
-	check(hits.is_empty(), "nenhum arquivo do módulo referencia prototypes/ %s" % str(hits))
+	check(hits.is_empty(), "módulo independente de src/game/ e legacy/ %s" % str(hits))
 	var region := (load("res://src/world/regions/sample_village.tscn") as PackedScene).instantiate()
 	root.add_child(region)
 	await process_frame

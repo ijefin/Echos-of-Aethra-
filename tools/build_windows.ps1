@@ -52,27 +52,18 @@ if (-not (Test-Path -LiteralPath $gameExe -PathType Leaf)) {
 }
 
 $guide = @"
-ECOS DE AETHRA - COMO JOGAR ONLINE
+ECOS DE AETHRA - JOGO 3D
 
-Para quem hospeda:
-1. Abra Ecos-de-Aethra.exe.
-2. Escolha seu nome e classe.
-3. Deixe a porta 7777 e clique em "Hospedar partida".
-4. Passe ao convidado o seu IP do Radmin VPN, ZeroTier ou Tailscale.
+Abra Ecos-de-Aethra.exe para jogar offline.
 
-Para quem entra:
-1. Entre na mesma rede virtual do host.
-2. Abra Ecos-de-Aethra.exe.
-3. Digite o IP que o host enviou em "IP do host".
-4. Deixe a porta 7777 e clique em "Entrar na partida".
+Para entrar em um servidor dedicado existente, execute:
+Ecos-de-Aethra.exe -- --connect=IP:7777 --user=Nome --pass=SENHA
+No primeiro acesso, acrescente --register. Use uma senha exclusiva para o jogo.
+A conexao usa UDP; o servidor deve estar acessivel na porta informada.
 
-Se nao conectar:
-- Confirme que os dois estao na mesma VPN/rede virtual.
-- Libere Ecos-de-Aethra.exe no Firewall do Windows quando ele perguntar.
-- Confirme que o host abriu a partida antes do convidado tentar entrar.
-- A conexao usa UDP na porta 7777.
-
-O convidado nao precisa instalar Godot.
+O executavel nao inclui uma tela de hospedagem de partida.
+Hospedagem e operacao do servidor sao documentadas em server/README.md no repositorio.
+O jogador nao precisa instalar Godot.
 "@
 Set-Content -LiteralPath $guidePath -Value $guide -Encoding UTF8
 
