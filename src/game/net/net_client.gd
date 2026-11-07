@@ -178,9 +178,15 @@ func _send_control(type: int, data: Dictionary) -> void:
 
 
 ## Direção do movimento (x = direita, y = para baixo/sul na tela), chamada todo quadro.
-func set_move(dir: Vector2, dodge := false) -> void:
+## No dash parado, `stationary_facing` alinha somente a predição à orientação visual
+## atual (que pode ter vindo de um ataque). O servidor continua autoritativo e usa o
+## próprio yaw para aceitar cooldown, direção e colisão.
+func set_move(dir: Vector2, dodge := false, stationary_facing := Vector2.ZERO) -> void:
 	_move_dir = dir.limit_length(1.0)
 	if dodge:
+		if _move_dir.length() <= 0.2 and stationary_facing.length() > 0.2 and not predicted.is_empty():
+			var face := stationary_facing.normalized()
+			predicted.yaw = atan2(-face.x, -face.y)
 		_dodge_req = true
 
 

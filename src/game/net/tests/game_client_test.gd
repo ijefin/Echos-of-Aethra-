@@ -106,6 +106,27 @@ func run() -> void:
 	await wait(0.8)
 	check(absf(angle_difference(float(demo._model.rotation.y), attack_yaw)) < 0.02,
 		"orientação: após o ataque, parado mantém a direção ofensiva")
+	# MOV-002: parado após o ataque, Espaço deve seguir a orientação ofensiva
+	# (-Z), mesmo que a caminhada anterior tenha deixado a predição em +X.
+	var dash_from: Vector3 = online.net.me().pos
+	demo._start_dodge()
+	await wait(0.08)
+	check(absf(angle_difference(float(online.net.local_yaw()), 0.0)) < 0.02,
+		"dash parado após ataque: predição usa a orientação ofensiva")
+	await wait(0.42)
+	var dash_to: Vector3 = online.net.me().pos
+	var dash_delta := dash_to - dash_from
+	check(dash_delta.z < -1.0 and absf(dash_delta.x) < 0.5,
+		"dash parado após ataque: servidor desloca para -Z (%.2f, %.2f)" % [dash_delta.x, dash_delta.z])
+	check(demo._player.global_position.distance_to(dash_to) < 0.3,
+		"dash após ataque: cliente reconciliado com o servidor (erro %.3f m)" % demo._player.global_position.distance_to(dash_to))
+	# Ainda dentro do cooldown: uma segunda solicitação não pode mover o estado
+	# autoritativo, mesmo que o cliente toque a animação local.
+	var cooldown_from: Vector3 = online.net.me().pos
+	demo._start_dodge()
+	await wait(0.35)
+	var cooldown_moved := (online.net.me().pos as Vector3).distance_to(cooldown_from)
+	check(cooldown_moved < 0.2, "dash: cooldown do servidor impede segunda esquiva (%.3f m)" % cooldown_moved)
 	# outro jogador e monstros vindos do snapshot
 	check(await wait_until(func() -> bool: return _remote("Bia", Protocol.KIND_PLAYER) != null, 30.0), "vê a Bia (outro jogador) com modelo e nome")
 	var bia: Dictionary = _remote("Bia", Protocol.KIND_PLAYER) if _remote("Bia", Protocol.KIND_PLAYER) != null else {}

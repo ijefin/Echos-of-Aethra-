@@ -98,8 +98,8 @@ func _process(_delta: float) -> void:
 # ------------------------------------------------------------------ entrada (cliente → servidor)
 
 ## Chamar todo quadro com a direção WASD (x direita, y para baixo) e se a esquiva foi apertada.
-func send_move(dir: Vector2, dodge := false) -> void:
-	client.set_move(dir, dodge)
+func send_move(dir: Vector2, dodge := false, stationary_facing := Vector2.ZERO) -> void:
+	client.set_move(dir, dodge, stationary_facing)
 
 
 ## Ataque básico: alvo (id de entidade do servidor, 0 = nenhum) ou ponto no chão.

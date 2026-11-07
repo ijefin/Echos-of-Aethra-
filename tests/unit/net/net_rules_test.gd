@@ -170,6 +170,18 @@ func test_collision_and_motion() -> void:
 	Motion.step(dash_stopped, Vector2.ZERO, 1, 0.05, open, MOVE, 0.35)
 	check((dash_stopped.dodge_dir as Vector2).is_equal_approx(Vector2(1, 0)),
 		"dash: parado usa a orientação conservada")
+	var quadrants_ok := true
+	for raw: Vector2 in [Vector2(1, 0), Vector2(1, 1), Vector2(0, 1), Vector2(-1, 1),
+			Vector2(-1, 0), Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1)]:
+		var q := Motion.new_state(Vector3(0, 0, -30))
+		Motion.step(q, raw, 1, 0.05, open, MOVE, 0.35)
+		quadrants_ok = quadrants_ok and (q.dodge_dir as Vector2).is_equal_approx(raw.normalized())
+	check(quadrants_ok, "dash: input preservado nos oito sentidos normalizados")
+	for i in 5: # termina os 0,24 s do primeiro dash; cooldown ainda está ativo
+		Motion.step(dash_input, Vector2.ZERO, 0, 0.05, open, MOVE, 0.35)
+	Motion.step(dash_input, Vector2.ZERO, 1, 0.05, open, MOVE, 0.35)
+	check(float(dash_input.dodge_t) < 0.0 and float(dash_input.dodge_cd) > 0.0,
+		"dash: solicitação durante cooldown não inicia outra esquiva")
 
 
 func test_move_validator() -> void:

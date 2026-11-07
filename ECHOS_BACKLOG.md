@@ -51,12 +51,13 @@
 - **Evidência (2026-11-07):** o controlador existente já atendia ao contrato; foram adicionadas provas, sem mudança de gameplay. Cliente real online: 44 PASS, 0 FAIL, 2/2 concluídos e zero erros de script, incluindo olhar para +X com D, orientação preservada parado, cursor passivo sem giro, mira ofensiva e orientação mantida após ataque. Regras autoritativas de vocação: 45 PASS, incluindo yaw do servidor atualizado pelo ataque. Diagonal, inversão e parada: `NET_RULES` 82 PASS no baseline.
 
 ### MOV-002 — Dash autoritativo e previsível
-- **Tipo:** história · **Estado:** READY · **Prioridade:** P0 · **Depende:** MOV-001
+- **Tipo:** história · **Estado:** DONE · **Prioridade:** P0 · **Depende:** MOV-001
 - **Como jogador**, quero que meu dash use a direção do movimento e se mantenha confiável online.
 - **Tarefas:** fazer dash usar input de deslocamento e não cursor; preservar validação do servidor, cooldown e reconciliação existentes; investigar discrepâncias com latência; implementar dash parado na orientação atual do personagem (que pode ter sido alterada por um ataque anterior); garantir que o cursor não altere a orientação passivamente.
 - **Aceite:** dash na direção do input em todos os quadrantes; sem input, dash na orientação atual (inclusive após ataque que a mudou); cursor não altera direção passivamente; cooldown não pode ser burlado no cliente; colisões e estado após dash consistentes; teste com dois clientes e latência simulada **se houver ferramenta disponível**.
 - **Não inclui:** inventar i-frames, definir cancelamentos de ataques ou mudar habilidades ofensivas.
 - **Descoberta de entrada (`MOV-001`):** `local_yaw()` conserva o yaw da predição de locomoção, enquanto uma ação ofensiva atualiza separadamente o yaw autoritativo no servidor e a rotação visual por `_aim`. O dash parado após ataque precisa alinhar esses estados sem fazer o cursor girar o corpo passivamente.
+- **Evidência (2026-11-07):** predição alinhada à orientação visual somente no comando de dash parado, sem alterar protocolo ou autoridade. Cliente real: 48 PASS, 0 FAIL, 2/2 concluídos e zero erros de script; sequência +X → ataque −Z → dash parado deslocou (0,00; −2,12), com erro final cliente/servidor 0,000 m; segunda esquiva no cooldown deslocou 0,000 m. `NET_RULES`: 84 PASS (oito sentidos e cooldown); colisão: 39 PASS; apresentação/reconciliação: 9 PASS. Latência simulada: `NOT TESTED`, ferramenta ausente no repositório.
 
 ### MOV-003 — Regressão de classes e estados
 - **Tipo:** teste de integração · **Estado:** BACKLOG · **Prioridade:** P0 · **Depende:** MOV-002

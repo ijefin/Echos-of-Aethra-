@@ -489,7 +489,11 @@ func physics(delta: float, input: Vector2) -> void:
 			demo._end_dash()
 	else:
 		_dodge_sent = false
-	net.send_move(input, dodge)
+	# Parado, a direção visual pode ter sido alterada pelo último ataque enquanto o
+	# yaw previsto ainda é o da caminhada. Alinha a predição no mesmo comando; o
+	# servidor resolve o dash com o yaw autoritativo dele.
+	var stationary_facing := Vector2(demo._dodge_dir.x, demo._dodge_dir.z) if dodge and input.length() <= 0.2 else Vector2.ZERO
+	net.send_move(input, dodge, stationary_facing)
 	var np: Vector3 = net.local_position()
 	var cave := np.y < -4.0
 	if cave != bool(adventure.in_cave):

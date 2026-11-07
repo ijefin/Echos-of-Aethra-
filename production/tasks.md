@@ -4,6 +4,31 @@ Registre aqui trabalho com etapas ou troca de agente. Mantenha poucas tarefas
 ativas. Não crie um documento por ajuste. Estado: `pendente`, `em andamento`,
 `bloqueado`, `concluído`. Uma etapa só recebe `[x]` com evidência registrada.
 
+## MOV-002 — dash autoritativo e previsível
+
+Estado: concluído · executor: Codex `/root` · 2026-11-07.
+Objetivo: alinhar predição e servidor no dash parado após ataque, preservando autoridade.
+
+- [x] Alinhar yaw previsto à orientação visual somente ao iniciar dash parado.
+- [x] Cobrir todos os quadrantes, dash após ataque, cooldown e colisão.
+- [x] Validar cliente real + servidor e registrar latência como PASS/NOT TESTED.
+- [x] Atualizar o card e publicar no GitHub.
+
+Aceite: input define dash; parado usa orientação atual inclusive após ataque; cursor
+passivo não interfere; servidor mantém cooldown/colisão/estado. Sem mudar protocolo,
+i-frames, cancelamentos ou habilidades ofensivas.
+
+Ferramenta de latência: ausente no repositório; `tc netem` global não será aplicado
+automaticamente por afetar tráfego alheio.
+
+Resultado/evidência:
+- Cliente real: 48 PASS, 0 FAIL, 2/2 concluídos, zero erros de script.
+- +X → ataque −Z → dash parado: servidor deslocou (0,00; −2,12), erro de
+  reconciliação 0,000 m; tentativa no cooldown deslocou 0,000 m.
+- `NET_RULES`: 84 PASS; colisão: 39 PASS; `DASH_MOTION`: 9 PASS.
+- Sem alteração de protocolo, cooldown, colisão, i-frames ou habilidades ofensivas.
+- Latência simulada: `NOT TESTED` (nenhuma ferramenta isolada disponível).
+
 ## MOV-001 — orientação e controle de locomoção
 
 Estado: concluído · executor: Codex `/root` · 2026-11-07.
