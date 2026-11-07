@@ -43,11 +43,12 @@
 ## Sprint 01 — Movimento multiplayer (primeira implementação)
 
 ### MOV-001 — Orientação e controle de locomoção
-- **Tipo:** história · **Estado:** READY · **Prioridade:** P0 · **Depende:** EOA-002
+- **Tipo:** história · **Estado:** DONE · **Prioridade:** P0 · **Depende:** EOA-002
 - **Como jogador**, quero movimentação precisa e orientação previsível para me posicionar no PvP.
 - **Tarefas:** localizar caminho ativo entre input, predição e servidor; corrigir orientação por deslocamento; manter última orientação ao parar; impedir que mouse gire o corpo na caminhada normal; garantir diagonais normalizadas e inversões rápidas; ajustar aceleração/frenagem apenas no necessário, sem inventar valores definitivos.
 - **Aceite:** WASD e diagonais sem ganho indevido de velocidade; personagem olha para movimento e não para cursor; parado preserva orientação; mudanças de direção sem deslizamento excessivo; resultado conferido em cliente + servidor; ações ofensivas não têm sua orientação sobrescrita.
 - **Não inclui:** animações novas, câmera, hitbox, parry ou dano.
+- **Evidência (2026-11-07):** o controlador existente já atendia ao contrato; foram adicionadas provas, sem mudança de gameplay. Cliente real online: 44 PASS, 0 FAIL, 2/2 concluídos e zero erros de script, incluindo olhar para +X com D, orientação preservada parado, cursor passivo sem giro, mira ofensiva e orientação mantida após ataque. Regras autoritativas de vocação: 45 PASS, incluindo yaw do servidor atualizado pelo ataque. Diagonal, inversão e parada: `NET_RULES` 82 PASS no baseline.
 
 ### MOV-002 — Dash autoritativo e previsível
 - **Tipo:** história · **Estado:** READY · **Prioridade:** P0 · **Depende:** MOV-001
@@ -55,6 +56,7 @@
 - **Tarefas:** fazer dash usar input de deslocamento e não cursor; preservar validação do servidor, cooldown e reconciliação existentes; investigar discrepâncias com latência; implementar dash parado na orientação atual do personagem (que pode ter sido alterada por um ataque anterior); garantir que o cursor não altere a orientação passivamente.
 - **Aceite:** dash na direção do input em todos os quadrantes; sem input, dash na orientação atual (inclusive após ataque que a mudou); cursor não altera direção passivamente; cooldown não pode ser burlado no cliente; colisões e estado após dash consistentes; teste com dois clientes e latência simulada **se houver ferramenta disponível**.
 - **Não inclui:** inventar i-frames, definir cancelamentos de ataques ou mudar habilidades ofensivas.
+- **Descoberta de entrada (`MOV-001`):** `local_yaw()` conserva o yaw da predição de locomoção, enquanto uma ação ofensiva atualiza separadamente o yaw autoritativo no servidor e a rotação visual por `_aim`. O dash parado após ataque precisa alinhar esses estados sem fazer o cursor girar o corpo passivamente.
 
 ### MOV-003 — Regressão de classes e estados
 - **Tipo:** teste de integração · **Estado:** BACKLOG · **Prioridade:** P0 · **Depende:** MOV-002

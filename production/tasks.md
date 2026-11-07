@@ -4,6 +4,29 @@ Registre aqui trabalho com etapas ou troca de agente. Mantenha poucas tarefas
 ativas. Não crie um documento por ajuste. Estado: `pendente`, `em andamento`,
 `bloqueado`, `concluído`. Uma etapa só recebe `[x]` com evidência registrada.
 
+## MOV-001 — orientação e controle de locomoção
+
+Estado: concluído · executor: Codex `/root` · 2026-11-07.
+Objetivo: comprovar/corrigir somente o contrato aprovado de orientação e locomoção online.
+
+- [x] Rastrear input, predição, autoridade e orientação visual.
+- [x] Cobrir movimento, diagonal, inversão, parada e mouse passivo.
+- [x] Cobrir orientação ofensiva sem sobrescrita ao parar.
+- [x] Validar cliente + servidor, atualizar o card e publicar no GitHub.
+
+Aceite: personagem olha para deslocamento, conserva orientação parado, cursor não
+gira passivamente, diagonais são normalizadas e ataque conserva sua orientação.
+Arquivos previstos: testes de rede/cliente e documentação dos cards; controlador
+só será alterado se uma divergência for reproduzida. Não inclui câmera, dano ou animação.
+
+Resultado/evidência:
+- O controlador existente atende ao `MOV-001`; nenhuma lógica de gameplay/tuning mudou.
+- Cliente real online: 44 PASS, 0 FAIL, 2/2 concluídos, zero erros de script.
+- Servidor/vocações: 45 PASS, 0 falhas; ataque altera yaw autoritativo.
+- Cobertura nova: direção por movimento, parada, cursor passivo e orientação ofensiva.
+- Descoberta para `MOV-002`: predição local e yaw ofensivo do servidor são estados
+  distintos; dash parado depois de ataque precisa alinhá-los explicitamente.
+
 ## EOA-002 — smoke test e referência de comportamento
 
 Estado: concluído · executor: Codex `/root` · 2026-11-07.

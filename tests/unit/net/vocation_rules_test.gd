@@ -214,6 +214,9 @@ func test_mage_unchanged() -> void:
 	var w := _world()
 	var p := _player(w, "mage")
 	var m := _frog(w, Vector2(2.5, 0))
+	var south := _frog(w, Vector2(0, -5))
+	check(w.player_action(int(p.eid), {"act": "fire", "target": int(south.eid)}) == "" and absf(angle_difference(float(p.ms.yaw), 0.0)) < 0.001,
+		"mago: ataque para -Z atualiza a orientação autoritativa")
 	check(w.player_action(int(p.eid), {"act": "ring"}) == "", "mago: Anel de Brasa como antes")
 	check(_lost(m) == 18 + int(p.state.level) - 1, "mago: dano do anel = ring_damage + nível − 1")
 	check(w.player_action(int(p.eid), {"act": "blink", "x": 0.0, "z": -5.0}) == "" and absf(p.ms.pos.z + 5.0) < 0.01, "mago: Eco teleporta")

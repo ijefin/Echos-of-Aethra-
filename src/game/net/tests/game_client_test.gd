@@ -79,6 +79,33 @@ func run() -> void:
 	var moved := Vector2(srv.x - start.x, srv.z - start.z).length()
 	check(moved > 1.0 and moved < 4.2 * 1.4, "tecla D: servidor moveu o personagem %.2f m em ~1 s" % moved)
 	check(demo._player.global_position.distance_to(srv) < 0.3, "corpo do jogo = posição do servidor (erro %.3f m)" % demo._player.global_position.distance_to(srv))
+	# MOV-001: o corpo olha para o deslocamento, não para o cursor, e conserva a
+	# orientação ao parar. +X corresponde a yaw -PI/2 no modelo ativo.
+	var movement_yaw := float(demo._model.rotation.y)
+	check(absf(angle_difference(movement_yaw, -PI / 2.0)) < 0.12,
+		"orientação: tecla D faz o modelo olhar para +X (yaw %.3f)" % movement_yaw)
+	await wait(0.4)
+	var stopped_yaw := float(demo._model.rotation.y)
+	check(absf(angle_difference(stopped_yaw, movement_yaw)) < 0.02,
+		"orientação: parado conserva a direção (variação %.4f rad)" % absf(angle_difference(stopped_yaw, movement_yaw)))
+	var mouse := InputEventMouseMotion.new()
+	mouse.position = Vector2(20, 20)
+	mouse.relative = Vector2(400, -300)
+	Input.parse_input_event(mouse)
+	await wait(0.2)
+	check(absf(angle_difference(float(demo._model.rotation.y), stopped_yaw)) < 0.02,
+		"orientação: mover o cursor sem atacar não gira o corpo")
+	# A ação ofensiva pode mudar a orientação; depois que termina, a parada não a
+	# sobrescreve com o yaw anterior da caminhada.
+	var attack_point: Vector3 = (online.net.me().pos as Vector3) + Vector3(0, 0, -3)
+	demo._attack_at(attack_point)
+	await wait(0.35)
+	var attack_yaw := float(demo._model.rotation.y)
+	check(absf(angle_difference(attack_yaw, 0.0)) < 0.08,
+		"orientação: ataque para -Z gira o modelo para a mira (yaw %.3f)" % attack_yaw)
+	await wait(0.8)
+	check(absf(angle_difference(float(demo._model.rotation.y), attack_yaw)) < 0.02,
+		"orientação: após o ataque, parado mantém a direção ofensiva")
 	# outro jogador e monstros vindos do snapshot
 	check(await wait_until(func() -> bool: return _remote("Bia", Protocol.KIND_PLAYER) != null, 30.0), "vê a Bia (outro jogador) com modelo e nome")
 	var bia: Dictionary = _remote("Bia", Protocol.KIND_PLAYER) if _remote("Bia", Protocol.KIND_PLAYER) != null else {}
